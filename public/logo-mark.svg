@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Krova">
+  <defs>
+    <linearGradient id="krovaTeal" x1="18" y1="14" x2="46" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#00A387"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="#101014"/>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="14.25" fill="none" stroke="#2A2A32" stroke-width="1.5"/>
+
+  <g stroke="url(#krovaTeal)" stroke-width="5.5" stroke-linecap="round" fill="none">
+    <path d="M22 17 V47"/>
+    <path d="M26.5 32 L41 47"/>
+    <path d="M26.5 32 L37 21"/>
+  </g>
+
+  <circle cx="44" cy="16" r="3.25" fill="#5EEAD4"/>
+</svg>
