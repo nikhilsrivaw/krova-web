@@ -28,6 +28,7 @@ import {
   type KeptAnalytics,
   type ChannelActivity,
   type AgentPerformance,
+  type TeamPerformance,
 } from "@/lib/api";
 
 export default function AnalyticsPage() {
@@ -35,6 +36,7 @@ export default function AnalyticsPage() {
   const [kept, setKept] = useState<KeptAnalytics | null>(null);
   const [channelsData, setChannelsData] = useState<ChannelActivity[]>([]);
   const [agentPerf, setAgentPerf] = useState<AgentPerformance | null>(null);
+  const [teamPerf, setTeamPerf] = useState<TeamPerformance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -42,11 +44,12 @@ export default function AnalyticsPage() {
   useEffect(() => {
     let mounted = true;
     const loadAnalytics = async () => {
-      const [recRes, keptRes, chRes, agRes] = await Promise.allSettled([
+      const [recRes, keptRes, chRes, agRes, teamRes] = await Promise.allSettled([
         analytics.receivables(),
         analytics.kept(),
         analytics.channels(),
         analytics.agent(),
+        analytics.team(),
       ]);
       if (!mounted) return;
 
@@ -54,6 +57,7 @@ export default function AnalyticsPage() {
       if (keptRes.status === "fulfilled") setKept(keptRes.value);
       if (chRes.status === "fulfilled") setChannelsData(chRes.value);
       if (agRes.status === "fulfilled") setAgentPerf(agRes.value);
+      if (teamRes.status === "fulfilled") setTeamPerf(teamRes.value);
 
       const failed = [recRes, keptRes, chRes, agRes].find((r) => r.status === "rejected");
       if (failed && failed.status === "rejected") {
@@ -145,6 +149,61 @@ export default function AnalyticsPage() {
             </p>
           )}
         </div>
+
+        {/* SECTION 1b: TEAM PERFORMANCE - THE HUMANS, NOT THE AI */}
+        {teamPerf && teamPerf.members.length > 0 && (
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-bold text-white">Team Performance</h4>
+              <span className="text-[10px] font-mono text-os-text-dim">
+                Last {teamPerf.days} days
+              </span>
+            </div>
+            <p className="text-xs text-os-text-dim mb-4">
+              First-response time only counts a reply a team member actually sent to someone
+              waiting - not a campaign blast, not an unreviewed AI send.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-white/[0.06] text-os-text-dim font-mono uppercase text-[10px]">
+                  <tr>
+                    <th className="py-2 px-3">Team Member</th>
+                    <th className="py-2 px-3">Messages Sent</th>
+                    <th className="py-2 px-3">Avg First Response</th>
+                    <th className="py-2 px-3">Commitments Resolved</th>
+                    <th className="py-2 px-3">Avg Resolution Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {teamPerf.members.map((m) => (
+                    <tr key={m.user_id}>
+                      <td className="py-2.5 px-3">
+                        <p className="font-bold text-white">{m.full_name || m.email}</p>
+                        <p className="text-[10px] text-os-text-dim">{m.email}</p>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-white">{m.messages_sent}</td>
+                      <td className="py-2.5 px-3 font-mono text-seal-bright">
+                        {m.avg_first_response_minutes != null
+                          ? m.avg_first_response_minutes < 60
+                            ? `${m.avg_first_response_minutes}m`
+                            : `${(m.avg_first_response_minutes / 60).toFixed(1)}h`
+                          : "—"}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-white">{m.commitments_resolved}</td>
+                      <td className="py-2.5 px-3 font-mono text-brass-bright">
+                        {m.avg_resolution_hours != null
+                          ? m.avg_resolution_hours < 48
+                            ? `${m.avg_resolution_hours}h`
+                            : `${(m.avg_resolution_hours / 24).toFixed(1)}d`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        )}
 
         {/* SECTION 2: RECEIVABLES AGING & PROMISE-KEEPING */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

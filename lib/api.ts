@@ -878,6 +878,22 @@ export type AgentPerformance = {
   top_gaps: { gap: string; times: number }[];
 };
 
+export type TeamMemberPerformance = {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  messages_sent: number;
+  replies_counted: number;
+  avg_first_response_minutes: number | null;
+  commitments_resolved: number;
+  avg_resolution_hours: number | null;
+};
+
+export type TeamPerformance = {
+  days: number;
+  members: TeamMemberPerformance[];
+};
+
 export type AnalyticsOverview = {
   owed_to_you: string;
   owed_to_you_paise: number;
@@ -907,6 +923,7 @@ export const analytics = {
   kept: () => api.get<KeptAnalytics>("/analytics/kept"),
   channels: () => api.get<ChannelActivity[]>("/analytics/channels"),
   agent: () => api.get<AgentPerformance>("/analytics/agent"),
+  team: () => api.get<TeamPerformance>("/analytics/team"),
 };
 
 // ── Account & Health ──────────────────────────────────────────────────────────
