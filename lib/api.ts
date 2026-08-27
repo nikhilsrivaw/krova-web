@@ -457,7 +457,29 @@ export type Template = {
   submitted_at: string | null;
   reviewed_at: string | null;
   edits_remaining: number | null;
+  is_carousel: boolean;
+  card_count: number;
+  /** One media id per card, in order - what a campaign built on this template sends. */
+  carousel_media_ids: string[];
 };
+
+// ── Carousel templates ───────────────────────────────────────────────────────
+// A carousel puts its header/footer/buttons on each card instead of the
+// message - see shared/channels/whatsapp/templates.py's CarouselCard.
+
+export type CarouselCardDraft = {
+  /** From templates.uploadCarouselImage() - proves the image to Meta's reviewer. */
+  header_handle: string;
+  /** Same upload - what a later campaign or send actually uses. */
+  media_id: string;
+  body: string;
+  buttons: TemplateButton[];
+  examples?: Record<string, string>;
+};
+
+export type CarouselImageUpload = { header_handle: string; media_id: string };
+
+export type CarouselDraftCard = { body: string; button_label: string };
 
 // What GET /channels/whatsapp/signup-config actually returns - the browser
 // needs exactly these three values to open Meta's dialog, nothing more.
@@ -565,12 +587,25 @@ export const templates = {
     header_text?: string;
     footer?: string;
     buttons?: TemplateButton[];
+    /** 2-10 cards makes this a carousel template - header_text/footer/buttons above are ignored. */
+    carousel_cards?: CarouselCardDraft[];
   }) => api.post<Template>("/templates", data),
 
   delete: (id: string, allLanguages = false) =>
     api.delete<void>(`/templates/${id}${allLanguages ? "?all_languages=true" : ""}`),
 
   sync: () => api.post<Template[]>("/templates/sync"),
+
+  uploadCarouselImage: (file: File) => {
+    const formData = new FormData();
+    formData.set("file", file);
+    return api.post<CarouselImageUpload>("/templates/carousel/image", formData, true);
+  },
+
+  draftCarouselCards: (brief: string, cardCount: number) =>
+    api.post<{ cards: CarouselDraftCard[] }>("/templates/carousel/draft", {
+      brief, card_count: cardCount,
+    }),
 };
 
 // ── Voice Provisioning & Logs ─────────────────────────────────────────────────
@@ -765,6 +800,8 @@ export type AudienceSegment = {
   needs_params: boolean;
 };
 
+export type CampaignCardRequest = { media_id: string; variable_mapping: string[] };
+
 export type CampaignRequest = {
   name: string;
   audience: AudienceKey;
@@ -773,6 +810,8 @@ export type CampaignRequest = {
   template_language?: string;
   /** Which of each recipient's own fields fill the template's {{1}}, {{2}}, ... in order. */
   variable_mapping?: string[];
+  /** Present only when template_name is a carousel template - one entry per card. */
+  carousel_cards?: CampaignCardRequest[];
 };
 
 export type RecipientPreview = {

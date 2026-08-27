@@ -43,6 +43,7 @@ import {
   type WhatsAppWindow,
 } from "@/lib/api";
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
+import { CarouselTemplateModal } from "@/components/whatsapp/CarouselTemplateModal";
 
 export default function WhatsAppPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose">("overview");
@@ -53,6 +54,7 @@ export default function WhatsAppPage() {
 
   // Create Template Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateCategory, setNewTemplateCategory] = useState<"MARKETING" | "UTILITY">("UTILITY");
   const [newTemplateBody, setNewTemplateBody] = useState("");
@@ -440,6 +442,15 @@ export default function WhatsAppPage() {
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Template</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCarouselModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-lg shadow-brass/20 flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>New Carousel</span>
           </button>
         </div>
       }
@@ -895,6 +906,12 @@ export default function WhatsAppPage() {
             </GlassCard>
           </div>
         )}
+
+        <CarouselTemplateModal
+          isOpen={isCarouselModalOpen}
+          onClose={() => setIsCarouselModalOpen(false)}
+          onCreated={() => loadData()}
+        />
 
         {/* Create Template Modal */}
         <Modal

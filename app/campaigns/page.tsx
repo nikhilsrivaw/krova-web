@@ -24,6 +24,22 @@ import {
   type Template,
 } from "@/lib/api";
 
+/** The {{placeholders}} in one card's body text, in order, without duplicates - mirrors variables_in() on the backend. */
+function cardVariables(template: Template, cardIndex: number): string[] {
+  const components = Array.isArray(template.components) ? template.components : [];
+  const carousel = components.find(
+    (c): c is { type: string; cards: { components: { type: string; text?: string }[] }[] } =>
+      typeof c === "object" && c !== null && (c as { type?: string }).type === "CAROUSEL",
+  );
+  const card = carousel?.cards?.[cardIndex];
+  const body = card?.components.find((c) => c.type === "BODY")?.text || "";
+  const seen: string[] = [];
+  for (const match of body.matchAll(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g)) {
+    if (!seen.includes(match[1])) seen.push(match[1]);
+  }
+  return seen;
+}
+
 export default function CampaignsPage() {
   const [audiences, setAudiences] = useState<AudienceSegment[]>([]);
   const [templateList, setTemplateList] = useState<Template[]>([]);
@@ -40,6 +56,9 @@ export default function CampaignsPage() {
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
   const [campaignName, setCampaignName] = useState<string>("");
   const [variableMapping, setVariableMapping] = useState<string[]>([]);
+  // One entry per carousel card, only populated when the selected template
+  // is a carousel - each inner array is that card's own variable mapping.
+  const [cardMapping, setCardMapping] = useState<string[][]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -84,10 +103,25 @@ export default function CampaignsPage() {
   // Keep the variable-mapping inputs in sync with the selected template's placeholder count.
   useEffect(() => {
     setVariableMapping(selectedTemplate ? selectedTemplate.variables.map(() => "") : []);
+    setCardMapping(
+      selectedTemplate?.is_carousel
+        ? Array.from({ length: selectedTemplate.card_count }, (_, i) =>
+            cardVariables(selectedTemplate, i).map(() => ""),
+          )
+        : [],
+    );
   }, [selectedTemplateName]);
 
   const audienceParams =
     selectedAudience === "by_tag" && audienceTag ? { tag: audienceTag } : undefined;
+
+  const carouselCardsPayload =
+    selectedTemplate?.is_carousel
+      ? selectedTemplate.carousel_media_ids.map((mediaId, i) => ({
+          media_id: mediaId,
+          variable_mapping: cardMapping[i] || [],
+        }))
+      : undefined;
 
   // Fetch a live preview whenever the audience or template changes.
   useEffect(() => {
@@ -113,6 +147,7 @@ export default function CampaignsPage() {
         template_name: selectedTemplate.name,
         template_language: selectedTemplate.language,
         variable_mapping: variableMapping,
+        carousel_cards: carouselCardsPayload,
       })
       .then((p) => {
         if (!cancelled) setPreviewData(p);
@@ -131,7 +166,10 @@ export default function CampaignsPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAudience, audienceTag, selectedTemplateName, JSON.stringify(variableMapping)]);
+  }, [
+    selectedAudience, audienceTag, selectedTemplateName,
+    JSON.stringify(variableMapping), JSON.stringify(cardMapping),
+  ]);
 
   const handleLaunchCampaign = async () => {
     if (!selectedAudience || !selectedTemplate || !campaignName.trim()) return;
@@ -146,6 +184,7 @@ export default function CampaignsPage() {
         template_name: selectedTemplate.name,
         template_language: selectedTemplate.language,
         variable_mapping: variableMapping,
+        carousel_cards: carouselCardsPayload,
       });
       await campaigns.send(created.id);
       setIsConfirmModalOpen(false);
@@ -292,6 +331,46 @@ export default function CampaignsPage() {
                       />
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Carousel card variable mapping - each card fills its own {{n}} from the recipient's own ledger data */}
+              {selectedTemplate?.is_carousel && cardMapping.length > 0 && (
+                <div className="space-y-3">
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                    Map Each Card&apos;s Variables:
+                  </label>
+                  {cardMapping.map((cardVars, cardIndex) =>
+                    cardVars.length === 0 ? null : (
+                      <div key={cardIndex} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                        <span className="text-[10px] font-mono uppercase text-brass-bright">
+                          Card {cardIndex + 1}
+                        </span>
+                        {cardVars.map((val, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-os-text-dim w-10 shrink-0">
+                              {`{{${i + 1}}}`}
+                            </span>
+                            <input
+                              type="text"
+                              value={val}
+                              onChange={(e) =>
+                                setCardMapping((prev) =>
+                                  prev.map((card, ci) =>
+                                    ci === cardIndex
+                                      ? card.map((v, vi) => (vi === i ? e.target.value : v))
+                                      : card,
+                                  ),
+                                )
+                              }
+                              placeholder="e.g. name, amount, due_date"
+                              className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
 
