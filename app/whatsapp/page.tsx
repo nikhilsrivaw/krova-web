@@ -25,9 +25,11 @@ import {
   channels,
   templates,
   type ChannelConnection,
+  type EmbeddedSignupResult,
   type Template,
   type WhatsAppWindow,
 } from "@/lib/api";
+import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
 
 export default function WhatsAppPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose">("overview");
@@ -55,6 +57,12 @@ export default function WhatsAppPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Embedded Signup
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [lastSignupResult, setLastSignupResult] = useState<EmbeddedSignupResult | null>(null);
+
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
@@ -80,6 +88,63 @@ export default function WhatsAppPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Meta posts progress into the popup's opener while the dialog is still
+  // open - this is the earliest signal of CANCEL/ERROR, often before (or
+  // even without) FB.login()'s own callback firing usefully. Kept separate
+  // from the callback's result rather than replacing it: this only ever
+  // updates status text, never decides whether the connection succeeded -
+  // that is exclusively what the backend's response to the exchanged code
+  // decides, per shared/channels/whatsapp/signup.py's own reasoning about
+  // subscription and registration being the two silent-failure steps.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const msg = isEmbeddedSignupMessage(event);
+      if (!msg) return;
+      if (msg.event === "CANCEL") {
+        setConnectStatus(null);
+        setIsConnecting(false);
+      } else if (msg.event === "ERROR") {
+        setConnectError(msg.data?.error_message || "Meta reported an error during signup.");
+        setIsConnecting(false);
+      } else if (msg.event === "FINISH") {
+        setConnectStatus("Finishing connection with Meta...");
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    setConnectError(null);
+    setConnectStatus("Opening Meta...");
+    setLastSignupResult(null);
+    try {
+      const config = await channels.whatsappSignupConfig();
+      await loadFacebookSdk(config.app_id, config.graph_version);
+      const code = await loginForEmbeddedSignup(config.config_id);
+
+      if (!code) {
+        // The popup closed with no code - almost always the business
+        // simply closed it. Not an error worth alarming over.
+        setConnectStatus(null);
+        setIsConnecting(false);
+        return;
+      }
+
+      setConnectStatus("Registering the number and subscribing to messages...");
+      const result = await channels.completeWhatsAppSignup(code);
+      setLastSignupResult(result);
+      setConnectStatus(null);
+      loadData();
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : "Could not connect WhatsApp.");
+      setConnectStatus(null);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   const handleSyncTemplates = async () => {
     setIsSyncing(true);
@@ -274,17 +339,73 @@ export default function WhatsAppPage() {
                     Meta Embedded Signup & Number Management
                   </h3>
                   <p className="text-xs text-os-text-dim max-w-xl">
-                    Connect official Meta WhatsApp Business numbers with auto-configured webhooks, token refresh, and identity mapping.
+                    Connect official Meta WhatsApp Business numbers with auto-configured webhooks, token refresh, and identity mapping. This opens Meta's own signup dialog — the account stays theirs throughout.
                   </p>
+                  {connectStatus && (
+                    <p className="text-xs text-brass-bright font-mono">{connectStatus}</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-[11px] text-os-text-dim italic">
-                    Embedded Signup popup isn't wired up on this page yet — the backend endpoints (
-                    <code className="font-mono">/channels/whatsapp/signup-config</code>,{" "}
-                    <code className="font-mono">/embedded-signup</code>) are ready.
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-60 text-white text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer"
+                >
+                  {isConnecting ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  )}
+                  {connection ? "Connect Another Number" : "Connect WhatsApp Number"}
+                </button>
               </div>
+
+              {connectError && (
+                <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                  {connectError}
+                </div>
+              )}
+
+              {lastSignupResult && (
+                <div className="mt-4 p-4 rounded-xl bg-seal/5 border border-seal/20 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-seal-bright shrink-0" />
+                    <span className="text-xs font-bold text-white">
+                      Connected {lastSignupResult.display_phone_number || lastSignupResult.phone_number_id}
+                      {lastSignupResult.verified_name && ` — ${lastSignupResult.verified_name}`}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={lastSignupResult.webhook_subscribed ? "emerald" : "rose"} size="sm">
+                      {lastSignupResult.webhook_subscribed ? "Webhook subscribed" : "Webhook NOT subscribed"}
+                    </Badge>
+                    <Badge variant={lastSignupResult.number_registered ? "emerald" : "amber"} size="sm">
+                      {lastSignupResult.number_registered ? "Number registered" : "Number not registered"}
+                    </Badge>
+                    {lastSignupResult.quality_rating && (
+                      <Badge variant="outline" size="sm">Quality: {lastSignupResult.quality_rating}</Badge>
+                    )}
+                  </div>
+                  {lastSignupResult.graph_calls.length > 0 && (
+                    <details className="text-[11px] text-os-text-dim">
+                      <summary className="cursor-pointer font-mono uppercase tracking-wide hover:text-white">
+                        {lastSignupResult.graph_calls.length} Graph API calls made
+                      </summary>
+                      <div className="mt-2 space-y-1 font-mono">
+                        {lastSignupResult.graph_calls.map((c, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className={c.status === 200 ? "text-seal-bright" : "text-thread-bright"}>
+                              {c.status}
+                            </span>
+                            <span>{c.method}</span>
+                            <span className="text-white/70">{c.path}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
             </GlassCard>
           </div>
         )}

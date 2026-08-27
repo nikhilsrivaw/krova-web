@@ -329,16 +329,41 @@ export type Template = {
   edits_remaining: number | null;
 };
 
+// What GET /channels/whatsapp/signup-config actually returns - the browser
+// needs exactly these three values to open Meta's dialog, nothing more.
+export type WhatsAppSignupConfig = { app_id: string; config_id: string; graph_version: string };
+
+// One Graph API call the backend made while finishing signup, surfaced so
+// the UI can show its work rather than a bare "connected" - matches
+// shared/channels/whatsapp/signup.py's GraphCall exactly.
+export type SignupGraphCall = { method: string; path: string; permission: string; status: number };
+
+// What POST /channels/whatsapp/embedded-signup actually returns - a
+// different, richer shape than ChannelConnection (no id, but phone_number_id
+// and the graph_calls trail instead). Was previously mistyped as
+// ChannelConnection, which the backend has never returned from this route.
+export type EmbeddedSignupResult = {
+  connected: boolean;
+  channel: string;
+  waba_id: string;
+  waba_name: string | null;
+  phone_number_id: string;
+  display_phone_number: string | null;
+  verified_name: string | null;
+  quality_rating: string | null;
+  webhook_subscribed: boolean;
+  number_registered: boolean;
+  token_expires_at: string | null;
+  graph_calls: SignupGraphCall[];
+};
+
 export const channels = {
   list: () => api.get<ChannelConnection[]>("/channels/"),
 
-  whatsappSignupConfig: () =>
-    api.get<{ app_id: string; config_id: string; graph_version: string }>(
-      "/channels/whatsapp/signup-config",
-    ),
+  whatsappSignupConfig: () => api.get<WhatsAppSignupConfig>("/channels/whatsapp/signup-config"),
 
   completeWhatsAppSignup: (code: string) =>
-    api.post<ChannelConnection>("/channels/whatsapp/embedded-signup", { code }),
+    api.post<EmbeddedSignupResult>("/channels/whatsapp/embedded-signup", { code }),
 
   disconnectWhatsApp: () => api.delete<void>("/channels/whatsapp"),
 
