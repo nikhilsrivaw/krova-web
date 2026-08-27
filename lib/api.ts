@@ -231,6 +231,7 @@ export type ConversationItem = {
   window_open: boolean;
   window_closes_at: string | null;
   is_private: boolean;
+  assigned_to_user_id: string | null;
 };
 
 export type ThreadMessage = {
@@ -260,6 +261,7 @@ export type ConversationThread = {
   window_open: boolean;
   window_closes_at: string | null;
   is_private: boolean;
+  assigned_to_user_id: string | null;
   messages: ThreadMessage[];
   commitments: ThreadCommitment[];
 };
@@ -274,6 +276,20 @@ export const conversations = {
     api.post<{ customer_id: string; is_private: boolean }>(
       `/conversations/${customerId}/private?private=${isPrivate}`,
     ),
+
+  // Omit userId (or pass undefined) to unassign.
+  assign: (customerId: string, userId?: string) =>
+    api.post<{ customer_id: string; assigned_to_user_id: string | null }>(
+      `/conversations/${customerId}/assign${userId ? `?user_id=${userId}` : ""}`,
+    ),
+};
+
+// ── Team ─────────────────────────────────────────────────────────────────────
+
+export type TeamMember = { user_id: string; full_name: string | null; email: string; role: string };
+
+export const team = {
+  list: () => api.get<TeamMember[]>("/team"),
 };
 
 // ── WhatsApp & Channels ───────────────────────────────────────────────────────
@@ -769,7 +785,10 @@ export type UserProfile = {
   vertical: string | null;
   capabilities: Capability[];
   autonomy: AutonomyLevel | null;
-  role: "owner" | "manager" | "team_member" | null;
+  // Matches shared/db/models/identity.py's BusinessRole exactly - was
+  // previously "owner" | "manager" | "team_member", values the backend has
+  // never actually issued.
+  role: "owner" | "admin" | "agent" | null;
 };
 
 export const account = {
@@ -889,6 +908,7 @@ export type Case = {
   status: CaseStatus;
   next_hearing_at: string | null;
   notes: string | null;
+  assigned_to_user_id: string | null;
 };
 
 export const cases = {
@@ -920,6 +940,8 @@ export const cases = {
       status: CaseStatus;
       next_hearing_at: string;
       notes: string;
+      assigned_to_user_id: string;
+      unassign: boolean;
     }>,
   ) => api.patch<Case>(`/cases/${id}`, data),
 

@@ -10,9 +10,11 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   cases as casesApi,
   ledger,
+  team,
   type Case,
   type CaseStatus,
   type CustomerSummary,
+  type TeamMember,
 } from "@/lib/api";
 
 const STATUS_BADGE: Record<CaseStatus, "emerald" | "amber" | "default" | "rose"> = {
@@ -49,7 +51,18 @@ export default function CasesPage() {
   const [formStatus, setFormStatus] = useState<CaseStatus>("intake");
   const [formHearing, setFormHearing] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formAssignee, setFormAssignee] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    team.list().then(setTeamMembers).catch(() => {});
+  }, []);
+
+  const assigneeName = useMemo(() => {
+    const map = new Map(teamMembers.map((m) => [m.user_id, m.full_name || m.email]));
+    return (id: string | null) => (id ? map.get(id) || null : null);
+  }, [teamMembers]);
 
   const customerName = useMemo(() => {
     const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed client"]));
@@ -92,6 +105,7 @@ export default function CasesPage() {
     setFormStatus("intake");
     setFormHearing("");
     setFormNotes("");
+    setFormAssignee("");
     setIsModalOpen(true);
   };
 
@@ -105,6 +119,7 @@ export default function CasesPage() {
     setFormStatus(c.status);
     setFormHearing(c.next_hearing_at ? c.next_hearing_at.slice(0, 16) : "");
     setFormNotes(c.notes || "");
+    setFormAssignee(c.assigned_to_user_id || "");
     setIsModalOpen(true);
   };
 
@@ -123,6 +138,7 @@ export default function CasesPage() {
           status: formStatus,
           next_hearing_at: hearingIso,
           notes: formNotes || undefined,
+          ...(formAssignee ? { assigned_to_user_id: formAssignee } : { unassign: true }),
         });
         setAllCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       } else {
@@ -250,6 +266,9 @@ export default function CasesPage() {
                     {customerName(c.customer_id)}
                     {c.opposing_party && ` vs. ${c.opposing_party}`}
                     {c.court && ` · ${c.court}`}
+                    {assigneeName(c.assigned_to_user_id) && (
+                      <span className="text-brass-bright"> · Assigned: {assigneeName(c.assigned_to_user_id)}</span>
+                    )}
                   </p>
                 </div>
                 {c.next_hearing_at && (
@@ -300,11 +319,20 @@ export default function CasesPage() {
               <input type="text" value={formOpposingParty} onChange={(e) => setFormOpposingParty(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
             </div>
             {editingCase && (
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Status</label>
-                <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as CaseStatus)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
-                  {(["intake", "active", "on_hold", "closed"] as const).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Status</label>
+                  <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as CaseStatus)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
+                    {(["intake", "active", "on_hold", "closed"] as const).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Assigned to</label>
+                  <select value={formAssignee} onChange={(e) => setFormAssignee(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
+                    <option value="">Unassigned</option>
+                    {teamMembers.map((m) => <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>)}
+                  </select>
+                </div>
               </div>
             )}
             <div>

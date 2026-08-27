@@ -30,8 +30,10 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   conversations,
   formatPaise,
+  team,
   type ConversationItem,
   type ConversationThread,
+  type TeamMember,
   type ThreadMessage,
 } from "@/lib/api";
 
@@ -64,6 +66,14 @@ export default function ConversationsPage() {
   const [isCustomerDrawerOpen, setIsCustomerDrawerOpen] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    team.list().then(setTeamMembers).catch(() => {
+      // A missing team list shouldn't block the inbox - assignment just
+      // won't have anyone to offer.
+    });
+  }, []);
 
   // Load conversation thread list
   useEffect(() => {
@@ -130,6 +140,24 @@ export default function ConversationsPage() {
       );
     } catch (err) {
       setThreadError(err instanceof Error ? err.message : "Could not change privacy.");
+    }
+  };
+
+  const handleAssign = async (userId: string) => {
+    if (!activeThread) return;
+    const nextAssignee = userId || undefined; // "" from the <select>'s unassign option
+    try {
+      const result = await conversations.assign(activeThread.customer_id, nextAssignee);
+      setActiveThread((prev) => (prev ? { ...prev, assigned_to_user_id: result.assigned_to_user_id } : null));
+      setThreadList((prev) =>
+        prev.map((t) =>
+          t.customer_id === activeThread.customer_id
+            ? { ...t, assigned_to_user_id: result.assigned_to_user_id }
+            : t,
+        ),
+      );
+    } catch (err) {
+      setThreadError(err instanceof Error ? err.message : "Could not assign this conversation.");
     }
   };
 
@@ -289,6 +317,22 @@ export default function ConversationsPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Assign to teammate */}
+                {teamMembers.length > 1 && (
+                  <select
+                    value={activeThread.assigned_to_user_id || ""}
+                    onChange={(e) => handleAssign(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim border border-white/[0.08] cursor-pointer focus:outline-none focus:border-brass"
+                  >
+                    <option value="">Unassigned</option>
+                    {teamMembers.map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.full_name || m.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 {/* Mark Private Button */}
                 <button
                   type="button"
