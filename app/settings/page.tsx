@@ -72,6 +72,17 @@ export default function SettingsPage() {
   const [isSavingDataset, setIsSavingDataset] = useState(false);
   const [datasetSaved, setDatasetSaved] = useState(false);
 
+  // Number verification and two-step PIN
+  const [verifyMethod, setVerifyMethod] = useState<"SMS" | "VOICE">("SMS");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifySent, setVerifySent] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  const [pinResult, setPinResult] = useState<string | null>(null);
+
   const waConnection = channelsList.find((c) => c.channel === "whatsapp") || null;
   const voiceConnection = channelsList.find((c) => c.channel === "voice") || null;
   const emailConnection = channelsList.find((c) => c.channel === "email") || null;
@@ -156,6 +167,50 @@ export default function SettingsPage() {
       // Non-critical field - a silent failure here is fine, no toast needed.
     } finally {
       setIsSavingDataset(false);
+    }
+  };
+
+  const handleRequestVerifyCode = async () => {
+    setIsRequestingCode(true);
+    setVerifyError(null);
+    setVerifySent(null);
+    try {
+      const r = await waAccount.requestCode(verifyMethod);
+      setVerifySent(r.detail);
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "Could not send a verification code.");
+    } finally {
+      setIsRequestingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsVerifyingCode(true);
+    setVerifyError(null);
+    try {
+      await waAccount.verifyCode(verifyCode);
+      setVerifySent("Verified.");
+      setVerifyCode("");
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "That code didn't verify.");
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingPin(true);
+    setPinResult(null);
+    try {
+      await waAccount.setTwoStepPin(pinValue);
+      setPinResult("PIN updated.");
+      setPinValue("");
+    } catch (err) {
+      setPinResult(err instanceof Error ? err.message : "Could not update the PIN.");
+    } finally {
+      setIsSavingPin(false);
     }
   };
 
@@ -570,6 +625,77 @@ export default function SettingsPage() {
               </div>
             </GlassCard>
           </form>
+        )}
+
+        {/* SECTION 2c-2: NUMBER VERIFICATION & TWO-STEP PIN */}
+        {waConnection && (
+          <GlassCard className="p-6 space-y-5">
+            <div className="flex items-center gap-3 pb-2 border-b border-white/[0.06]">
+              <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Number Verification & Security PIN</h3>
+                <p className="text-xs text-os-text-dim">
+                  Whoever is holding this phone needs to read the code Meta sends.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form onSubmit={handleVerifyCode} className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={verifyMethod} onChange={(e) => setVerifyMethod(e.target.value as "SMS" | "VOICE")}
+                    className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  >
+                    <option value="SMS">SMS</option>
+                    <option value="VOICE">Voice call</option>
+                  </select>
+                  <button
+                    type="button" onClick={handleRequestVerifyCode} disabled={isRequestingCode}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
+                  >
+                    {isRequestingCode ? "Sending..." : "Send Code"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)}
+                    placeholder="123456"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="submit" disabled={isVerifyingCode || !verifyCode}
+                    className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifyingCode ? "Verifying..." : "Verify"}
+                  </button>
+                </div>
+                {verifySent && <p className="text-[11px] text-seal-bright">{verifySent}</p>}
+                {verifyError && <p className="text-[11px] text-red-400">{verifyError}</p>}
+              </form>
+
+              <form onSubmit={handleSetPin} className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password" inputMode="numeric" maxLength={6} value={pinValue}
+                    onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+                    placeholder="New 6-digit PIN"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="submit" disabled={isSavingPin || pinValue.length !== 6}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPin ? "Saving..." : "Set PIN"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-os-text-dim">Six digits, this number's two-step verification PIN.</p>
+                {pinResult && <p className="text-[11px] text-seal-bright">{pinResult}</p>}
+              </form>
+            </div>
+          </GlassCard>
         )}
 
         {/* SECTION 2d: CLICK-TO-WHATSAPP AD ATTRIBUTION */}
