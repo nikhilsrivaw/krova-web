@@ -418,6 +418,36 @@ export const channels = {
 
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
+
+  gmailBackfillNow: () =>
+    api.post<{
+      mailbox: string; messages_read: number; messages_stored: number;
+      customers_found: number; oldest_message: string | null; newest_message: string | null;
+    }>("/channels/gmail/backfill"),
+
+  sendInteractiveButtons: (to: string, body: string, buttons: { id: string; title: string }[]) =>
+    api.post<SendResult>("/messages/interactive-buttons", { to, body, buttons }),
+
+  sendInteractiveList: (
+    to: string, body: string, buttonLabel: string,
+    sections: { title: string; rows: { id: string; title: string; description?: string }[] }[],
+  ) => api.post<SendResult>("/messages/interactive-list", { to, body, button_label: buttonLabel, sections }),
+
+  sendProduct: (to: string, catalogId: string, productRetailerId: string, body?: string) =>
+    api.post<SendResult>("/messages/product", { to, catalog_id: catalogId, product_retailer_id: productRetailerId, body }),
+
+  sendProducts: (
+    to: string, catalogId: string, header: string, body: string,
+    sections: { title: string; product_retailer_ids: string[] }[],
+  ) => api.post<SendResult>("/messages/products", { to, catalog_id: catalogId, header, body, sections }),
+
+  sendCatalog: (to: string, body: string) =>
+    api.post<SendResult>("/messages/catalog", { to, body }),
+
+  /** The Business Manager Dataset that receives Purchase conversion events for
+   * Click-to-WhatsApp ads. Pass null to stop sending them. */
+  setAdTracking: (datasetId: string | null) =>
+    api.post<{ dataset_id: string | null }>("/channels/whatsapp/ad-tracking", { dataset_id: datasetId }),
 };
 
 export type SendResult = {
@@ -819,6 +849,118 @@ export const account = {
   }) => api.post<UserProfile>("/auth/me", data),
 };
 
+// ── WhatsApp Business Account management ─────────────────────────────────────
+// Everything a business would otherwise leave Krova and open Meta's own
+// WhatsApp Manager to do: the profile customers see, number verification,
+// and the health signals that predict a restriction before it happens.
+
+export type WhatsAppProfile = {
+  about: string | null;
+  address: string | null;
+  description: string | null;
+  email: string | null;
+  websites: string[] | null;
+  vertical: string | null;
+  vertical_label: string | null;
+  profile_picture_url: string | null;
+};
+
+export type WhatsAppHealth = {
+  phone_number_id: string;
+  display_phone_number: string | null;
+  verified_name: string | null;
+  quality_rating: string | null;
+  messaging_limit_tier: string | null;
+  daily_recipient_limit: number | null;
+  status: string | null;
+  code_verification_status: string | null;
+  name_status: string | null;
+  throughput_level: string | null;
+  account_mode: string | null;
+  is_official_business_account: boolean;
+  healthy: boolean;
+  warnings: string[];
+};
+
+export type WhatsAppBlocker = {
+  entity: string;
+  state: string;
+  code: number | null;
+  message: string;
+  fix: string | null;
+};
+
+export type WhatsAppReadiness = {
+  ready: boolean;
+  can_send: string;
+  needs_payment_method: boolean;
+  action_required: string | null;
+  billing_url: string | null;
+  blockers: WhatsAppBlocker[];
+  notes: string[];
+};
+
+export const waAccount = {
+  profile: () => api.get<WhatsAppProfile>("/account/whatsapp/profile"),
+
+  updateProfile: (
+    data: Partial<{
+      about: string; address: string; description: string;
+      email: string; websites: string[]; vertical: string;
+    }>,
+  ) => api.post<WhatsAppProfile>("/account/whatsapp/profile", data),
+
+  verticals: () => api.get<{ value: string; label: string }[]>("/account/whatsapp/verticals"),
+
+  health: () => api.get<WhatsAppHealth>("/account/whatsapp/health"),
+
+  readiness: () => api.get<WhatsAppReadiness>("/account/whatsapp/readiness"),
+
+  requestCode: (method: "SMS" | "VOICE" = "SMS", language = "en") =>
+    api.post<{ sent: boolean; method: string; detail: string }>("/account/whatsapp/request-code", { method, language }),
+
+  verifyCode: (code: string) => api.post<{ verified: boolean }>("/account/whatsapp/verify-code", { code }),
+
+  setTwoStepPin: (pin: string) => api.post<{ updated: boolean }>("/account/whatsapp/two-step-pin", { pin }),
+};
+
+// ── Migrating an existing number from another provider ───────────────────────
+// Four steps, each its own call, because the code step needs a human holding
+// the phone. The number keeps its quality rating, messaging tier, and
+// approved templates - none of that rebuilds from zero.
+
+export type MigrationCheck = { label: string; met: boolean | null; detail: string; who_fixes: string };
+
+export type MigrationReadiness = {
+  can_start: boolean;
+  checks: MigrationCheck[];
+  what_carries_over: string[];
+};
+
+export const migration = {
+  readiness: () => api.get<MigrationReadiness>("/migration/whatsapp/readiness"),
+
+  start: (phone: string) =>
+    api.post<{ phone_number_id: string; display_phone_number: string; next_step: string }>(
+      "/migration/whatsapp/start", { phone },
+    ),
+
+  requestCode: (phoneNumberId: string, method: "SMS" | "VOICE" = "SMS", language = "en") =>
+    api.post<{ sent: boolean; method: string; detail: string }>(
+      "/migration/whatsapp/request-code", { phone_number_id: phoneNumberId, method, language },
+    ),
+
+  verifyCode: (phoneNumberId: string, code: string) =>
+    api.post<{ verified: boolean; next_step: string }>(
+      "/migration/whatsapp/verify-code", { phone_number_id: phoneNumberId, code },
+    ),
+
+  finish: (phoneNumberId: string, displayPhoneNumber?: string) =>
+    api.post<{ connected: boolean; phone_number_id: string; display_phone_number: string | null; note: string }>(
+      "/migration/whatsapp/finish", { phone_number_id: phoneNumberId, display_phone_number: displayPhoneNumber },
+    ),
+};
+
 // ── Scheduling (Clinics, Real Estate) ───────────────────────────────────────
 // "Doctor" is the backend's table name, reused as-is for Real Estate's
 // agents - a person with recurring hours, a customer, a time, mechanically
@@ -1191,4 +1333,50 @@ export async function fetchVerticals(): Promise<Vertical[]> {
     ];
   }
 }
+
+// ── WhatsApp Flows ───────────────────────────────────────────────────────────
+// Native in-chat structured forms - a screen/component tree authored as
+// Flow JSON, pushed to Meta, then opened for a specific customer. Scoped to
+// navigate flows (see the backend's shared/db/models/flow.py): the entry
+// screen and any data are fixed at send time, nothing calls back to Krova
+// mid-flow.
+
+export type FlowValidationIssue = {
+  error_type: string | null;
+  message: string | null;
+  line_start: number | null;
+  line_end: number | null;
+};
+
+export type WhatsAppFlow = {
+  id: string;
+  meta_flow_id: string;
+  name: string;
+  categories: string[];
+  status: "DRAFT" | "PUBLISHED" | "DEPRECATED";
+  validation_errors: FlowValidationIssue[];
+  flow_json: Record<string, unknown>;
+};
+
+export type FlowSendResult = {
+  sent: boolean;
+  message_id: string;
+  flow_token: string;
+};
+
+export const flows = {
+  list: () => api.get<WhatsAppFlow[]>("/flows"),
+
+  get: (id: string) => api.get<WhatsAppFlow>(`/flows/${id}`),
+
+  create: (data: { name: string; categories: string[]; flow_json: Record<string, unknown> }) =>
+    api.post<WhatsAppFlow>("/flows", data),
+
+  publish: (id: string) => api.post<WhatsAppFlow>(`/flows/${id}/publish`),
+
+  send: (
+    id: string,
+    data: { customer_id: string; body: string; screen: string; cta: string; data?: Record<string, unknown>; draft?: boolean },
+  ) => api.post<FlowSendResult>(`/flows/${id}/send`, data),
+};
 

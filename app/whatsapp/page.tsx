@@ -22,6 +22,8 @@ import {
   Link2,
   BookText,
   Pencil,
+  ArrowLeftRight,
+  XCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -32,9 +34,11 @@ import {
   channels,
   templates,
   cannedResponses,
+  migration,
   type CannedResponse,
   type ChannelConnection,
   type EmbeddedSignupResult,
+  type MigrationReadiness,
   type Template,
   type WhatsAppWindow,
 } from "@/lib/api";
@@ -86,6 +90,19 @@ export default function WhatsAppPage() {
   const [editingCannedId, setEditingCannedId] = useState<string | null>(null);
   const [isSavingCanned, setIsSavingCanned] = useState(false);
   const [cannedError, setCannedError] = useState<string | null>(null);
+
+  // Migrate an existing number from another provider - a 4-step wizard
+  const [isMigrateOpen, setIsMigrateOpen] = useState(false);
+  const [migrateStep, setMigrateStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+  const [migrateReadiness, setMigrateReadiness] = useState<MigrationReadiness | null>(null);
+  const [migratePhone, setMigratePhone] = useState("");
+  const [migratePhoneNumberId, setMigratePhoneNumberId] = useState("");
+  const [migrateDisplayPhone, setMigrateDisplayPhone] = useState("");
+  const [migrateCode, setMigrateCode] = useState("");
+  const [migrateCodeSent, setMigrateCodeSent] = useState(false);
+  const [migrateFinishNote, setMigrateFinishNote] = useState<string | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrateError, setMigrateError] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -222,6 +239,83 @@ export default function WhatsAppPage() {
       if (editingCannedId === id) openCannedEditor();
     } catch (err) {
       setCannedError(err instanceof Error ? err.message : "Could not delete this saved reply.");
+    }
+  };
+
+  const openMigrate = async () => {
+    setIsMigrateOpen(true);
+    setMigrateStep(0);
+    setMigrateReadiness(null);
+    setMigratePhone("");
+    setMigratePhoneNumberId("");
+    setMigrateDisplayPhone("");
+    setMigrateCode("");
+    setMigrateCodeSent(false);
+    setMigrateFinishNote(null);
+    setMigrateError(null);
+    try {
+      const r = await migration.readiness();
+      setMigrateReadiness(r);
+    } catch (err) {
+      setMigrateError(err instanceof Error ? err.message : "Could not check migration readiness.");
+    }
+  };
+
+  const handleMigrateStart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsMigrating(true);
+    setMigrateError(null);
+    try {
+      const r = await migration.start(migratePhone);
+      setMigratePhoneNumberId(r.phone_number_id);
+      setMigrateDisplayPhone(r.display_phone_number);
+      setMigrateStep(2);
+    } catch (err) {
+      setMigrateError(err instanceof Error ? err.message : "Could not start the migration.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleMigrateRequestCode = async () => {
+    setIsMigrating(true);
+    setMigrateError(null);
+    try {
+      await migration.requestCode(migratePhoneNumberId);
+      setMigrateCodeSent(true);
+    } catch (err) {
+      setMigrateError(err instanceof Error ? err.message : "Could not send a verification code.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleMigrateVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsMigrating(true);
+    setMigrateError(null);
+    try {
+      await migration.verifyCode(migratePhoneNumberId, migrateCode);
+      setMigrateStep(3);
+    } catch (err) {
+      setMigrateError(err instanceof Error ? err.message : "That code didn't verify.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleMigrateFinish = async () => {
+    setIsMigrating(true);
+    setMigrateError(null);
+    try {
+      const r = await migration.finish(migratePhoneNumberId, migrateDisplayPhone);
+      setMigrateFinishNote(r.note);
+      setMigrateStep(4);
+      await loadData();
+    } catch (err) {
+      setMigrateError(err instanceof Error ? err.message : "Could not finish the migration.");
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -520,19 +614,31 @@ export default function WhatsAppPage() {
                     <p className="text-xs text-brass-bright font-mono">{connectStatus}</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleConnect}
-                  disabled={isConnecting}
-                  className="shrink-0 px-4 py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-60 text-white text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer"
-                >
-                  {isConnecting ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <ExternalLink className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {connection && (
+                    <button
+                      type="button"
+                      onClick={openMigrate}
+                      className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold border border-white/[0.1] flex items-center gap-2 cursor-pointer"
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      Migrate a Number
+                    </button>
                   )}
-                  {connection ? "Connect Another Number" : "Connect WhatsApp Number"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    className="px-4 py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-60 text-white text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    {isConnecting ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    )}
+                    {connection ? "Connect Another Number" : "Connect WhatsApp Number"}
+                  </button>
+                </div>
               </div>
 
               {connectError && (
@@ -942,6 +1048,151 @@ export default function WhatsAppPage() {
                 ))
               )}
             </div>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={isMigrateOpen}
+          onClose={() => setIsMigrateOpen(false)}
+          title="Migrate an Existing Number"
+          subtitle="Bring a number already on WhatsApp with another provider onto Krova. Your quality rating, messaging tier, and approved templates come across with it."
+        >
+          <div className="space-y-4">
+            {migrateError && (
+              <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">{migrateError}</div>
+            )}
+
+            {migrateStep === 0 && (
+              <div className="space-y-4">
+                {!migrateReadiness ? (
+                  <p className="text-xs text-os-text-dim">Checking readiness...</p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {migrateReadiness.checks.map((c, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          {c.met === true ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-seal-bright shrink-0 mt-0.5" />
+                          ) : c.met === false ? (
+                            <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <p className={c.met === false ? "text-red-300 font-semibold" : "text-white"}>{c.label}</p>
+                            <p className="text-os-text-dim">{c.detail}</p>
+                            {c.met !== true && (
+                              <p className="text-[10px] font-mono text-os-text-dim mt-0.5">Fixed by: {c.who_fixes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                      <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1.5">What carries over</p>
+                      <ul className="space-y-1">
+                        {migrateReadiness.what_carries_over.map((item, i) => (
+                          <li key={i} className="text-[11px] text-os-text-dim">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setMigrateStep(1)}
+                        disabled={!migrateReadiness.can_start}
+                        className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50"
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {migrateStep === 1 && (
+              <form onSubmit={handleMigrateStart} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Phone number to migrate</label>
+                  <input
+                    type="text" required value={migratePhone} onChange={(e) => setMigratePhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button type="submit" disabled={isMigrating} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50">
+                    {isMigrating ? "Claiming..." : "Claim Number"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {migrateStep === 2 && (
+              <form onSubmit={handleMigrateVerify} className="space-y-4">
+                <p className="text-xs text-os-text-dim">
+                  Claimed <span className="font-mono text-white">{migrateDisplayPhone}</span>. Someone needs to be holding this phone to read the code.
+                </p>
+                {!migrateCodeSent ? (
+                  <button
+                    type="button" onClick={handleMigrateRequestCode} disabled={isMigrating}
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isMigrating ? "Sending..." : "Send Verification Code"}
+                  </button>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Verification code</label>
+                      <input
+                        type="text" required value={migrateCode} onChange={(e) => setMigrateCode(e.target.value)}
+                        placeholder="123456"
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={handleMigrateRequestCode} disabled={isMigrating} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
+                        Resend
+                      </button>
+                      <button type="submit" disabled={isMigrating} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50">
+                        {isMigrating ? "Verifying..." : "Verify"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
+            )}
+
+            {migrateStep === 3 && (
+              <div className="space-y-4">
+                <p className="text-xs text-os-text-dim">
+                  Verified. Finishing registers <span className="font-mono text-white">{migrateDisplayPhone}</span> on Krova and generates a new two-step PIN, stored encrypted.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    type="button" onClick={handleMigrateFinish} disabled={isMigrating}
+                    className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isMigrating ? "Finishing..." : "Finish Migration"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {migrateStep === 4 && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-seal/5 border border-seal/20 flex items-start gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-seal-bright shrink-0 mt-0.5" />
+                  <p className="text-xs text-white">{migrateFinishNote}</p>
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setIsMigrateOpen(false)} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer">
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       </div>

@@ -21,14 +21,19 @@ import {
   FileText,
   Volume2,
   Filter,
+  Zap,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   conversations,
+  channels,
   formatPaise,
   team,
   type ConversationItem,
@@ -36,6 +41,8 @@ import {
   type TeamMember,
   type ThreadMessage,
 } from "@/lib/api";
+
+type QuickSendType = "buttons" | "list" | "product" | "catalog";
 
 const CHANNEL_ICONS = {
   whatsapp: MessageSquare,
@@ -158,6 +165,60 @@ export default function ConversationsPage() {
       );
     } catch (err) {
       setThreadError(err instanceof Error ? err.message : "Could not assign this conversation.");
+    }
+  };
+
+  // Quick Send - interactive buttons/list/product/catalog to whoever the
+  // active thread is with, rather than free text the AI has to parse back.
+  const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
+  const [quickSendType, setQuickSendType] = useState<QuickSendType>("buttons");
+  const [quickSendBody, setQuickSendBody] = useState("");
+  const [quickButtons, setQuickButtons] = useState([{ id: "", title: "" }]);
+  const [quickListLabel, setQuickListLabel] = useState("Choose");
+  const [quickListRows, setQuickListRows] = useState([{ id: "", title: "", description: "" }]);
+  const [quickCatalogId, setQuickCatalogId] = useState("");
+  const [quickProductId, setQuickProductId] = useState("");
+  const [isSendingQuick, setIsSendingQuick] = useState(false);
+  const [quickSendError, setQuickSendError] = useState<string | null>(null);
+  const [quickSendOk, setQuickSendOk] = useState<string | null>(null);
+
+  const openQuickSend = () => {
+    setQuickSendType("buttons");
+    setQuickSendBody("");
+    setQuickButtons([{ id: "", title: "" }]);
+    setQuickListLabel("Choose");
+    setQuickListRows([{ id: "", title: "", description: "" }]);
+    setQuickCatalogId("");
+    setQuickProductId("");
+    setQuickSendError(null);
+    setQuickSendOk(null);
+    setIsQuickSendOpen(true);
+  };
+
+  const handleQuickSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const to = activeThread ? phoneOf(activeThread.identities) : null;
+    if (!to) return;
+    setIsSendingQuick(true);
+    setQuickSendError(null);
+    setQuickSendOk(null);
+    try {
+      if (quickSendType === "buttons") {
+        await channels.sendInteractiveButtons(to, quickSendBody, quickButtons.filter((b) => b.id && b.title));
+      } else if (quickSendType === "list") {
+        await channels.sendInteractiveList(to, quickSendBody, quickListLabel, [
+          { title: "Options", rows: quickListRows.filter((r) => r.id && r.title) },
+        ]);
+      } else if (quickSendType === "product") {
+        await channels.sendProduct(to, quickCatalogId, quickProductId, quickSendBody || undefined);
+      } else {
+        await channels.sendCatalog(to, quickSendBody);
+      }
+      setQuickSendOk("Sent.");
+    } catch (err) {
+      setQuickSendError(err instanceof Error ? err.message : "Could not send this message.");
+    } finally {
+      setIsSendingQuick(false);
     }
   };
 
@@ -356,6 +417,19 @@ export default function ConversationsPage() {
                   )}
                 </button>
 
+                {/* Quick Send: interactive buttons/list/product/catalog */}
+                {activeThread.window_open && phoneOf(activeThread.identities) && (
+                  <button
+                    type="button"
+                    onClick={openQuickSend}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Send tappable buttons, a picker list, a product, or the catalog"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Quick Send</span>
+                  </button>
+                )}
+
                 {/* Inspect Customer 360 */}
                 <button
                   type="button"
@@ -521,6 +595,142 @@ export default function ConversationsPage() {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        isOpen={isQuickSendOpen}
+        onClose={() => setIsQuickSendOpen(false)}
+        title="Quick Send"
+        subtitle="A tappable choice beats free text the AI has to parse back into an answer."
+      >
+        <form onSubmit={handleQuickSend} className="space-y-4">
+          <div className="flex gap-1.5">
+            {(["buttons", "list", "product", "catalog"] as QuickSendType[]).map((t) => (
+              <button
+                key={t} type="button" onClick={() => setQuickSendType(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize cursor-pointer ${
+                  quickSendType === t ? "bg-white/[0.08] text-white border border-white/[0.1]" : "text-os-text-dim hover:text-white"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+              {quickSendType === "product" ? "Caption (optional)" : "Message"}
+            </label>
+            <textarea
+              required={quickSendType !== "product"} rows={2} value={quickSendBody}
+              onChange={(e) => setQuickSendBody(e.target.value)}
+              className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+            />
+          </div>
+
+          {quickSendType === "buttons" && (
+            <div className="space-y-2">
+              <label className="block text-xs font-mono uppercase text-os-text-dim">Buttons (up to 3)</label>
+              {quickButtons.map((b, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text" placeholder="id" value={b.id}
+                    onChange={(e) => setQuickButtons((prev) => prev.map((x, j) => (j === i ? { ...x, id: e.target.value } : x)))}
+                    className="w-1/3 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <input
+                    type="text" placeholder="Title (max 20 chars)" maxLength={20} value={b.title}
+                    onChange={(e) => setQuickButtons((prev) => prev.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                  <button type="button" onClick={() => setQuickButtons((prev) => prev.filter((_, j) => j !== i))} className="p-1.5 text-os-text-dim hover:text-thread-bright">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {quickButtons.length < 3 && (
+                <button
+                  type="button" onClick={() => setQuickButtons((prev) => [...prev, { id: "", title: "" }])}
+                  className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" /> Add button
+                </button>
+              )}
+            </div>
+          )}
+
+          {quickSendType === "list" && (
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Button label (max 20 chars)</label>
+                <input
+                  type="text" maxLength={20} value={quickListLabel} onChange={(e) => setQuickListLabel(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim">Rows (up to 10)</label>
+              {quickListRows.map((r, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text" placeholder="id" value={r.id}
+                    onChange={(e) => setQuickListRows((prev) => prev.map((x, j) => (j === i ? { ...x, id: e.target.value } : x)))}
+                    className="w-1/4 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <input
+                    type="text" placeholder="Title" value={r.title}
+                    onChange={(e) => setQuickListRows((prev) => prev.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                  <button type="button" onClick={() => setQuickListRows((prev) => prev.filter((_, j) => j !== i))} className="p-1.5 text-os-text-dim hover:text-thread-bright">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {quickListRows.length < 10 && (
+                <button
+                  type="button" onClick={() => setQuickListRows((prev) => [...prev, { id: "", title: "", description: "" }])}
+                  className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" /> Add row
+                </button>
+              )}
+            </div>
+          )}
+
+          {quickSendType === "product" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Catalog ID</label>
+                <input
+                  type="text" required value={quickCatalogId} onChange={(e) => setQuickCatalogId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Product SKU</label>
+                <input
+                  type="text" required value={quickProductId} onChange={(e) => setQuickProductId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {quickSendError && <p className="text-xs text-red-400">{quickSendError}</p>}
+          {quickSendOk && <p className="text-xs text-seal-bright">{quickSendOk}</p>}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setIsQuickSendOpen(false)} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
+              Close
+            </button>
+            <button
+              type="submit" disabled={isSendingQuick}
+              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50"
+            >
+              {isSendingQuick ? "Sending..." : "Send"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

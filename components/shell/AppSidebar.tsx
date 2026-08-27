@@ -25,6 +25,7 @@ import {
   Radar,
   Package,
   Building2,
+  Workflow,
 } from "lucide-react";
 import { approvals, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -113,6 +114,13 @@ export function AppSidebar({
       icon: PhoneCall,
       accent: "text-cyan-400",
       shortcut: "G V",
+    },
+    {
+      label: "Flows",
+      href: "/flows",
+      icon: Workflow,
+      accent: "text-seal-bright",
+      shortcut: "G F",
     },
     // Vertical-specific tools, only shown when the business's own
     // capabilities include them - never hardcoded per vertical key, always

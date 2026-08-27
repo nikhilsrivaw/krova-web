@@ -15,6 +15,9 @@ import {
   ExternalLink,
   RefreshCw,
   Sparkles,
+  AlertTriangle,
+  Activity,
+  Megaphone,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -23,9 +26,13 @@ import {
   account,
   approvals,
   channels,
+  waAccount,
   type UserProfile,
   type AutonomyLevel,
   type ChannelConnection,
+  type WhatsAppProfile,
+  type WhatsAppHealth,
+  type WhatsAppReadiness,
 } from "@/lib/api";
 
 const VERTICALS = [
@@ -47,6 +54,27 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // WhatsApp Business Account - profile, health, readiness
+  const [waProfile, setWaProfile] = useState<WhatsAppProfile | null>(null);
+  const [waHealth, setWaHealth] = useState<WhatsAppHealth | null>(null);
+  const [waReadiness, setWaReadiness] = useState<WhatsAppReadiness | null>(null);
+  const [waAbout, setWaAbout] = useState("");
+  const [waDescription, setWaDescription] = useState("");
+  const [waAddress, setWaAddress] = useState("");
+  const [waEmail, setWaEmail] = useState("");
+  const [isSavingWaProfile, setIsSavingWaProfile] = useState(false);
+  const [waProfileSaved, setWaProfileSaved] = useState(false);
+  const [waProfileError, setWaProfileError] = useState<string | null>(null);
+
+  // Click-to-WhatsApp ad attribution
+  const [datasetId, setDatasetId] = useState("");
+  const [isSavingDataset, setIsSavingDataset] = useState(false);
+  const [datasetSaved, setDatasetSaved] = useState(false);
+
+  const waConnection = channelsList.find((c) => c.channel === "whatsapp") || null;
+  const voiceConnection = channelsList.find((c) => c.channel === "voice") || null;
+  const emailConnection = channelsList.find((c) => c.channel === "email") || null;
 
   useEffect(() => {
     let mounted = true;
@@ -72,6 +100,22 @@ export default function SettingsPage() {
       }
       if (chRes.status === "fulfilled") {
         setChannelsList(chRes.value);
+        const wa = chRes.value.find((c) => c.channel === "whatsapp");
+        if (wa) {
+          const [waProfRes, healthRes, readyRes] = await Promise.allSettled([
+            waAccount.profile(), waAccount.health(), waAccount.readiness(),
+          ]);
+          if (!mounted) return;
+          if (waProfRes.status === "fulfilled") {
+            setWaProfile(waProfRes.value);
+            setWaAbout(waProfRes.value.about || "");
+            setWaDescription(waProfRes.value.description || "");
+            setWaAddress(waProfRes.value.address || "");
+            setWaEmail(waProfRes.value.email || "");
+          }
+          if (healthRes.status === "fulfilled") setWaHealth(healthRes.value);
+          if (readyRes.status === "fulfilled") setWaReadiness(readyRes.value);
+        }
       }
     };
 
@@ -80,6 +124,40 @@ export default function SettingsPage() {
       mounted = false;
     };
   }, []);
+
+  const handleSaveWaProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingWaProfile(true);
+    setWaProfileError(null);
+    setWaProfileSaved(false);
+    try {
+      const updated = await waAccount.updateProfile({
+        about: waAbout, description: waDescription, address: waAddress, email: waEmail,
+      });
+      setWaProfile(updated);
+      setWaProfileSaved(true);
+      setTimeout(() => setWaProfileSaved(false), 3000);
+    } catch (err) {
+      setWaProfileError(err instanceof Error ? err.message : "Could not save this profile.");
+    } finally {
+      setIsSavingWaProfile(false);
+    }
+  };
+
+  const handleSaveDataset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingDataset(true);
+    setDatasetSaved(false);
+    try {
+      await channels.setAdTracking(datasetId.trim() || null);
+      setDatasetSaved(true);
+      setTimeout(() => setDatasetSaved(false), 3000);
+    } catch {
+      // Non-critical field - a silent failure here is fine, no toast needed.
+    } finally {
+      setIsSavingDataset(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +190,22 @@ export default function SettingsPage() {
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not connect Gmail.");
+    }
+  };
+
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
+
+  const handleGmailBackfill = async () => {
+    setIsBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const result = await channels.gmailBackfillNow();
+      setBackfillResult(`Read ${result.messages_read}, stored ${result.messages_stored} new, ${result.customers_found} customer(s) found.`);
+    } catch (err) {
+      setBackfillResult(err instanceof Error ? err.message : "Could not backfill right now.");
+    } finally {
+      setIsBackfilling(false);
     }
   };
 
@@ -263,11 +357,19 @@ export default function SettingsPage() {
                 <div>
                   <h4 className="text-xs font-bold text-white">WhatsApp Business API (Meta)</h4>
                   <p className="text-[11px] text-os-text-dim font-mono">
-                    Quality Rating: GREEN • WABA ID: WABA_9021481092
+                    {waConnection
+                      ? `Quality Rating: ${waConnection.quality_rating || "—"} • WABA ID: ${waConnection.waba_id || "—"}`
+                      : "Not connected"}
                   </p>
                 </div>
               </div>
-              <Badge variant="emerald" dot>Connected</Badge>
+              {waConnection ? (
+                <Badge variant={waConnection.status === "active" ? "emerald" : "amber"} dot>
+                  {waConnection.status === "active" ? "Connected" : waConnection.status}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Not connected</Badge>
+              )}
             </div>
 
             {/* Voice */}
@@ -277,13 +379,19 @@ export default function SettingsPage() {
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Voice Inbound Trunk (DOT India KYC)</h4>
+                  <h4 className="text-xs font-bold text-white">Voice Inbound Trunk</h4>
                   <p className="text-[11px] text-os-text-dim font-mono">
-                    Subaccount: Active • Number: +91 80 3180 2883
+                    {voiceConnection ? `Number: ${voiceConnection.external_account_id}` : "Not connected"}
                   </p>
                 </div>
               </div>
-              <Badge variant="cyan" dot>Carrier Verified</Badge>
+              {voiceConnection ? (
+                <Badge variant={voiceConnection.status === "active" ? "cyan" : "amber"} dot>
+                  {voiceConnection.status === "active" ? "Active" : voiceConnection.status}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Not connected</Badge>
+              )}
             </div>
 
             {/* Gmail */}
@@ -295,20 +403,206 @@ export default function SettingsPage() {
                 <div>
                   <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
                   <p className="text-[11px] text-os-text-dim">
-                    Read customer payment confirmations and meeting requests from email.
+                    {emailConnection ? emailConnection.handle || "Connected" : "Read customer payment confirmations and meeting requests from email."}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleConnectGmail}
-                className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-              >
-                Connect Gmail OAuth
-              </button>
+              {emailConnection ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant={emailConnection.status === "active" ? "emerald" : "amber"} dot>
+                    {emailConnection.status === "active" ? "Connected" : emailConnection.status}
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={handleGmailBackfill}
+                    disabled={isBackfilling}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isBackfilling ? "animate-spin" : ""}`} />
+                    {isBackfilling ? "Reading..." : "Backfill Now"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectGmail}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  Connect Gmail OAuth
+                </button>
+              )}
             </div>
+            {backfillResult && (
+              <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
+            )}
           </div>
         </GlassCard>
+
+        {/* SECTION 2b: WHATSAPP ACCOUNT HEALTH */}
+        {waConnection && (waHealth || waReadiness) && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+              <div className="p-2 rounded-lg bg-seal/10 border border-seal/20 text-seal-bright">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">WhatsApp Account Health</h3>
+                <p className="text-xs text-os-text-dim">
+                  What Meta itself says about this number - quality falls before a restriction, and a restriction happens before messages visibly stop.
+                </p>
+              </div>
+            </div>
+
+            {waReadiness && !waReadiness.ready && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-300">Can send: {waReadiness.can_send}</p>
+                  {waReadiness.action_required && (
+                    <p className="text-xs text-amber-200/90 mt-1">{waReadiness.action_required}</p>
+                  )}
+                  {waReadiness.billing_url && (
+                    <a
+                      href={waReadiness.billing_url} target="_blank" rel="noreferrer"
+                      className="text-xs text-brass-bright hover:text-brass inline-flex items-center gap-1 mt-2"
+                    >
+                      Open Meta Billing <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {waReadiness.blockers.map((b, i) => (
+                    <p key={i} className="text-[11px] text-amber-200/80 mt-1">
+                      {b.entity}: {b.message}{b.fix ? ` — ${b.fix}` : ""}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {waHealth && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Quality</p>
+                    <p className="text-sm font-bold text-white">{waHealth.quality_rating || "—"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Daily Limit</p>
+                    <p className="text-sm font-bold text-white">{waHealth.daily_recipient_limit ?? "Unlimited"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Status</p>
+                    <p className="text-sm font-bold text-white">{waHealth.status || "—"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Official Badge</p>
+                    <p className="text-sm font-bold text-white">{waHealth.is_official_business_account ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+                {waHealth.warnings.length > 0 && (
+                  <div className="space-y-1.5">
+                    {waHealth.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-300 flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {w}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </GlassCard>
+        )}
+
+        {/* SECTION 2c: WHATSAPP BUSINESS PROFILE */}
+        {waConnection && waProfile && (
+          <form onSubmit={handleSaveWaProfile}>
+            <GlassCard className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+                <div>
+                  <h3 className="text-sm font-bold text-white">WhatsApp Business Profile</h3>
+                  <p className="text-xs text-os-text-dim">
+                    What a customer sees when they open this chat - the most visible thing on the account.
+                  </p>
+                </div>
+                {waProfileSaved && (
+                  <span className="text-xs font-mono text-seal-bright flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Saved!
+                  </span>
+                )}
+                {waProfileError && <span className="text-xs font-mono text-red-400">{waProfileError}</span>}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">About (short status line)</label>
+                  <input
+                    type="text" value={waAbout} onChange={(e) => setWaAbout(e.target.value)} maxLength={139}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Email</label>
+                  <input
+                    type="email" value={waEmail} onChange={(e) => setWaEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Description</label>
+                <textarea
+                  rows={2} value={waDescription} onChange={(e) => setWaDescription(e.target.value)} maxLength={512}
+                  className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Address</label>
+                <input
+                  type="text" value={waAddress} onChange={(e) => setWaAddress(e.target.value)} maxLength={256}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit" disabled={isSavingWaProfile}
+                  className="px-5 py-2 rounded-xl bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  {isSavingWaProfile ? "Saving..." : "Save Profile"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
+
+        {/* SECTION 2d: CLICK-TO-WHATSAPP AD ATTRIBUTION */}
+        {waConnection && (
+          <form onSubmit={handleSaveDataset}>
+            <GlassCard className="p-6 space-y-3">
+              <div className="flex items-center gap-3 pb-2">
+                <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Click-to-WhatsApp Ad Attribution</h3>
+                  <p className="text-xs text-os-text-dim">
+                    Reports Purchase conversions back to Meta for ads that led to a chat, so ad spend attributes to real sales.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text" value={datasetId} onChange={(e) => setDatasetId(e.target.value)}
+                  placeholder="Business Manager Dataset ID (from Events Manager)"
+                  className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                />
+                <button
+                  type="submit" disabled={isSavingDataset}
+                  className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer shrink-0"
+                >
+                  {isSavingDataset ? "Saving..." : datasetSaved ? "Saved!" : "Save"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
 
         {/* SECTION 3: METERED USAGE & BILLING (STUBBED PER UI_SPEC) */}
         <GlassCard className="p-6">
