@@ -82,6 +82,7 @@ export const api = {
   post: <T>(path: string, body?: unknown, isFormData = false) =>
     request<T>("POST", path, body, isFormData),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
+  put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   delete: <T>(path: string) => request<T>("DELETE", path),
 };
 
@@ -183,6 +184,101 @@ export type CustomerSummary = {
   outstanding_paise?: number;
   summary?: string;
   preferred_channel?: string;
+  stage?: string | null;
+  /** Confirmed tag labels only - suggestions live in crm.tags(). */
+  tags?: string[];
+  deal_value_paise?: number | null;
+};
+
+// ── CRM: tags, notes, pipeline stage ────────────────────────────────────────
+// A tag is either a human's own label (confirmed immediately) or something
+// the nightly profile worker proposed from real signal data (status
+// "suggested", with `reasoning` attached) - a human still has to say yes.
+
+export type CustomerTag = {
+  id: string;
+  label: string;
+  status: "suggested" | "confirmed" | "rejected";
+  reasoning: string | null;
+  created_by_user_id: string | null;
+  decided_by_user_id: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
+export type CustomerNote = {
+  id: string;
+  body: string;
+  author_user_id: string | null;
+  author_name: string | null;
+  created_at: string;
+};
+
+export type PipelineCard = {
+  customer_id: string;
+  name: string | null;
+  deal_value_paise: number | null;
+  health_score: number | null;
+  tags: string[];
+};
+
+export type PipelineColumn = {
+  /** null is the "not staged yet" bucket - always present, always first. */
+  stage: string | null;
+  total_deal_value_paise: number;
+  customers: PipelineCard[];
+};
+
+export type PipelineBoard = { columns: PipelineColumn[] };
+
+export type BulkTagResult = { tagged: number; already_tagged: number; not_found: number };
+
+export const crm = {
+  /** Every confirmed tag label in use across the business - for campaign targeting. */
+  allTags: () => api.get<string[]>("/crm/tags"),
+
+  pipeline: () => api.get<PipelineBoard>("/crm/pipeline"),
+
+  bulkAddTag: (customerIds: string[], label: string) =>
+    api.post<BulkTagResult>("/crm/tags/bulk", { customer_ids: customerIds, label }),
+
+  setDealValue: (customerId: string, dealValuePaise: number | null) =>
+    api.patch<{ customer_id: string; deal_value_paise: number | null }>(
+      `/crm/customers/${customerId}/deal-value`,
+      { deal_value_paise: dealValuePaise },
+    ),
+
+  tags: (customerId: string, includeRejected = false) =>
+    api.get<CustomerTag[]>(
+      `/crm/customers/${customerId}/tags${includeRejected ? "?include_rejected=true" : ""}`,
+    ),
+
+  addTag: (customerId: string, label: string) =>
+    api.post<CustomerTag>(`/crm/customers/${customerId}/tags`, { label }),
+
+  confirmTag: (tagId: string) => api.post<CustomerTag>(`/crm/tags/${tagId}/confirm`),
+
+  rejectTag: (tagId: string) => api.post<CustomerTag>(`/crm/tags/${tagId}/reject`),
+
+  deleteTag: (tagId: string) => api.delete<void>(`/crm/tags/${tagId}`),
+
+  notes: (customerId: string) => api.get<CustomerNote[]>(`/crm/customers/${customerId}/notes`),
+
+  addNote: (customerId: string, body: string) =>
+    api.post<CustomerNote>(`/crm/customers/${customerId}/notes`, { body }),
+
+  deleteNote: (noteId: string) => api.delete<void>(`/crm/notes/${noteId}`),
+
+  setStage: (customerId: string, stage: string | null) =>
+    api.patch<{ customer_id: string; stage: string | null }>(
+      `/crm/customers/${customerId}/stage`,
+      { stage },
+    ),
+
+  pipelineStages: () => api.get<{ stages: string[] }>("/crm/pipeline-stages"),
+
+  setPipelineStages: (stages: string[]) =>
+    api.put<{ stages: string[] }>("/crm/pipeline-stages", { stages }),
 };
 
 // ── Approvals ─────────────────────────────────────────────────────────────────
@@ -654,12 +750,18 @@ export const knowledge = {
 // ── Campaigns ─────────────────────────────────────────────────────────────────
 // audience values are fixed by the backend's Audience enum - not free text.
 
-export type AudienceKey = "owes_money" | "overdue" | "we_promised" | "gone_quiet" | "all_customers";
+export type AudienceKey =
+  | "owes_money"
+  | "overdue"
+  | "we_promised"
+  | "gone_quiet"
+  | "by_tag"
+  | "all_customers";
 
 export type AudienceSegment = {
   value: AudienceKey;
   label: string;
-  /** Only "gone_quiet" needs audience_params today (a days-quiet threshold). */
+  /** "gone_quiet" needs a days-quiet threshold; "by_tag" needs a tag label. */
   needs_params: boolean;
 };
 

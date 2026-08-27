@@ -16,6 +16,7 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   campaigns,
   templates,
+  crm,
   type AudienceSegment,
   type AudienceKey,
   type CampaignPreview,
@@ -27,12 +28,14 @@ export default function CampaignsPage() {
   const [audiences, setAudiences] = useState<AudienceSegment[]>([]);
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [pastCampaigns, setPastCampaigns] = useState<Campaign[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Campaign Builder State
   const [selectedAudience, setSelectedAudience] = useState<AudienceKey | "">("");
+  const [audienceTag, setAudienceTag] = useState<string>("");
   const [previewData, setPreviewData] = useState<CampaignPreview | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
   const [campaignName, setCampaignName] = useState<string>("");
@@ -46,10 +49,11 @@ export default function CampaignsPage() {
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const [audRes, tplRes, campRes] = await Promise.allSettled([
+    const [audRes, tplRes, campRes, tagRes] = await Promise.allSettled([
       campaigns.audiences(),
       templates.list(),
       campaigns.list(),
+      crm.allTags(),
     ]);
 
     if (audRes.status === "fulfilled") {
@@ -62,6 +66,7 @@ export default function CampaignsPage() {
       if (sendable.length > 0) setSelectedTemplateName(sendable[0].name);
     }
     if (campRes.status === "fulfilled") setPastCampaigns(campRes.value);
+    if (tagRes.status === "fulfilled") setAvailableTags(tagRes.value);
 
     const failed = [audRes, tplRes, campRes].find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
@@ -81,9 +86,18 @@ export default function CampaignsPage() {
     setVariableMapping(selectedTemplate ? selectedTemplate.variables.map(() => "") : []);
   }, [selectedTemplateName]);
 
+  const audienceParams =
+    selectedAudience === "by_tag" && audienceTag ? { tag: audienceTag } : undefined;
+
   // Fetch a live preview whenever the audience or template changes.
   useEffect(() => {
     if (!selectedAudience || !selectedTemplate) {
+      setPreviewData(null);
+      return;
+    }
+    // "by_tag" needs a chosen tag before it means anything - previewing with
+    // none would just show "reaches 0", which reads as a bug, not a prompt.
+    if (selectedAudience === "by_tag" && !audienceTag) {
       setPreviewData(null);
       return;
     }
@@ -95,6 +109,7 @@ export default function CampaignsPage() {
       .preview({
         name: campaignName || "Untitled campaign",
         audience: selectedAudience,
+        audience_params: audienceParams,
         template_name: selectedTemplate.name,
         template_language: selectedTemplate.language,
         variable_mapping: variableMapping,
@@ -116,16 +131,18 @@ export default function CampaignsPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAudience, selectedTemplateName, JSON.stringify(variableMapping)]);
+  }, [selectedAudience, audienceTag, selectedTemplateName, JSON.stringify(variableMapping)]);
 
   const handleLaunchCampaign = async () => {
     if (!selectedAudience || !selectedTemplate || !campaignName.trim()) return;
+    if (selectedAudience === "by_tag" && !audienceTag) return;
     setIsSending(true);
     setActionError(null);
     try {
       const created = await campaigns.create({
         name: campaignName,
         audience: selectedAudience,
+        audience_params: audienceParams,
         template_name: selectedTemplate.name,
         template_language: selectedTemplate.language,
         variable_mapping: variableMapping,
@@ -204,6 +221,27 @@ export default function CampaignsPage() {
                     </div>
                   ))}
                 </div>
+
+                {selectedAudience === "by_tag" && (
+                  <div className="mt-2.5">
+                    {availableTags.length > 0 ? (
+                      <select
+                        value={audienceTag}
+                        onChange={(e) => setAudienceTag(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                      >
+                        <option value="">Choose a tag...</option>
+                        {availableTags.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-[11px] text-os-text-dim">
+                        No confirmed tags yet - tag a customer from the Customers page first.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Step 3: Choose Template */}
