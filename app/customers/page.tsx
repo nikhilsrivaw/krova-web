@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -17,17 +17,43 @@ import {
   Clock,
   Filter,
   CheckCircle2,
+  Upload,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   ledger,
   formatPaise,
   type CustomerSummary,
+  type ContactImportResult,
 } from "@/lib/api";
+
+function parseContactsCsv(text: string): { phone: string; name?: string }[] {
+  const lines = text.split(/\r\n|\n|\r/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+
+  const splitRow = (line: string) => line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, ""));
+
+  const header = splitRow(lines[0]).map((h) => h.toLowerCase());
+  const phoneIdx = header.indexOf("phone");
+  const nameIdx = header.indexOf("name");
+  // A header row is one that actually names its columns - if "phone" isn't
+  // among them, treat every line (including the first) as data, column 0
+  // phone / column 1 name, rather than silently dropping a real row.
+  const hasHeader = phoneIdx !== -1;
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  const pIdx = hasHeader ? phoneIdx : 0;
+  const nIdx = hasHeader ? nameIdx : 1;
+
+  return dataLines
+    .map((line) => splitRow(line))
+    .filter((cells) => cells[pIdx])
+    .map((cells) => ({ phone: cells[pIdx], name: nIdx >= 0 ? cells[nIdx] || undefined : undefined }));
+}
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -35,6 +61,44 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [healthFilter, setHealthFilter] = useState<"all" | "high" | "low">("all");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Contact import
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ContactImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const reloadCustomers = async () => {
+    try {
+      const data = await ledger.customers();
+      setCustomers(data);
+    } catch {
+      // Leave whatever is already showing (real data or the mock fallback).
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImportError(null);
+    setImportResult(null);
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const contacts = parseContactsCsv(text);
+      if (contacts.length === 0) {
+        setImportError("Couldn't find any rows with a phone number in that file.");
+        return;
+      }
+      const result = await ledger.importCustomers(contacts);
+      setImportResult(result);
+      await reloadCustomers();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Could not import this file.");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -118,10 +182,22 @@ export default function CustomersPage() {
       title="Customer Intelligence CRM"
       subtitle="AI-built relationship graph & compressed customer profiles"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span className="text-xs font-mono text-os-text-dim">
             {customers.length} Tracked Profiles
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              setImportError(null);
+              setImportResult(null);
+              setIsImportModalOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import Contacts
+          </button>
         </div>
       }
     >
@@ -341,6 +417,80 @@ export default function CustomersPage() {
             </div>
           )}
         </Drawer>
+
+        <Modal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          title="Import Contacts"
+          subtitle="A CSV with phone and name columns - a business you're switching from, or a customer list that's never texted this number yet."
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">CSV file</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFile(file);
+                }}
+                disabled={isImporting}
+                className="w-full text-xs text-white file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-brass file:text-white file:text-xs file:font-bold file:cursor-pointer cursor-pointer"
+              />
+              <p className="text-[11px] text-os-text-dim mt-1.5">
+                Expects a header row with <code className="font-mono">phone</code> and, optionally, <code className="font-mono">name</code> columns. No header? The first column is read as phone, the second as name.
+              </p>
+            </div>
+
+            {isImporting && <p className="text-xs text-brass-bright font-mono">Importing...</p>}
+            {importError && (
+              <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                {importError}
+              </div>
+            )}
+
+            {importResult && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 rounded-lg bg-seal/10 border border-seal/20 text-center">
+                    <p className="text-lg font-bold text-seal-bright">{importResult.created}</p>
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim">Created</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-center">
+                    <p className="text-lg font-bold text-white">{importResult.already_existed}</p>
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim">Already existed</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+                    <p className="text-lg font-bold text-red-400">{importResult.invalid}</p>
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim">Invalid</p>
+                  </div>
+                </div>
+                {importResult.invalid > 0 && (
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {importResult.rows
+                      .filter((r) => r.outcome === "invalid")
+                      .map((r) => (
+                        <p key={r.row_number} className="text-[11px] font-mono text-red-400/80">
+                          Row {r.row_number} ({r.phone}): {r.reason}
+                        </p>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </AppLayout>
   );

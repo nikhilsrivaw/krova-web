@@ -152,6 +152,24 @@ export const ledger = {
     api.post<Commitment>(`/ledger/commitments/${id}/resolve`, { outcome }),
 
   customers: () => api.get<CustomerSummary[]>("/ledger/customers"),
+
+  importCustomers: (contacts: { phone: string; name?: string | null }[]) =>
+    api.post<ContactImportResult>("/ledger/customers/import", { contacts }),
+};
+
+export type ContactImportRowResult = {
+  row_number: number;
+  phone: string;
+  outcome: "created" | "already_existed" | "invalid";
+  reason: string | null;
+  customer_id: string | null;
+};
+
+export type ContactImportResult = {
+  created: number;
+  already_existed: number;
+  invalid: number;
+  rows: ContactImportRowResult[];
 };
 
 export type CustomerSummary = {
@@ -951,7 +969,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {
@@ -976,6 +994,23 @@ export const signals = {
   },
 
   dismiss: (id: string) => api.post<Signal>(`/signals/${id}/dismiss`),
+};
+
+// ── Canned Responses ──────────────────────────────────────────────────────────
+
+export type CannedResponse = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+};
+
+export const cannedResponses = {
+  list: () => api.get<CannedResponse[]>("/canned-responses"),
+  create: (data: { title: string; body: string }) => api.post<CannedResponse>("/canned-responses", data),
+  update: (id: string, data: Partial<{ title: string; body: string }>) =>
+    api.patch<CannedResponse>(`/canned-responses/${id}`, data),
+  remove: (id: string) => api.delete<void>(`/canned-responses/${id}`),
 };
 
 // ── Order Sync (E-commerce) ──────────────────────────────────────────────────

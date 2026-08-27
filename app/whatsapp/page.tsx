@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import {
   MessageSquare,
   RefreshCw,
@@ -15,6 +16,12 @@ import {
   Shield,
   Layers,
   Phone,
+  Copy,
+  Check,
+  Download,
+  Link2,
+  BookText,
+  Pencil,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -24,6 +31,8 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   channels,
   templates,
+  cannedResponses,
+  type CannedResponse,
   type ChannelConnection,
   type EmbeddedSignupResult,
   type Template,
@@ -63,10 +72,29 @@ export default function WhatsAppPage() {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [lastSignupResult, setLastSignupResult] = useState<EmbeddedSignupResult | null>(null);
 
+  // Click-to-Chat Link & QR Code
+  const [chatLinkMessage, setChatLinkMessage] = useState("Hi! I'd like to know more.");
+  const [chatLinkCopied, setChatLinkCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  // Canned Responses (Saved Replies)
+  const [cannedResponseList, setCannedResponseList] = useState<CannedResponse[]>([]);
+  const [selectedCannedId, setSelectedCannedId] = useState("");
+  const [isManageCannedOpen, setIsManageCannedOpen] = useState(false);
+  const [cannedTitle, setCannedTitle] = useState("");
+  const [cannedBody, setCannedBody] = useState("");
+  const [editingCannedId, setEditingCannedId] = useState<string | null>(null);
+  const [isSavingCanned, setIsSavingCanned] = useState(false);
+  const [cannedError, setCannedError] = useState<string | null>(null);
+
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const [chList, tList] = await Promise.allSettled([channels.list(), templates.list()]);
+    const [chList, tList, crList] = await Promise.allSettled([
+      channels.list(),
+      templates.list(),
+      cannedResponses.list(),
+    ]);
 
     if (chList.status === "fulfilled") {
       const wa = chList.value.find((c) => c.channel === "whatsapp");
@@ -74,6 +102,9 @@ export default function WhatsAppPage() {
     }
     if (tList.status === "fulfilled") {
       setTemplateList(tList.value);
+    }
+    if (crList.status === "fulfilled") {
+      setCannedResponseList(crList.value);
     }
 
     const failed = [chList, tList].find((r) => r.status === "rejected");
@@ -114,6 +145,85 @@ export default function WhatsAppPage() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  // wa.me needs digits only - Meta's display_phone_number comes formatted
+  // ("+91 90000 00000"), never in the shape the link itself requires.
+  const chatLink = connection?.handle
+    ? `https://wa.me/${connection.handle.replace(/\D/g, "")}${
+        chatLinkMessage.trim() ? `?text=${encodeURIComponent(chatLinkMessage.trim())}` : ""
+      }`
+    : null;
+
+  useEffect(() => {
+    if (!chatLink) {
+      setQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(chatLink, { width: 240, margin: 1, color: { dark: "#1a1512", light: "#ffffff" } })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatLink]);
+
+  const copyChatLink = () => {
+    if (!chatLink) return;
+    navigator.clipboard.writeText(chatLink);
+    setChatLinkCopied(true);
+    setTimeout(() => setChatLinkCopied(false), 2000);
+  };
+
+  const insertCannedResponse = (id: string) => {
+    setSelectedCannedId(id);
+    const found = cannedResponseList.find((c) => c.id === id);
+    if (found) setDirectMessageText(found.body);
+  };
+
+  const openCannedEditor = (existing?: CannedResponse) => {
+    setCannedError(null);
+    setEditingCannedId(existing?.id || null);
+    setCannedTitle(existing?.title || "");
+    setCannedBody(existing?.body || "");
+  };
+
+  const saveCannedResponse = async () => {
+    if (!cannedTitle.trim() || !cannedBody.trim()) return;
+    setIsSavingCanned(true);
+    setCannedError(null);
+    try {
+      if (editingCannedId) {
+        const updated = await cannedResponses.update(editingCannedId, { title: cannedTitle, body: cannedBody });
+        setCannedResponseList((prev) => prev.map((c) => (c.id === editingCannedId ? updated : c)).sort((a, b) => a.title.localeCompare(b.title)));
+      } else {
+        const created = await cannedResponses.create({ title: cannedTitle, body: cannedBody });
+        setCannedResponseList((prev) => [...prev, created].sort((a, b) => a.title.localeCompare(b.title)));
+      }
+      setEditingCannedId(null);
+      setCannedTitle("");
+      setCannedBody("");
+    } catch (err) {
+      setCannedError(err instanceof Error ? err.message : "Could not save this saved reply.");
+    } finally {
+      setIsSavingCanned(false);
+    }
+  };
+
+  const deleteCannedResponse = async (id: string) => {
+    setCannedError(null);
+    try {
+      await cannedResponses.remove(id);
+      setCannedResponseList((prev) => prev.filter((c) => c.id !== id));
+      if (editingCannedId === id) openCannedEditor();
+    } catch (err) {
+      setCannedError(err instanceof Error ? err.message : "Could not delete this saved reply.");
+    }
+  };
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -331,6 +441,71 @@ export default function WhatsAppPage() {
               </div>
             )}
 
+            {/* Click-to-Chat Link & QR Code */}
+            {connection?.handle && (
+              <GlassCard className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Link2 className="w-4 h-4 text-brass-bright" />
+                  <h3 className="text-sm font-bold text-white">Click-to-Chat Link & QR Code</h3>
+                </div>
+                <p className="text-xs text-os-text-dim mb-4 max-w-xl">
+                  Drop this on your bio, storefront window, or packaging. Anyone who taps it or scans the code opens a chat with this number, prefilled with whatever you write below - no app install, no form.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                        Prefilled message (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={chatLinkMessage}
+                        onChange={(e) => setChatLinkMessage(e.target.value)}
+                        placeholder="Hi! I'd like to know more."
+                        maxLength={300}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Link</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={chatLink || ""}
+                          className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white/80 font-mono truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={copyChatLink}
+                          className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {chatLinkCopied ? <Check className="w-3.5 h-3.5 text-seal-bright" /> : <Copy className="w-3.5 h-3.5" />}
+                          {chatLinkCopied ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    {qrDataUrl ? (
+                      <img src={qrDataUrl} alt="WhatsApp chat QR code" className="w-32 h-32 rounded-lg border border-white/[0.1]" />
+                    ) : (
+                      <div className="w-32 h-32 rounded-lg border border-white/[0.1] bg-white/[0.02] animate-pulse" />
+                    )}
+                    <a
+                      href={qrDataUrl || undefined}
+                      download="whatsapp-chat-qr.png"
+                      className={`text-[11px] font-semibold flex items-center gap-1 ${
+                        qrDataUrl ? "text-brass-bright hover:text-brass cursor-pointer" : "text-os-text-dim pointer-events-none opacity-50"
+                      }`}
+                    >
+                      <Download className="w-3 h-3" /> Download
+                    </a>
+                  </div>
+                </div>
+              </GlassCard>
+            )}
+
             {/* Embedded Signup Card */}
             <GlassCard className="p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -515,9 +690,37 @@ export default function WhatsAppPage() {
               <div className="space-y-3 pt-2">
                 {windowState?.can_send_free_form ? (
                   <div>
-                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
-                      Direct Free-Form Text Message:
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-mono uppercase text-os-text-dim">
+                        Direct Free-Form Text Message:
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedCannedId}
+                          onChange={(e) => insertCannedResponse(e.target.value)}
+                          disabled={cannedResponseList.length === 0}
+                          className="px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none disabled:opacity-40"
+                        >
+                          <option value="">
+                            {cannedResponseList.length === 0 ? "No saved replies yet" : "Insert a saved reply..."}
+                          </option>
+                          {cannedResponseList.map((c) => (
+                            <option key={c.id} value={c.id}>{c.title}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openCannedEditor();
+                            setIsManageCannedOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-os-text-dim hover:text-brass-bright hover:bg-white/[0.06] cursor-pointer"
+                          title="Manage saved replies"
+                        >
+                          <BookText className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       rows={4}
                       value={directMessageText}
@@ -654,6 +857,92 @@ export default function WhatsAppPage() {
               </button>
             </div>
           </form>
+        </Modal>
+
+        <Modal
+          isOpen={isManageCannedOpen}
+          onClose={() => setIsManageCannedOpen(false)}
+          title="Saved Replies"
+          subtitle="Text you've written once and want to send exactly as-is - a refund policy, an address, an apology for a delay."
+        >
+          <div className="space-y-5">
+            <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Title</label>
+                <input
+                  type="text"
+                  value={cannedTitle}
+                  onChange={(e) => setCannedTitle(e.target.value)}
+                  placeholder="Refund Policy"
+                  maxLength={120}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Message</label>
+                <textarea
+                  rows={3}
+                  value={cannedBody}
+                  onChange={(e) => setCannedBody(e.target.value)}
+                  placeholder="We refund within 7 days of purchase..."
+                  className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              {cannedError && <p className="text-xs text-red-400">{cannedError}</p>}
+              <div className="flex justify-end gap-2">
+                {editingCannedId && (
+                  <button
+                    type="button"
+                    onClick={() => openCannedEditor()}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={saveCannedResponse}
+                  disabled={isSavingCanned || !cannedTitle.trim() || !cannedBody.trim()}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingCanned ? "Saving..." : editingCannedId ? "Save Changes" : "Add Saved Reply"}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {cannedResponseList.length === 0 ? (
+                <p className="text-xs text-os-text-dim text-center py-4">No saved replies yet.</p>
+              ) : (
+                cannedResponseList.map((c) => (
+                  <div key={c.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white">{c.title}</p>
+                      <p className="text-[11px] text-os-text-dim truncate">{c.body}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openCannedEditor(c)}
+                        className="p-1.5 rounded-lg text-os-text-dim hover:text-brass-bright hover:bg-white/[0.06] cursor-pointer"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteCannedResponse(c.id)}
+                        className="p-1.5 rounded-lg text-os-text-dim hover:text-thread-bright hover:bg-white/[0.06] cursor-pointer"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </Modal>
       </div>
     </AppLayout>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -14,6 +14,7 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   complaint: { label: "Complaint", icon: MessageSquareWarning, badge: "amber" },
   churn_risk: { label: "Churn Risk", icon: TrendingDown, badge: "rose" },
   praise: { label: "Praise", icon: Heart, badge: "emerald" },
+  account_health: { label: "Account Health", icon: Activity, badge: "purple" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
@@ -92,7 +93,7 @@ export default function SignalsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {(Object.keys(KIND_META) as SignalKind[]).map((kind) => {
             const meta = KIND_META[kind];
             const Icon = meta.icon;
