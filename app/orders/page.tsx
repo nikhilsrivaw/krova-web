@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Package, Plus, Truck, Trash2, Store } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
@@ -48,6 +47,7 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [platform, setPlatform] = useState("shopify");
@@ -101,6 +101,22 @@ export default function OrdersPage() {
       setActionError(err instanceof Error ? err.message : "Could not connect this store.");
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    setActionError(null);
+    const prev = allOrders;
+    setAllOrders((cur) => cur.map((o) => (o.id === orderId ? { ...o, status } : o)));
+    setUpdatingOrderId(orderId);
+    try {
+      const updated = await ordersApi.update(orderId, { status });
+      setAllOrders((cur) => cur.map((o) => (o.id === orderId ? updated : o)));
+    } catch (err) {
+      setAllOrders(prev);
+      setActionError(err instanceof Error ? err.message : "Could not update this order's status.");
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -207,6 +223,7 @@ export default function OrdersPage() {
                   <th className="text-left px-4 py-2.5">Total</th>
                   <th className="text-left px-4 py-2.5">Tracking</th>
                   <th className="text-left px-4 py-2.5">Placed</th>
+                  <th className="text-left px-4 py-2.5">Source</th>
                   <th className="text-left px-4 py-2.5">Status</th>
                 </tr>
               </thead>
@@ -228,8 +245,30 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 text-os-text-dim font-mono">
                       {new Date(o.placed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                     </td>
+                    <td className="px-4 py-3 text-os-text-dim capitalize">{o.source_platform}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={STATUS_BADGE[o.status]} size="sm">{STATUS_LABEL[o.status]}</Badge>
+                      <select
+                        value={o.status}
+                        disabled={updatingOrderId === o.id}
+                        onChange={(e) => handleStatusChange(o.id, e.target.value as OrderStatus)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold border bg-black/30 focus:outline-none focus:border-brass cursor-pointer disabled:opacity-50 ${
+                          STATUS_BADGE[o.status] === "emerald"
+                            ? "text-emerald-400 border-emerald-500/25"
+                            : STATUS_BADGE[o.status] === "amber"
+                              ? "text-amber-400 border-amber-500/25"
+                              : STATUS_BADGE[o.status] === "rose"
+                                ? "text-rose-400 border-rose-500/25"
+                                : STATUS_BADGE[o.status] === "indigo"
+                                  ? "text-indigo-400 border-indigo-500/25"
+                                  : "text-os-text-dim border-white/[0.12]"
+                        }`}
+                      >
+                        {(Object.keys(STATUS_LABEL) as OrderStatus[]).map((s) => (
+                          <option key={s} value={s} className="bg-os-bg text-white">
+                            {STATUS_LABEL[s]}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                   </tr>
                 ))}

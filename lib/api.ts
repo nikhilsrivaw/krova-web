@@ -1030,6 +1030,9 @@ export const orders = {
   },
 
   get: (id: string) => api.get<Order>(`/orders/${id}`),
+
+  update: (id: string, data: Partial<{ status: OrderStatus; tracking_number: string; carrier: string }>) =>
+    api.patch<Order>(`/orders/${id}`, data),
 };
 
 // ── Property Listings (Real Estate) ─────────────────────────────────────────
