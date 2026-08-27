@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [waDescription, setWaDescription] = useState("");
   const [waAddress, setWaAddress] = useState("");
   const [waEmail, setWaEmail] = useState("");
+  const [waCategory, setWaCategory] = useState("");
+  const [waCategoryOptions, setWaCategoryOptions] = useState<{ value: string; label: string }[]>([]);
   const [isSavingWaProfile, setIsSavingWaProfile] = useState(false);
   const [waProfileSaved, setWaProfileSaved] = useState(false);
   const [waProfileError, setWaProfileError] = useState<string | null>(null);
@@ -113,8 +115,8 @@ export default function SettingsPage() {
         setChannelsList(chRes.value);
         const wa = chRes.value.find((c) => c.channel === "whatsapp");
         if (wa) {
-          const [waProfRes, healthRes, readyRes] = await Promise.allSettled([
-            waAccount.profile(), waAccount.health(), waAccount.readiness(),
+          const [waProfRes, healthRes, readyRes, catRes] = await Promise.allSettled([
+            waAccount.profile(), waAccount.health(), waAccount.readiness(), waAccount.verticals(),
           ]);
           if (!mounted) return;
           if (waProfRes.status === "fulfilled") {
@@ -123,9 +125,11 @@ export default function SettingsPage() {
             setWaDescription(waProfRes.value.description || "");
             setWaAddress(waProfRes.value.address || "");
             setWaEmail(waProfRes.value.email || "");
+            setWaCategory(waProfRes.value.vertical || "");
           }
           if (healthRes.status === "fulfilled") setWaHealth(healthRes.value);
           if (readyRes.status === "fulfilled") setWaReadiness(readyRes.value);
+          if (catRes.status === "fulfilled") setWaCategoryOptions(catRes.value);
         }
       }
     };
@@ -143,9 +147,10 @@ export default function SettingsPage() {
     setWaProfileSaved(false);
     try {
       const updated = await waAccount.updateProfile({
-        about: waAbout, description: waDescription, address: waAddress, email: waEmail,
+        about: waAbout, description: waDescription, address: waAddress, email: waEmail, vertical: waCategory,
       });
       setWaProfile(updated);
+      setWaCategory(updated.vertical || "");
       setWaProfileSaved(true);
       setTimeout(() => setWaProfileSaved(false), 3000);
     } catch (err) {
@@ -614,6 +619,24 @@ export default function SettingsPage() {
                   type="text" value={waAddress} onChange={(e) => setWaAddress(e.target.value)} maxLength={256}
                   className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                  Business Category (Meta&apos;s classification)
+                </label>
+                <select
+                  value={waCategory}
+                  onChange={(e) => setWaCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                >
+                  <option value="">Not set</option>
+                  {waCategoryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-os-text-dim mt-1">
+                  Shown to customers as your business type in WhatsApp - separate from Krova&apos;s own vertical setting above.
+                </p>
               </div>
               <div className="flex justify-end">
                 <button

@@ -42,7 +42,7 @@ import {
   type ThreadMessage,
 } from "@/lib/api";
 
-type QuickSendType = "buttons" | "list" | "product" | "catalog";
+type QuickSendType = "buttons" | "list" | "product" | "products" | "catalog";
 
 const CHANNEL_ICONS = {
   whatsapp: MessageSquare,
@@ -178,6 +178,8 @@ export default function ConversationsPage() {
   const [quickListRows, setQuickListRows] = useState([{ id: "", title: "", description: "" }]);
   const [quickCatalogId, setQuickCatalogId] = useState("");
   const [quickProductId, setQuickProductId] = useState("");
+  const [quickProductsHeader, setQuickProductsHeader] = useState("");
+  const [quickProductIds, setQuickProductIds] = useState([""]);
   const [isSendingQuick, setIsSendingQuick] = useState(false);
   const [quickSendError, setQuickSendError] = useState<string | null>(null);
   const [quickSendOk, setQuickSendOk] = useState<string | null>(null);
@@ -190,6 +192,8 @@ export default function ConversationsPage() {
     setQuickListRows([{ id: "", title: "", description: "" }]);
     setQuickCatalogId("");
     setQuickProductId("");
+    setQuickProductsHeader("");
+    setQuickProductIds([""]);
     setQuickSendError(null);
     setQuickSendOk(null);
     setIsQuickSendOpen(true);
@@ -211,6 +215,10 @@ export default function ConversationsPage() {
         ]);
       } else if (quickSendType === "product") {
         await channels.sendProduct(to, quickCatalogId, quickProductId, quickSendBody || undefined);
+      } else if (quickSendType === "products") {
+        await channels.sendProducts(to, quickCatalogId, quickProductsHeader, quickSendBody, [
+          { title: "Products", product_retailer_ids: quickProductIds.filter((id) => id.trim()) },
+        ]);
       } else {
         await channels.sendCatalog(to, quickSendBody);
       }
@@ -604,7 +612,7 @@ export default function ConversationsPage() {
       >
         <form onSubmit={handleQuickSend} className="space-y-4">
           <div className="flex gap-1.5">
-            {(["buttons", "list", "product", "catalog"] as QuickSendType[]).map((t) => (
+            {(["buttons", "list", "product", "products", "catalog"] as QuickSendType[]).map((t) => (
               <button
                 key={t} type="button" onClick={() => setQuickSendType(t)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize cursor-pointer ${
@@ -712,6 +720,48 @@ export default function ConversationsPage() {
                   className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
                 />
               </div>
+            </div>
+          )}
+
+          {quickSendType === "products" && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Catalog ID</label>
+                  <input
+                    type="text" required value={quickCatalogId} onChange={(e) => setQuickCatalogId(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Header (max 60 chars)</label>
+                  <input
+                    type="text" required maxLength={60} value={quickProductsHeader} onChange={(e) => setQuickProductsHeader(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+              </div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim">Product SKUs (up to 30)</label>
+              {quickProductIds.map((id, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text" placeholder="SKU" value={id}
+                    onChange={(e) => setQuickProductIds((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <button type="button" onClick={() => setQuickProductIds((prev) => prev.filter((_, j) => j !== i))} className="p-1.5 text-os-text-dim hover:text-thread-bright">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {quickProductIds.length < 30 && (
+                <button
+                  type="button" onClick={() => setQuickProductIds((prev) => [...prev, ""])}
+                  className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" /> Add SKU
+                </button>
+              )}
             </div>
           )}
 
