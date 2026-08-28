@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Activity,
   Megaphone,
+  Instagram,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -88,6 +89,22 @@ export default function SettingsPage() {
   const waConnection = channelsList.find((c) => c.channel === "whatsapp") || null;
   const voiceConnection = channelsList.find((c) => c.channel === "voice") || null;
   const emailConnection = channelsList.find((c) => c.channel === "email") || null;
+  const igConnection = channelsList.find((c) => c.channel === "instagram") || null;
+
+  // Feedback after the Instagram Business Login redirect lands back here -
+  // read directly from the URL rather than a Next.js hook, since this page
+  // is fully client-rendered and the round trip is a plain browser redirect.
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("instagram");
+    if (!result) return;
+    const messages: Record<string, string> = {
+      connected: "Instagram connected.",
+      error: "Could not connect Instagram. Please try again.",
+      expired: "That connection attempt expired. Please try again.",
+    };
+    if (messages[result]) alert(messages[result]);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -250,6 +267,21 @@ export default function SettingsPage() {
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not connect Gmail.");
+    }
+  };
+
+  const handleConnectInstagram = async () => {
+    try {
+      const res = await channels.instagramConnectUrl();
+      if (res?.url) {
+        // A real redirect, not a popup - Instagram Business Login is a
+        // classic OAuth round trip, unlike WhatsApp's Embedded Signup dialog.
+        window.location.href = res.url;
+      } else {
+        alert("Instagram isn't configured for this account yet.");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not connect Instagram.");
     }
   };
 
@@ -495,6 +527,36 @@ export default function SettingsPage() {
             {backfillResult && (
               <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
             )}
+
+            {/* Instagram */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                  <Instagram className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Instagram Business</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {igConnection
+                      ? igConnection.handle || igConnection.display_name || "Connected"
+                      : "DMs and comments in the same unified timeline as WhatsApp."}
+                  </p>
+                </div>
+              </div>
+              {igConnection ? (
+                <Badge variant={igConnection.status === "active" ? "emerald" : "amber"} dot>
+                  {igConnection.status === "active" ? "Connected" : igConnection.status}
+                </Badge>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectInstagram}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  Connect Instagram
+                </button>
+              )}
+            </div>
           </div>
         </GlassCard>
 

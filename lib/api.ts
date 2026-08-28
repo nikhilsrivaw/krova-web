@@ -537,6 +537,9 @@ export const channels = {
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
+  instagramConnectUrl: () =>
+    api.get<{ url: string }>("/channels/instagram/connect-url"),
+
   gmailBackfillNow: () =>
     api.post<{
       mailbox: string; messages_read: number; messages_stored: number;
