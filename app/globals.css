@@ -5,15 +5,15 @@
    * The khata palette. KROVA's real differentiator is a two-way commitment
    * ledger - functionally a digital khata, the credit/debit notebook every
    * Indian SMB owner already keeps. This is ink on dark paper, not a
-   * generic SaaS dark-mode: warmer and less blue than pure black, with a
+   * generic SaaS dark-mode: a solid neutral gray/black (no blue tint), with a
    * brass accent standing in for the stamp/seal on a real ledger entry
    * rather than a neon "AI product" glow.
    */
-  --color-os-bg: #14151F;
-  --color-os-card: #1B1C29;
-  --color-os-border: #2A2B3B;
-  --color-os-border-bright: #3D3E52;
-  --color-os-text-dim: #8B899C;
+  --color-os-bg: #121212;
+  --color-os-card: #1A1A1A;
+  --color-os-border: #2B2B2B;
+  --color-os-border-bright: #3D3D3D;
+  --color-os-text-dim: #8F8F8F;
   --color-os-ink: #ECE9E1;
   --color-os-accent: #ECE9E1;
   --color-os-accent-dim: #B5B2C2;
@@ -112,10 +112,28 @@
   }
 
   body {
-    background-color: var(--color-os-bg);
+    position: relative;
+    background:
+      radial-gradient(ellipse 75% 45% at 50% -10%, rgba(255, 255, 255, 0.09), transparent 72%),
+      var(--color-os-bg);
+    background-attachment: fixed;
     color: white;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* A paper grain — ink-on-paper texture for the khata palette, not a
+     generic dark-mode void. Sits behind all real content, fixed so it doesn't
+     scroll/tile visibly (identical on mobile and desktop since it's keyed to
+     the viewport, not page content). */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }
 

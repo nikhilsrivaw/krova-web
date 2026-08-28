@@ -1,21 +1,12 @@
 "use client";
 
-import { motion } from "motion/react";
-import Link from "next/link";
-import { Check, X, Zap, ArrowRight, Command, HelpCircle, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import Link from "next/link";
+import { Check, X, Zap, ArrowRight } from "lucide-react";
 
 import { Navbar } from "@/components/spectrum/navbar";
-import { AuroraText } from "@/components/magicui/aurora-text";
-import { BorderBeam } from "@/components/magicui/border-beam";
-import { Particles } from "@/components/magicui/particles";
-import { Meteors } from "@/components/magicui/meteors";
-import { ShinyText } from "@/components/magicui/shiny-text";
-import { AnimatedGridPattern } from "@/components/magicui/animated-grid-pattern";
-import { MagicCard } from "@/components/magicui/magic-card";
-import { DotPattern } from "@/components/magicui/dot-pattern";
-
-import { GlowCard } from "@/components/spectrum/glow-card";
+import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 
 const PLANS = [
@@ -31,14 +22,12 @@ const PLANS = [
       { text: "Nightly AI analysis (10 PM IST)", included: true },
       { text: "Morning briefing on WhatsApp", included: true },
       { text: "5 AI-drafted replies/day", included: true },
-      { text: "HOT / WARM / COLD scoring", included: true },
+      { text: "Hot / warm / cold scoring", included: true },
       { text: "Customer intelligence dashboard", included: false },
       { text: "Multi-channel (all 4)", included: false },
-      { text: "Unlimited AI replies", included: false },
       { text: "Team seats", included: false },
-      { text: "API access", included: false },
     ],
-    cta: "Start Free Trial",
+    cta: "Start free trial",
     href: "/signup",
   },
   {
@@ -47,20 +36,19 @@ const PLANS = [
     price: { monthly: "₹1,999", annual: "₹1,599" },
     desc: "All 4 channels, unlimited replies, full intelligence. The complete KROVA.",
     highlight: true,
-    badge: "Most Popular",
+    badge: "Most popular",
     features: [
       { text: "All 4 channels (WhatsApp, IG, Gmail, Outlook)", included: true },
       { text: "Up to 5,000 messages/month", included: true },
       { text: "Nightly AI analysis (10 PM IST)", included: true },
       { text: "Morning briefing + hot lead alerts", included: true },
       { text: "Unlimited AI-drafted replies", included: true },
-      { text: "HOT / WARM / COLD scoring", included: true },
       { text: "Customer intelligence dashboard", included: true },
       { text: "Analytics & conversion tracking", included: true },
       { text: "Team seats", included: false },
       { text: "API access", included: false },
     ],
-    cta: "Start Free Trial",
+    cta: "Start free trial",
     href: "/signup",
   },
   {
@@ -72,16 +60,13 @@ const PLANS = [
     features: [
       { text: "Everything in Growth", included: true },
       { text: "Unlimited messages", included: true },
-      { text: "Real-time AI analysis (not just nightly)", included: true },
-      { text: "Morning briefing + instant alerts", included: true },
-      { text: "Unlimited AI-drafted replies", included: true },
-      { text: "Advanced scoring & custom rules", included: true },
-      { text: "Customer intelligence dashboard", included: true },
+      { text: "Real-time AI analysis, not just nightly", included: true },
       { text: "Team workspace (up to 5 seats)", included: true },
       { text: "Custom AI tone & guardrails", included: true },
       { text: "API access", included: true },
+      { text: "Priority support", included: true },
     ],
-    cta: "Contact Sales",
+    cta: "Contact sales",
     href: "/signup",
   },
 ];
@@ -113,6 +98,12 @@ const FAQS = [
   },
 ];
 
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-os-text-dim mb-4">{children}</div>
+  );
+}
+
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
 
@@ -121,68 +112,62 @@ export default function PricingPage() {
       <Navbar />
 
       {/* HERO */}
-      <section className="relative z-10 pt-36 pb-20 px-6 max-w-6xl mx-auto">
-        <Meteors number={10} />
-        <div className="text-center mb-12 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-os-border bg-os-card/80 backdrop-blur text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-8"
-          >
-            <Command size={10} className="text-teal-400" />
-            <ShinyText shimmerWidth={80} className="text-os-text-dim">
-              Pricing
-            </ShinyText>
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight mb-4 max-w-4xl mx-auto leading-[1.05]"
-          >
-            Simple, <AuroraText>honest pricing.</AuroraText>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="text-os-text-dim text-lg max-w-xl mx-auto mb-8"
-          >
-            14-day free trial on every plan. No credit card required. Cancel any time.
-          </motion.p>
+      <section className="pt-40 pb-16 px-6 max-w-3xl mx-auto text-center">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Eyebrow>Pricing</Eyebrow>
+        </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink"
+        >
+          Simple, <span className="text-brass">transparent pricing.</span>
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-os-text-dim text-lg mb-8"
+        >
+          14-day free trial on every plan. No credit card required. Cancel any time.
+        </motion.p>
 
-          {/* Annual toggle */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 p-1 rounded-full border border-os-border bg-os-card relative overflow-hidden"
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="inline-flex items-center gap-1 p-1 rounded-full border border-os-border"
+        >
+          <button
+            onClick={() => setAnnual(false)}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-colors ${
+              !annual ? "bg-os-ink text-os-bg" : "text-os-text-dim"
+            }`}
           >
-            <BorderBeam size={80} duration={10} colorFrom="#5EEAD4" colorTo="#A78BFA" />
-            <button
-              onClick={() => setAnnual(false)}
-              className={`relative z-10 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${!annual ? "bg-white text-black" : "text-os-text-dim"}`}
+            Monthly
+          </button>
+          <button
+            onClick={() => setAnnual(true)}
+            className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-colors flex items-center gap-2 ${
+              annual ? "bg-os-ink text-os-bg" : "text-os-text-dim"
+            }`}
+          >
+            Annual
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                annual ? "bg-seal/20 text-seal-bright" : "bg-seal/10 text-seal-bright"
+              }`}
             >
-              Monthly
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              className={`relative z-10 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${annual ? "bg-white text-black" : "text-os-text-dim"}`}
-            >
-              Annual
-              <span
-                className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${annual ? "bg-green-600/30 text-green-900" : "bg-emerald-500/10 text-emerald-400"}`}
-              >
-                SAVE 20%
-              </span>
-            </button>
-          </motion.div>
-        </div>
+              Save 20%
+            </span>
+          </button>
+        </motion.div>
       </section>
 
       {/* PLANS */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="max-w-6xl mx-auto px-6 pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -190,188 +175,129 @@ export default function PricingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
+              className={`rounded-xl p-7 flex flex-col relative bg-os-card ${
+                plan.highlight
+                  ? "border-2 border-brass shadow-[0_0_40px_-12px_rgba(201,151,63,0.35)] md:-translate-y-3"
+                  : "border border-os-border"
+              }`}
             >
-              {plan.highlight ? (
-                <GlowCard
-                  className="h-full"
-                  glowColor="from-teal-400/40 via-violet-400/30 to-pink-400/40"
-                >
-                  <PlanInner plan={plan} annual={annual} />
-                </GlowCard>
-              ) : (
-                <MagicCard className="h-full" gradientFrom="#5EEAD4" gradientTo="#A78BFA">
-                  <PlanInner plan={plan} annual={annual} />
-                </MagicCard>
+              {plan.badge && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brass px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-os-bg whitespace-nowrap">
+                  {plan.badge}
+                </span>
               )}
+
+              <span className="text-lg font-semibold text-os-ink mb-1">{plan.name}</span>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">{plan.tagline}</p>
+
+              <div className="mb-6 pb-6 border-b border-os-border">
+                <div className="flex items-end gap-1 mb-2 h-10 overflow-hidden">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={annual ? "annual" : "monthly"}
+                      initial={{ y: 16, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -16, opacity: 0 }}
+                      transition={{ duration: 0.28, ease: "easeOut" }}
+                      className="font-serif text-4xl font-semibold tracking-tight text-os-ink"
+                    >
+                      {annual ? plan.price.annual : plan.price.monthly}
+                    </motion.span>
+                  </AnimatePresence>
+                  <span className="text-os-text-dim text-sm mb-1">/month</span>
+                </div>
+                <motion.p
+                  animate={{ opacity: annual ? 1 : 0, height: annual ? "auto" : 0 }}
+                  className="text-[10px] text-seal-bright font-bold overflow-hidden"
+                >
+                  Billed annually · save 20%
+                </motion.p>
+                <p className="text-xs text-os-text-dim leading-relaxed mt-2">{plan.desc}</p>
+              </div>
+
+              <ul className="space-y-2.5 flex-1 mb-6">
+                {plan.features.map((f) => (
+                  <li key={f.text} className="flex items-start gap-2.5">
+                    {f.included ? (
+                      <Check size={12} className="mt-0.5 shrink-0 text-seal-bright" />
+                    ) : (
+                      <X size={12} className="mt-0.5 shrink-0 text-os-border" />
+                    )}
+                    <span className={`text-xs leading-relaxed ${f.included ? "text-os-ink/90" : "text-os-text-dim/50 line-through"}`}>
+                      {f.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link href={plan.href}>
+                <button
+                  className={`w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
+                    plan.highlight
+                      ? "bg-brass text-os-bg hover:bg-brass-bright"
+                      : "border border-os-border text-os-ink hover:bg-os-bg"
+                  }`}
+                >
+                  {plan.cta}
+                </button>
+              </Link>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* COMPARE CALLOUT */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 pb-24">
-        <GlowCard glowColor="from-amber-400/30 via-orange-400/20 to-rose-400/30">
-          <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-os-bg border border-os-border flex items-center justify-center shrink-0">
-                <Zap size={20} className="text-amber-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg mb-1">Not sure which plan?</h3>
-                <p className="text-os-text-dim text-sm">
-                  Start with Growth — covers 95% of businesses. You can always downgrade.
-                </p>
-              </div>
+      {/* NOT SURE CALLOUT */}
+      <section className="max-w-5xl mx-auto px-6 pb-24">
+        <div className="rounded-lg border border-os-border bg-os-card p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-md border border-os-border flex items-center justify-center shrink-0">
+              <Zap size={18} className="text-brass" />
             </div>
-            <Link href="/signup">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="os-button os-button-primary px-8 py-3 font-bold shrink-0 gap-2"
-              >
-                Try Growth Free <ArrowRight size={14} />
-              </motion.button>
-            </Link>
+            <div>
+              <h3 className="font-semibold text-base text-os-ink mb-1">Not sure which plan?</h3>
+              <p className="text-os-text-dim text-sm">
+                Start with Growth — covers most businesses. You can always downgrade.
+              </p>
+            </div>
           </div>
-        </GlowCard>
+          <Link href="/signup">
+            <span className="os-button os-button-primary px-6 py-2.5 text-sm shrink-0 inline-flex">
+              Try Growth free <ArrowRight size={14} />
+            </span>
+          </Link>
+        </div>
       </section>
 
       {/* FAQ */}
-      <section className="relative z-10 max-w-3xl mx-auto px-6 py-24">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-os-border text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-4">
-            <HelpCircle size={10} /> FAQ
+      <section className="border-t border-os-border bg-os-card/40">
+        <div className="max-w-3xl mx-auto px-6 py-24">
+          <div className="mb-12">
+            <Eyebrow>FAQ</Eyebrow>
+            <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">Common questions.</h2>
           </div>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
-            Common <AuroraText>questions.</AuroraText>
-          </h2>
+          <FaqAccordion items={FAQS} />
         </div>
-        <FaqAccordion items={FAQS} />
       </section>
 
       {/* CTA */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 py-24">
-        <div className="relative rounded-3xl overflow-hidden border border-os-border bg-os-card p-16 text-center">
-          <Particles className="absolute inset-0" quantity={60} color="#5EEAD4" />
-          <DotPattern className="opacity-30 [mask-image:radial-gradient(400px_circle_at_center,white,transparent)]" />
-          <BorderBeam size={400} duration={12} colorFrom="#5EEAD4" colorTo="#A78BFA" />
-          <BorderBeam size={400} duration={12} delay={6} colorFrom="#FB7185" colorTo="#FCD34D" />
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-os-border text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-6">
-              <Sparkles size={10} className="text-violet-400" /> 14-day free trial
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              Put your business <AuroraText>on autopilot.</AuroraText>
-            </h2>
-            <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
-              Join hundreds of Indian SMBs already using KROVA.
-            </p>
-            <Link href="/signup">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
-                className="os-button os-button-primary px-10 py-3 text-base font-bold inline-flex items-center gap-2"
-              >
-                Start Free Trial <ArrowRight size={16} />
-              </motion.button>
-            </Link>
-            <p className="text-[11px] text-os-text-dim mt-4">
-              No credit card · Cancel any time · Setup in 5 minutes
-            </p>
-          </div>
+      <section className="max-w-5xl mx-auto px-6 py-24">
+        <div className="rounded-lg border border-os-border p-16 text-center">
+          <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
+            Put your business <span className="text-brass">on autopilot.</span>
+          </h2>
+          <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
+            Join the Indian SMBs already using KROVA.
+          </p>
+          <Link href="/signup">
+            <span className="os-button os-button-primary px-8 py-3 text-sm inline-flex">
+              Start free trial <ArrowRight size={16} />
+            </span>
+          </Link>
+          <p className="text-[11px] text-os-text-dim mt-4">No credit card · Cancel any time · Setup in 5 minutes</p>
         </div>
       </section>
 
-      <footer className="py-10 px-6 border-t border-os-border text-center relative z-10">
-        <p className="text-[10px] font-mono text-os-text-dim uppercase tracking-[0.3em]">
-          KROVA × AQIROX // PRICING
-        </p>
-      </footer>
-
-      {/* Fixed background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <AnimatedGridPattern
-          numSquares={28}
-          maxOpacity={0.06}
-          duration={3}
-          className="[mask-image:radial-gradient(700px_circle_at_center,white,transparent)]"
-        />
-        <Particles className="absolute inset-0" quantity={50} ease={80} color="#ffffff" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-violet-500/10 blur-[150px] rounded-full" />
-      </div>
+      <SiteFooter />
     </div>
-  );
-}
-
-function PlanInner({
-  plan,
-  annual,
-}: {
-  plan: (typeof PLANS)[number];
-  annual: boolean;
-}) {
-  return (
-    <>
-      <div className="h-9 border-b border-os-border bg-os-bg/50 flex items-center px-4">
-        <div className="flex gap-1.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${plan.highlight ? "bg-white/40" : "bg-os-border"}`} />
-          <div className="w-2.5 h-2.5 rounded-full bg-os-border" />
-          <div className="w-2.5 h-2.5 rounded-full bg-os-border" />
-        </div>
-        <span className="mx-auto text-[10px] font-mono text-os-text-dim uppercase tracking-widest">
-          {plan.name}
-          {plan.badge && <span className="text-emerald-400 ml-2">· {plan.badge}</span>}
-        </span>
-      </div>
-      <div className="p-6 flex flex-col">
-        <div className="mb-6 pb-6 border-b border-os-border">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-2">
-            {plan.tagline}
-          </p>
-          <div className="flex items-end gap-1 mb-2">
-            <span className="text-4xl font-bold tracking-tight">
-              {annual ? plan.price.annual : plan.price.monthly}
-            </span>
-            <span className="text-os-text-dim text-sm mb-1">/month</span>
-          </div>
-          {annual && (
-            <p className="text-[10px] text-emerald-400 font-bold">Billed annually · Save 20%</p>
-          )}
-          <p className="text-xs text-os-text-dim mt-2 leading-relaxed">{plan.desc}</p>
-        </div>
-
-        <ul className="space-y-2.5 flex-1 mb-6">
-          {plan.features.map((f) => (
-            <li key={f.text} className="flex items-start gap-2.5">
-              {f.included ? (
-                <Check size={12} className="mt-0.5 shrink-0 text-emerald-400" />
-              ) : (
-                <X size={12} className="mt-0.5 shrink-0 text-os-border" />
-              )}
-              <span
-                className={`text-xs leading-relaxed ${f.included ? "text-white" : "text-os-border line-through"}`}
-              >
-                {f.text}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <Link href={plan.href}>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-              plan.highlight
-                ? "bg-white text-black hover:bg-white/90"
-                : "border border-os-border text-white hover:border-os-border-bright hover:bg-white/5"
-            }`}
-          >
-            {plan.cta} <ArrowRight size={12} />
-          </motion.button>
-        </Link>
-      </div>
-    </>
   );
 }

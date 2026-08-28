@@ -1,113 +1,68 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Sun, Sparkles } from "lucide-react";
-import { TypingAnimation } from "@/components/magicui/typing-animation";
 
 const MESSAGES = [
   {
-    from: "KROVA",
-    time: "8:00 AM",
-    body: "☀️ Good morning! Your briefing for today:",
+    body: "Good morning. Your briefing for today:",
     accent: true,
   },
   {
-    from: "KROVA",
-    time: "8:00 AM",
-    body: "🔥 3 hot leads need replies today:\n• Priya D. — asked pricing twice\n• Rahul M. — ready to book\n• Anjali — wants demo",
+    body: "3 hot leads need replies today:\nPriya D. — asked pricing twice\nRahul M. — ready to book\nAnjali — wants a demo",
   },
   {
-    from: "KROVA",
-    time: "8:01 AM",
-    body: "⚠️ 2 going cold: Vikram & Sneha (4+ days silent)",
+    body: "2 going cold: Vikram & Sneha (4+ days silent)",
   },
   {
-    from: "KROVA",
-    time: "8:01 AM",
-    body: "💰 ₹47,000 in unpaid quotes — I can send reminders. Reply ✅ to approve.",
+    body: "₹47,000 in unpaid quotes — reply YES to send reminders.",
   },
 ];
 
 export function PhoneBriefing() {
   return (
     <div className="relative mx-auto w-[280px]">
-      <div className="relative rounded-[2.5rem] border-8 border-os-card bg-os-bg shadow-2xl overflow-hidden">
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-os-card rounded-b-2xl z-20" />
+      <div className="relative rounded-[2rem] border border-os-border bg-os-card overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-os-bg rounded-b-xl z-20" />
 
-        {/* WhatsApp-ish header */}
-        <div className="bg-seal/15 border-b border-seal/20 px-4 pt-10 pb-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-seal/20 flex items-center justify-center">
-            <Sparkles size={16} className="text-seal-bright" />
+        <div className="border-b border-os-border px-4 pt-9 pb-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full border border-os-border flex items-center justify-center">
+            <span className="font-serif text-xs text-brass">K</span>
           </div>
           <div>
-            <div className="text-xs font-bold text-white">KROVA</div>
-            <div className="text-[9px] text-seal-bright">online · your AI analyst</div>
+            <div className="text-xs font-semibold text-os-ink">KROVA</div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-os-text-dim">
+              8:00 AM · Daily briefing
+            </div>
           </div>
         </div>
 
-        {/* Chat body */}
-        <div
-          className="px-3 py-4 space-y-3 h-[460px] overflow-hidden"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)",
-            backgroundSize: "12px 12px",
-          }}
-        >
+        <div className="px-3 py-4 space-y-3 h-[420px] bg-os-bg/60">
           {MESSAGES.map((m, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.4 }}
-              className="max-w-[88%]"
+              transition={{ delay: i * 0.15, duration: 0.4 }}
+              className="max-w-[90%]"
             >
               <div
-                className={`rounded-2xl rounded-bl-sm px-3 py-2 text-[11px] whitespace-pre-line shadow ${
+                className={`rounded-lg rounded-bl-sm px-3 py-2 text-[11px] leading-relaxed whitespace-pre-line border ${
                   m.accent
-                    ? "bg-seal/15 border border-seal/30"
-                    : "bg-os-card border border-os-border"
+                    ? "border-brass/30 bg-brass/[0.06] text-os-ink"
+                    : "border-os-border bg-os-card text-os-ink/90"
                 }`}
               >
-                {i === 0 ? (
-                  <TypingAnimation text={m.body} duration={30} />
-                ) : (
-                  <span className="text-white/95 leading-relaxed">{m.body}</span>
-                )}
-                <div className="text-[8px] text-os-text-dim mt-1 text-right">{m.time}</div>
+                {m.body}
               </div>
             </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Glow */}
-      <div className="absolute -inset-8 bg-seal/10 blur-3xl rounded-full -z-10" />
-
-      {/* Floating badge */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.6 }}
-        className="absolute -right-12 top-20 px-3 py-2 rounded-xl bg-os-card border border-os-border shadow-xl flex items-center gap-2"
-      >
-        <Sun size={14} className="text-brass" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">8 AM IST</span>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.9 }}
-        className="absolute -left-10 bottom-32 px-3 py-2 rounded-xl bg-os-card border border-os-border shadow-xl flex items-center gap-2"
-      >
-        <div className="w-1.5 h-1.5 rounded-full bg-seal animate-pulse" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Delivered</span>
-      </motion.div>
+      <div className="absolute -right-8 top-16 px-2.5 py-1.5 rounded-md border border-os-border bg-os-card text-[9px] font-mono uppercase tracking-widest text-os-text-dim">
+        8 AM IST
+      </div>
     </div>
   );
 }
