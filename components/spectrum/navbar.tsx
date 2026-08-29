@@ -396,7 +396,7 @@ export function Navbar() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="md:hidden fixed top-[76px] left-0 w-full z-40 px-6"
+            className="md:hidden fixed top-[88px] left-0 w-full z-40 px-6"
           >
             <div className="relative rounded-2xl border border-os-border bg-os-bg/95 backdrop-blur-2xl shadow-2xl overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal/60 to-transparent" />
