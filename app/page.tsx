@@ -423,9 +423,12 @@ export default function Hero() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-os-border border border-os-border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {INTELLIGENCE_CARDS.map((card) => (
-              <div key={card.name} className="bg-os-bg p-8">
+              <div
+                key={card.name}
+                className="rounded-xl border border-os-border bg-os-bg p-8 transition-colors duration-300 hover:border-os-border-bright"
+              >
                 <div className="flex items-center justify-between mb-6">
                   <div className="w-9 h-9 rounded-md border border-os-border flex items-center justify-center">
                     {card.icon}
