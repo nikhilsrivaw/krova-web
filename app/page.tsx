@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
+import { useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
@@ -198,11 +198,6 @@ function HeroCreature() {
 }
 
 export default function Hero() {
-  useEffect(() => {
-    document.body.classList.add("landing-grain");
-    return () => document.body.classList.remove("landing-grain");
-  }, []);
-
   return (
     <div className="bg-os-bg min-h-screen relative">
       <Navbar />
