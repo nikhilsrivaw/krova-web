@@ -355,7 +355,7 @@ export default function Hero() {
       <section className="relative border-y border-os-border py-12 overflow-hidden">
         <div className="text-center mb-6">
           <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright">
-            Connects with
+            Everything, in one place
           </span>
         </div>
         <Marquee
