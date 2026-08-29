@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { TrendingUp, Flame, Snowflake, IndianRupee, Sparkles } from "lucide-react";
+import {
+  TrendingUp,
+  Flame,
+  Snowflake,
+  IndianRupee,
+  Sparkles,
+  Wifi,
+  BatteryFull,
+  SignalHigh,
+  Home,
+  Sun,
+  MessageCircle,
+  Activity,
+} from "lucide-react";
 
 /** A small SVG donut used for health/portfolio scores — center text stays upright. */
 function RadialProgress({
@@ -35,53 +48,93 @@ function RadialProgress({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 4px ${color}66)` }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[12px] font-bold text-os-ink">{value}</span>
+        <span className="text-[13px] font-bold text-os-ink">{value}</span>
       </div>
     </div>
   );
 }
 
+/** Circular tinted icon chip — the "icon badge" every stat/list row uses. */
+function IconBadge({
+  icon,
+  tint,
+  size = 30,
+}: {
+  icon: React.ReactNode;
+  tint: string;
+  size?: number;
+}) {
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-full ${tint}`}
+      style={{ width: size, height: size }}
+    >
+      {icon}
+    </div>
+  );
+}
+
+/** Gradient-filled initial avatar with a tiny status dot. */
+function Avatar({ letter, from, to, dot }: { letter: string; from: string; to: string; dot: string }) {
+  return (
+    <div className="relative shrink-0">
+      <div
+        className="flex size-9 items-center justify-center rounded-full text-[12px] font-bold text-white shadow-md"
+        style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      >
+        {letter}
+      </div>
+      <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-os-card ${dot}`} />
+    </div>
+  );
+}
+
 const STATS = [
-  { label: "Hot leads", value: "3", icon: <Flame size={13} className="text-thread-bright" />, tint: "border-thread/30 bg-thread/[0.06]" },
-  { label: "Going cold", value: "2", icon: <Snowflake size={13} className="text-os-text-dim" />, tint: "border-os-border bg-os-card" },
-  { label: "Revenue risk", value: "₹47k", icon: <IndianRupee size={13} className="text-thread-bright" />, tint: "border-thread/30 bg-thread/[0.06]" },
-  { label: "Drafts ready", value: "5", icon: <Sparkles size={13} className="text-teal" />, tint: "border-teal/30 bg-teal/[0.06]" },
+  { label: "Hot leads", value: "3", icon: <Flame size={14} className="text-thread-bright" />, tint: "bg-thread/15", card: "border-thread/30 bg-thread/[0.06]" },
+  { label: "Going cold", value: "2", icon: <Snowflake size={14} className="text-os-text-dim" />, tint: "bg-os-border", card: "border-os-border bg-os-card" },
+  { label: "Revenue risk", value: "₹47k", icon: <IndianRupee size={14} className="text-thread-bright" />, tint: "bg-thread/15", card: "border-thread/30 bg-thread/[0.06]" },
+  { label: "Drafts ready", value: "5", icon: <Sparkles size={14} className="text-teal" />, tint: "bg-teal/15", card: "border-teal/30 bg-teal/[0.06]" },
 ];
 
 const WEEK_BARS = [40, 65, 50, 80, 60, 90, 70];
 
 function DashboardScreen() {
   return (
-    <div className="space-y-3">
-      <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+    <div className="space-y-3.5">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
         Good morning
       </div>
-      <div className="flex items-center gap-4 rounded-xl border border-os-border bg-os-card p-4">
+      <div className="flex items-center gap-4 rounded-xl border border-os-border bg-os-card p-4 shadow-sm">
         <RadialProgress value={78} />
         <div>
-          <div className="text-[11px] font-semibold text-os-ink">Portfolio health</div>
+          <div className="text-[12px] font-semibold text-os-ink">Portfolio health</div>
           <div className="text-[10px] text-os-text-dim">78/100 · trending up</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         {STATS.map((s) => (
-          <div key={s.label} className={`rounded-lg border p-2.5 ${s.tint}`}>
-            {s.icon}
-            <div className="mt-1.5 text-[15px] font-bold leading-none text-os-ink">{s.value}</div>
-            <div className="mt-1 text-[9px] text-os-text-dim">{s.label}</div>
+          <div key={s.label} className={`rounded-xl border p-3 shadow-sm ${s.card}`}>
+            <IconBadge icon={s.icon} tint={s.tint} />
+            <div className="mt-2 text-[17px] font-bold leading-none text-os-ink">{s.value}</div>
+            <div className="mt-1 text-[9.5px] text-os-text-dim">{s.label}</div>
           </div>
         ))}
       </div>
-      <div className="rounded-lg border border-os-border bg-os-card p-3">
-        <div className="mb-2 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+      <div className="rounded-xl border border-os-border bg-os-card p-3.5 shadow-sm">
+        <div className="mb-2.5 font-mono text-[9.5px] uppercase tracking-widest text-os-text-dim">
           Messages this week
         </div>
-        <div className="flex h-10 items-end gap-1.5">
+        <div className="flex h-11 items-end gap-1.5">
           {WEEK_BARS.map((h, i) => (
-            <div key={i} className="flex-1 rounded-t bg-teal/70" style={{ height: `${h}%` }} />
+            <div
+              key={i}
+              className="flex-1 rounded-t-sm bg-gradient-to-t from-teal/40 to-teal"
+              style={{ height: `${h}%` }}
+            />
           ))}
         </div>
       </div>
@@ -91,33 +144,33 @@ function DashboardScreen() {
 
 function BriefingScreen() {
   return (
-    <div className="space-y-3">
-      <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+    <div className="space-y-3.5">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
         8:00 AM · Daily briefing
       </div>
       <div className="flex gap-1.5">
-        <span className="rounded-full border border-thread/30 bg-thread/[0.06] px-2 py-1 font-mono text-[9px] font-bold text-thread-bright">
+        <span className="rounded-full border border-thread/30 bg-thread/[0.06] px-2.5 py-1 font-mono text-[9.5px] font-bold text-thread-bright">
           3 HOT
         </span>
-        <span className="rounded-full border border-os-border bg-os-card px-2 py-1 font-mono text-[9px] font-bold text-os-text-dim">
+        <span className="rounded-full border border-os-border bg-os-card px-2.5 py-1 font-mono text-[9.5px] font-bold text-os-text-dim">
           2 COLD
         </span>
-        <span className="rounded-full border border-teal/30 bg-teal/[0.06] px-2 py-1 font-mono text-[9px] font-bold text-teal-bright">
+        <span className="rounded-full border border-teal/30 bg-teal/[0.06] px-2.5 py-1 font-mono text-[9.5px] font-bold text-teal-bright">
           ₹47K
         </span>
       </div>
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-teal/30 bg-teal/[0.06]">
-          <span className="font-serif text-[9px] text-teal">K</span>
+      <div className="flex items-start gap-2.5">
+        <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-teal/30 bg-teal/[0.06] shadow-sm">
+          <span className="font-serif text-[10px] text-teal">K</span>
         </div>
-        <div className="rounded-lg rounded-bl-sm border border-teal/30 bg-teal/[0.06] px-3 py-2 text-[11px] leading-relaxed text-os-ink">
+        <div className="rounded-xl rounded-bl-sm border border-teal/30 bg-teal/[0.06] px-3.5 py-2.5 text-[12px] leading-relaxed text-os-ink shadow-sm">
           Good morning. 3 hot leads need replies today.
         </div>
       </div>
-      <div className="ml-7 rounded-lg rounded-bl-sm border border-os-border bg-os-card px-3 py-2 text-[11px] leading-relaxed text-os-ink/90">
+      <div className="ml-8 rounded-xl rounded-bl-sm border border-os-border bg-os-card px-3.5 py-2.5 text-[12px] leading-relaxed text-os-ink/90 shadow-sm">
         2 going cold: Vikram &amp; Sneha (4+ days silent)
       </div>
-      <div className="ml-7 rounded-lg rounded-bl-sm border border-os-border bg-os-card px-3 py-2 text-[11px] leading-relaxed text-os-ink/90">
+      <div className="ml-8 rounded-xl rounded-bl-sm border border-os-border bg-os-card px-3.5 py-2.5 text-[12px] leading-relaxed text-os-ink/90 shadow-sm">
         ₹47,000 in unpaid quotes — reply YES to send reminders.
       </div>
     </div>
@@ -125,44 +178,39 @@ function BriefingScreen() {
 }
 
 const CONVERSATIONS = [
-  { name: "Priya D.", note: "Asked for pricing twice", tag: "HOT", tagColor: "text-thread-bright", ring: "bg-thread/15", dot: "bg-thread" },
-  { name: "Rahul M.", note: "Ready to book a demo", tag: "READY", tagColor: "text-seal-bright", ring: "bg-seal/15", dot: "bg-seal" },
-  { name: "Vikram S.", note: "No reply in 4 days", tag: "COLD", tagColor: "text-os-text-dim", ring: "bg-os-border", dot: "bg-os-border-bright" },
-  { name: "Anjali K.", note: "Wants a callback", tag: "HOT", tagColor: "text-thread-bright", ring: "bg-thread/15", dot: "bg-thread" },
+  { name: "Priya D.", note: "Asked for pricing twice", tag: "HOT", tagColor: "text-thread-bright", from: "#D0655A", to: "#8A362F", dot: "bg-thread" },
+  { name: "Rahul M.", note: "Ready to book a demo", tag: "READY", tagColor: "text-seal-bright", from: "#79AB90", to: "#466B58", dot: "bg-seal" },
+  { name: "Vikram S.", note: "No reply in 4 days", tag: "COLD", tagColor: "text-os-text-dim", from: "#3D3D3D", to: "#1A1A1A", dot: "bg-os-border-bright" },
+  { name: "Anjali K.", note: "Wants a callback", tag: "HOT", tagColor: "text-thread-bright", from: "#D0655A", to: "#8A362F", dot: "bg-thread" },
 ];
 
 function ConversationsScreen() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3.5">
       <div className="flex items-center gap-1.5">
         {["All", "Hot", "Cold"].map((t, i) => (
           <span
             key={t}
-            className={`rounded-full px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-wider ${
-              i === 0 ? "bg-teal text-os-bg" : "border border-os-border text-os-text-dim"
+            className={`rounded-full px-3 py-1 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+              i === 0 ? "bg-teal text-os-bg shadow-sm" : "border border-os-border text-os-text-dim"
             }`}
           >
             {t}
           </span>
         ))}
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {CONVERSATIONS.map((c) => (
           <div
             key={c.name}
-            className="flex items-center gap-2.5 rounded-lg border border-os-border bg-os-card px-3 py-2.5"
+            className="flex items-center gap-3 rounded-xl border border-os-border bg-os-card px-3.5 py-3 shadow-sm"
           >
-            <div
-              className={`relative flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-os-ink ${c.ring}`}
-            >
-              {c.name[0]}
-              <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-os-card ${c.dot}`} />
-            </div>
+            <Avatar letter={c.name[0]} from={c.from} to={c.to} dot={c.dot} />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[11px] font-medium text-os-ink">{c.name}</div>
+              <div className="truncate text-[12px] font-medium text-os-ink">{c.name}</div>
               <div className="truncate text-[10px] text-os-text-dim">{c.note}</div>
             </div>
-            <span className={`shrink-0 font-mono text-[9px] font-bold tracking-wider ${c.tagColor}`}>{c.tag}</span>
+            <span className={`shrink-0 font-mono text-[9.5px] font-bold tracking-wider ${c.tagColor}`}>{c.tag}</span>
           </div>
         ))}
       </div>
@@ -177,36 +225,36 @@ const CUSTOMERS = [
 
 function IntelligenceScreen() {
   return (
-    <div className="space-y-3">
-      <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+    <div className="space-y-3.5">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
         Customer intelligence
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-lg border border-seal/30 bg-seal/[0.06] p-2 text-center">
-          <div className="text-[15px] font-bold text-seal-bright">24</div>
-          <div className="text-[8px] text-os-text-dim">Healthy</div>
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className="rounded-xl border border-seal/30 bg-seal/[0.06] p-2.5 text-center shadow-sm">
+          <div className="text-[17px] font-bold text-seal-bright">24</div>
+          <div className="text-[8.5px] text-os-text-dim">Healthy</div>
         </div>
-        <div className="rounded-lg border border-thread/30 bg-thread/[0.06] p-2 text-center">
-          <div className="text-[15px] font-bold text-thread-bright">3</div>
-          <div className="text-[8px] text-os-text-dim">At risk</div>
+        <div className="rounded-xl border border-thread/30 bg-thread/[0.06] p-2.5 text-center shadow-sm">
+          <div className="text-[17px] font-bold text-thread-bright">3</div>
+          <div className="text-[8.5px] text-os-text-dim">At risk</div>
         </div>
-        <div className="rounded-lg border border-os-border bg-os-card p-2 text-center">
-          <div className="text-[15px] font-bold text-os-ink">1</div>
-          <div className="text-[8px] text-os-text-dim">Churned</div>
+        <div className="rounded-xl border border-os-border bg-os-card p-2.5 text-center shadow-sm">
+          <div className="text-[17px] font-bold text-os-ink">1</div>
+          <div className="text-[8.5px] text-os-text-dim">Churned</div>
         </div>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {CUSTOMERS.map((c) => (
-          <div key={c.name} className="flex items-center gap-3 rounded-lg border border-os-border bg-os-card p-3">
-            <RadialProgress value={c.score} size={38} strokeWidth={4} color={c.color} />
+          <div key={c.name} className="flex items-center gap-3.5 rounded-xl border border-os-border bg-os-card p-3.5 shadow-sm">
+            <RadialProgress value={c.score} size={42} strokeWidth={4.5} color={c.color} />
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-semibold text-os-ink">{c.name}</div>
-              <div className={`font-mono text-[9px] uppercase tracking-widest ${c.statusColor}`}>{c.status}</div>
+              <div className="text-[12px] font-semibold text-os-ink">{c.name}</div>
+              <div className={`font-mono text-[9.5px] uppercase tracking-widest ${c.statusColor}`}>{c.status}</div>
             </div>
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 text-[10px] text-os-text-dim">
+      <div className="flex items-center gap-2 text-[10.5px] text-os-text-dim">
         <TrendingUp size={12} className="shrink-0 text-teal" /> Energy trending up this week
       </div>
     </div>
@@ -223,41 +271,41 @@ const LEAK_BARS = [30, 45, 35, 55, 40, 65, 50];
 
 function RevenueScreen() {
   return (
-    <div className="space-y-3">
-      <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+    <div className="space-y-3.5">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
         Revenue leaks
       </div>
-      <div className="rounded-xl border border-thread/30 bg-thread/[0.06] p-4">
+      <div className="rounded-xl border border-thread/30 bg-thread/[0.06] p-4 shadow-sm">
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-[22px] font-bold leading-none text-thread-bright">₹47,000</div>
-            <div className="mt-1 text-[10px] text-os-text-dim">stuck in unpaid quotes</div>
+            <div className="text-[24px] font-bold leading-none text-thread-bright">₹47,000</div>
+            <div className="mt-1.5 text-[10px] text-os-text-dim">stuck in unpaid quotes</div>
           </div>
-          <span className="flex items-center gap-0.5 rounded-full bg-thread/15 px-2 py-1 font-mono text-[9px] font-bold text-thread-bright">
+          <span className="flex items-center gap-0.5 rounded-full bg-thread/15 px-2 py-1 font-mono text-[9.5px] font-bold text-thread-bright">
             <TrendingUp size={10} /> +12%
           </span>
         </div>
-        <div className="mt-3 flex h-8 items-end gap-1">
+        <div className="mt-3.5 flex h-9 items-end gap-1">
           {LEAK_BARS.map((h, i) => (
-            <div key={i} className="flex-1 rounded-t bg-thread/50" style={{ height: `${h}%` }} />
+            <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-thread/30 to-thread" style={{ height: `${h}%` }} />
           ))}
         </div>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {QUOTES.map((q) => (
           <div
             key={q.name}
-            className="flex items-center justify-between rounded-lg border border-os-border bg-os-card px-3 py-2.5"
+            className="flex items-center justify-between rounded-xl border border-os-border bg-os-card px-3.5 py-3 shadow-sm"
           >
             <div className="min-w-0">
-              <div className="truncate text-[11px] font-medium text-os-ink">{q.name}</div>
+              <div className="truncate text-[12px] font-medium text-os-ink">{q.name}</div>
               <div className="text-[10px] text-os-text-dim">{q.overdue}</div>
             </div>
-            <span className="shrink-0 font-mono text-[10px] font-bold text-thread-bright">{q.amount}</span>
+            <span className="shrink-0 font-mono text-[10.5px] font-bold text-thread-bright">{q.amount}</span>
           </div>
         ))}
       </div>
-      <button className="w-full rounded-lg bg-teal py-2 text-[11px] font-semibold text-os-bg">
+      <button className="w-full rounded-xl bg-teal py-2.5 text-[12px] font-semibold text-os-bg shadow-sm">
         Send reminders
       </button>
     </div>
@@ -265,19 +313,21 @@ function RevenueScreen() {
 }
 
 const SCREENS = [
-  { id: "dashboard", label: "Overview", node: <DashboardScreen /> },
-  { id: "briefing", label: "Briefing", node: <BriefingScreen /> },
-  { id: "conversations", label: "Inbox", node: <ConversationsScreen /> },
-  { id: "intelligence", label: "Health", node: <IntelligenceScreen /> },
-  { id: "revenue", label: "Revenue", node: <RevenueScreen /> },
+  { id: "dashboard", label: "Overview", tabIcon: <Home size={17} />, node: <DashboardScreen /> },
+  { id: "briefing", label: "Briefing", tabIcon: <Sun size={17} />, node: <BriefingScreen /> },
+  { id: "conversations", label: "Inbox", tabIcon: <MessageCircle size={17} />, node: <ConversationsScreen /> },
+  { id: "intelligence", label: "Health", tabIcon: <Activity size={17} />, node: <IntelligenceScreen /> },
+  { id: "revenue", label: "Revenue", tabIcon: <IndianRupee size={17} />, node: <RevenueScreen /> },
 ];
 
 const AUTOPLAY_MS = 4000;
 
 /**
  * A single phone frame cycling through several KROVA product screens —
- * demo-reel style, not a static screenshot. Auto-advances, pauses on hover,
- * and the dots below double as manual controls.
+ * demo-reel style, not a static screenshot. Real app chrome (status bar,
+ * bottom tab bar) instead of a generic carousel, so it reads as product UI
+ * rather than a slideshow. Auto-advances, pauses on hover; the tab bar
+ * doubles as manual navigation.
  */
 export function PhoneCarousel() {
   const [active, setActive] = useState(0);
@@ -300,7 +350,17 @@ export function PhoneCarousel() {
           <span className="size-1.5 animate-pulse rounded-full bg-teal" />
         </div>
 
-        <div className="flex items-center justify-between border-b border-os-border px-4 pb-3 pt-9">
+        {/* Status bar */}
+        <div className="flex items-center justify-between px-5 pb-1 pt-2.5 text-os-ink">
+          <span className="text-[11px] font-semibold tabular-nums">9:41</span>
+          <div className="flex items-center gap-1.5">
+            <SignalHigh size={12} />
+            <Wifi size={12} />
+            <BatteryFull size={14} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-b border-os-border px-4 pb-3 pt-1.5">
           <div className="flex items-center gap-2">
             <div className="flex size-7 items-center justify-center rounded-full border border-os-border">
               <span className="font-serif text-[10px] text-teal">K</span>
@@ -312,7 +372,7 @@ export function PhoneCarousel() {
           </span>
         </div>
 
-        <div className="relative h-[440px] overflow-hidden bg-os-bg/60">
+        <div className="relative h-[400px] overflow-hidden bg-os-bg/60">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-teal/10 to-transparent" />
           <AnimatePresence mode="wait">
             <motion.div
@@ -321,25 +381,32 @@ export function PhoneCarousel() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.35 }}
-              className="absolute inset-0 px-3 py-4"
+              className="absolute inset-0 px-3.5 py-4"
             >
               {SCREENS[active].node}
             </motion.div>
           </AnimatePresence>
         </div>
-      </div>
 
-      <div className="mt-5 flex items-center justify-center gap-1.5">
-        {SCREENS.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => setActive(i)}
-            aria-label={`Show ${s.label} screen`}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === active ? "w-6 bg-teal" : "w-1.5 bg-os-border hover:bg-os-border-bright"
-            }`}
-          />
-        ))}
+        {/* Bottom tab bar */}
+        <div className="flex items-center justify-around border-t border-os-border bg-os-card/80 px-2 py-3 backdrop-blur">
+          {SCREENS.map((s, i) => {
+            const isActive = active === i;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActive(i)}
+                aria-label={`Show ${s.label} screen`}
+                className={`flex flex-col items-center gap-1 rounded-lg px-2.5 py-1 transition-colors duration-300 ${
+                  isActive ? "text-teal" : "text-os-text-dim hover:text-os-ink"
+                }`}
+              >
+                {s.tabIcon}
+                {isActive && <span className="size-1 rounded-full bg-teal" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
