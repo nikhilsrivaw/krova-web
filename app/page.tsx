@@ -439,7 +439,7 @@ export default function Hero() {
               width={1354}
               height={1162}
               quality={95}
-              className="absolute left-0 -top-[7.5rem] sm:-top-[9.25rem] md:-top-[11rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
+              className="absolute left-0 -top-[6.75rem] sm:-top-[8.5rem] md:-top-[10.25rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
             />
             <Eyebrow>Intelligence layer</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
