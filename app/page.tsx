@@ -407,8 +407,22 @@ export default function Hero() {
               ))}
             </ul>
           </div>
-          <div>
+          <div className="relative flex justify-center">
             <PhoneCarousel />
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -right-4 bottom-4 z-0 sm:-right-10 md:-right-20"
+            >
+              <Image
+                src="/images/detective-mascot.webp"
+                alt="KROVA's mascot, in a detective hat, investigating the briefing with a magnifying glass"
+                width={1086}
+                height={1448}
+                quality={95}
+                className="w-[130px] sm:w-[170px] md:w-[200px] h-auto select-none pointer-events-none drop-shadow-2xl"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
