@@ -408,19 +408,21 @@ export default function Hero() {
             </ul>
           </div>
           <div className="relative flex justify-center">
-            <PhoneCarousel />
+            <div className="relative z-10">
+              <PhoneCarousel />
+            </div>
             <motion.div
-              animate={{ y: [0, -8, 0] }}
+              animate={{ y: [0, -6, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-4 bottom-4 z-0 sm:-right-10 md:-right-20"
+              className="absolute -top-[9.25rem] left-1/2 -translate-x-[42%] z-0 sm:-top-[11.25rem] md:-top-[12.7rem]"
             >
               <Image
-                src="/images/detective-mascot.webp"
-                alt="KROVA's mascot, in a detective hat, investigating the briefing with a magnifying glass"
-                width={1086}
-                height={1448}
+                src="/images/detective-mascot-lean.webp"
+                alt="KROVA's mascot, in a detective hat, leaning over the phone to investigate the briefing with a magnifying glass"
+                width={1254}
+                height={1254}
                 quality={95}
-                className="w-[130px] sm:w-[170px] md:w-[200px] h-auto select-none pointer-events-none drop-shadow-2xl"
+                className="w-[190px] sm:w-[230px] md:w-[260px] h-auto select-none pointer-events-none drop-shadow-2xl"
               />
             </motion.div>
           </div>
