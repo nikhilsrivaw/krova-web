@@ -301,6 +301,29 @@ export default function SettingsPage() {
     }
   };
 
+  // Temporary - manual Instagram send test for the App Review screencast,
+  // since no general Instagram inbox/composer UI exists yet and the recipient
+  // IGSID has to be typed in by hand (no read path works pre-Advanced-Access
+  // to look it up automatically). Remove once a real Instagram inbox ships.
+  const [igSendTo, setIgSendTo] = useState("");
+  const [igSendBody, setIgSendBody] = useState("");
+  const [igSending, setIgSending] = useState(false);
+  const [igSendResult, setIgSendResult] = useState<string | null>(null);
+
+  const handleSendInstagramTest = async () => {
+    if (!igSendTo.trim() || !igSendBody.trim()) return;
+    setIgSending(true);
+    setIgSendResult(null);
+    try {
+      const res = await channels.sendInstagramText(igSendTo.trim(), igSendBody.trim());
+      setIgSendResult(res?.sent ? `Sent - message id ${res.message_id}` : "Send did not confirm");
+    } catch (err) {
+      setIgSendResult(err instanceof Error ? err.message : "Could not send message.");
+    } finally {
+      setIgSending(false);
+    }
+  };
+
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
 
@@ -583,6 +606,41 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            {igConnection && (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <p className="text-[11px] text-os-text-dim font-mono">
+                  Test send (temporary - App Review screencast, no inbox UI yet).
+                  Recipient is an Instagram-scoped id (IGSID), not a username.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={igSendTo}
+                    onChange={(e) => setIgSendTo(e.target.value)}
+                    placeholder="Recipient IGSID"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                  <input
+                    type="text"
+                    value={igSendBody}
+                    onChange={(e) => setIgSendBody(e.target.value)}
+                    placeholder="Message text"
+                    className="flex-[2] px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendInstagramTest}
+                    disabled={igSending || !igSendTo.trim() || !igSendBody.trim()}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                  >
+                    {igSending ? "Sending…" : "Send"}
+                  </button>
+                </div>
+                {igSendResult && (
+                  <p className="text-[11px] text-os-text-dim font-mono">{igSendResult}</p>
+                )}
+              </div>
+            )}
           </div>
         </GlassCard>
 

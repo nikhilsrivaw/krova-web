@@ -534,6 +534,10 @@ export const channels = {
       variables,
     }),
 
+  /** `to` is the recipient's Instagram-scoped id (IGSID), not a username. */
+  sendInstagramText: (to: string, body: string) =>
+    api.post<SendResult>("/messages/instagram/text", { to, body }),
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
