@@ -18,6 +18,7 @@ import {
   Briefcase,
 } from "lucide-react";
 
+import { BorderBeam } from "@/components/magicui/border-beam";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
@@ -327,6 +328,27 @@ export default function Hero() {
             <HeroCreature />
           </motion.div>
         </div>
+      </section>
+
+      {/* SHOWCASE */}
+      <section className="max-w-6xl mx-auto px-0 sm:px-6 pb-20 md:pb-28">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={{ duration: 0.6 }}
+          className="relative sm:rounded-2xl overflow-hidden border-y sm:border border-os-border shadow-2xl"
+        >
+          <Image
+            src="/images/krova-showcase.webp"
+            alt="KROVA reads WhatsApp, Instagram, Gmail and Outlook conversations in one place and surfaces hot leads, customers going cold, revenue leaks, and AI-drafted replies"
+            width={1448}
+            height={1086}
+            className="w-full h-auto block"
+            sizes="(max-width: 1152px) 100vw, 1152px"
+          />
+          <BorderBeam size={250} duration={10} colorFrom="#5EEAD4" colorTo="#00A387" />
+        </motion.div>
       </section>
 
       {/* HOW IT WORKS */}
