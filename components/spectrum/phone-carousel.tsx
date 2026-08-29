@@ -155,7 +155,9 @@ export function PhoneCarousel() {
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
-        <div className="absolute left-1/2 top-0 z-20 h-5 w-20 -translate-x-1/2 rounded-b-xl bg-os-bg" />
+        <div className="absolute left-1/2 top-0 z-20 flex h-5 w-20 -translate-x-1/2 items-center justify-end rounded-b-xl bg-os-bg pr-3">
+          <span className="size-1.5 animate-pulse rounded-full bg-teal" />
+        </div>
 
         <div className="flex items-center justify-between border-b border-os-border px-4 pb-3 pt-9">
           <div className="flex items-center gap-2">
@@ -196,10 +198,6 @@ export function PhoneCarousel() {
             }`}
           />
         ))}
-      </div>
-
-      <div className="absolute -right-8 top-16 rounded-md border border-os-border bg-os-card px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
-        8 AM IST
       </div>
     </div>
   );
