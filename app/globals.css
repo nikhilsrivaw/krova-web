@@ -5,24 +5,31 @@
    * The khata palette. KROVA's real differentiator is a two-way commitment
    * ledger - functionally a digital khata, the credit/debit notebook every
    * Indian SMB owner already keeps. This is ink on dark paper, not a
-   * generic SaaS dark-mode: warmer and less blue than pure black, with a
+   * generic SaaS dark-mode: a solid neutral gray/black (no blue tint), with a
    * brass accent standing in for the stamp/seal on a real ledger entry
    * rather than a neon "AI product" glow.
    */
-  --color-os-bg: #14151F;
-  --color-os-card: #1B1C29;
-  --color-os-border: #2A2B3B;
-  --color-os-border-bright: #3D3E52;
-  --color-os-text-dim: #8B899C;
+  --color-os-bg: #121212;
+  --color-os-card: #1A1A1A;
+  --color-os-border: #2B2B2B;
+  --color-os-border-bright: #3D3D3D;
+  --color-os-text-dim: #8F8F8F;
   --color-os-ink: #ECE9E1;
   --color-os-accent: #ECE9E1;
   --color-os-accent-dim: #B5B2C2;
 
   /* Brass: the signature accent - primary actions, the stamp mark, active
-     nav state. Spent in one place, not sprinkled as a generic highlight. */
+     nav state. Spent in one place, not sprinkled as a generic highlight.
+     Used by the internal app (see FRONTEND_MAP.md) - do not repoint this. */
   --color-brass: #C9973F;
   --color-brass-dim: #9C7530;
   --color-brass-bright: #E0B25E;
+
+  /* Teal: the mark color from app/icon.svg. Marketing-site-only accent -
+     replaces brass on the public landing/pricing/legal pages. */
+  --color-teal: #00A387;
+  --color-teal-dim: #007A63;
+  --color-teal-bright: #5EEAD4;
 
   /* Red ledger-thread: exclusively overdue / they_owe / rejected states -
      colour that means something specific, not a generic "danger" red. */
@@ -37,12 +44,12 @@
   --color-seal-bright: #79AB90;
 
   --color-brand-primary: #ECE9E1;
-  --color-brand-secondary: #C9973F;
+  --color-brand-secondary: #00A387;
 
-  --color-aurora-1: #C9973F;
-  --color-aurora-2: #B5473D;
+  --color-aurora-1: #00A387;
+  --color-aurora-2: #5EEAD4;
   --color-aurora-3: #5B8A72;
-  --color-aurora-4: #E0B25E;
+  --color-aurora-4: #007A63;
 
   --animate-border-beam: border-beam calc(var(--duration) * 1s) infinite linear;
   --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
@@ -112,10 +119,28 @@
   }
 
   body {
-    background-color: var(--color-os-bg);
+    position: relative;
+    background:
+      radial-gradient(ellipse 75% 45% at 50% -10%, rgba(255, 255, 255, 0.09), transparent 72%),
+      var(--color-os-bg);
+    background-attachment: fixed;
     color: white;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* A paper grain — ink-on-paper texture for the khata palette, not a
+     generic dark-mode void. Sits behind all real content, fixed so it doesn't
+     scroll/tile visibly (identical on mobile and desktop since it's keyed to
+     the viewport, not page content). */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }
 
@@ -158,6 +183,34 @@
     transform: scale(0.95);
   }
   
+  /* Landing-page CTA only (hero + final CTA) - cream body, teal accent icon
+     and glow. Deliberately separate from .os-button-primary so pricing's
+     buttons stay untouched. */
+  .os-button-cta {
+    background-color: var(--color-os-ink);
+    color: var(--color-os-bg);
+    box-shadow: 0 0 0 1px transparent, 0 8px 24px -10px rgba(0, 163, 135, 0);
+  }
+
+  .os-button-cta svg {
+    color: var(--color-teal);
+    transition: transform 0.2s;
+  }
+
+  .os-button-cta:hover {
+    background-color: white;
+    box-shadow: 0 0 0 1px var(--color-teal-bright), 0 10px 30px -8px rgba(0, 163, 135, 0.45);
+    transform: translateY(-2px);
+  }
+
+  .os-button-cta:hover svg {
+    transform: translateX(2px);
+  }
+
+  .os-button-cta:active {
+    transform: scale(0.97);
+  }
+
   .os-button-secondary {
     background-color: var(--color-os-card);
     border: 1px solid var(--color-os-border);

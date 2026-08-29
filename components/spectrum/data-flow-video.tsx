@@ -1,53 +1,30 @@
-"use client";
-
-import { BorderBeam } from "@/components/magicui/border-beam";
-
 /**
  * "See the data flow" section — an autoplaying, muted, looping product film
  * that walks through how a message travels from any channel into KROVA's
- * unified inbox, the AI brain, and back to the owner. Framed in the OS window
- * chrome so it matches the rest of the site.
+ * unified inbox, the AI brain, and back to the owner.
  */
 export function DataFlowVideo() {
   return (
-    <section className="max-w-6xl mx-auto px-6 py-32 relative">
-      <div className="text-center mb-16">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-os-text-dim mb-4">
+    <section className="max-w-5xl mx-auto px-6 py-28">
+      <div className="mb-12">
+        <div className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright mb-4">
           See the data flow
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-os-ink">
+        <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-4 text-os-ink max-w-xl">
           One message. The whole journey.
         </h2>
-        <p className="text-os-text-dim max-w-xl mx-auto text-lg">
+        <p className="text-os-text-dim max-w-xl leading-relaxed">
           Watch a single WhatsApp, Instagram, Gmail or Outlook message travel into your
           unified inbox, through the AI brain overnight, and back to you as a morning brief.
         </p>
       </div>
 
-      <div className="os-window max-w-5xl mx-auto relative group">
-        <BorderBeam size={300} duration={14} colorFrom="#C9973F" colorTo="#5B8A72" />
-
-        {/* window chrome */}
-        <div className="h-10 border-b border-os-border flex items-center justify-between px-4 bg-os-bg/50">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-os-border" />
-              <div className="w-3 h-3 rounded-full bg-os-border" />
-              <div className="w-3 h-3 rounded-full bg-os-border" />
-            </div>
-            <div className="h-4 w-[1px] bg-os-border mx-2" />
-            <div className="text-[10px] font-mono text-os-text-dim uppercase tracking-widest">
-              KROVA / Data Flow
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-seal animate-pulse" />
-            <span className="text-[10px] font-mono text-os-text-dim uppercase tracking-widest">
-              Live render
-            </span>
-          </div>
+      <div className="rounded-lg border border-os-border overflow-hidden">
+        <div className="h-9 border-b border-os-border flex items-center px-4">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
+            krova / data-flow.mp4
+          </span>
         </div>
-
         <video
           autoPlay
           muted

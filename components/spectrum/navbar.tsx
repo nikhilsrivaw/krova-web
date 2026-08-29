@@ -27,6 +27,8 @@ import {
   ChevronDown,
   BookOpen,
   Smartphone,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,13 +51,13 @@ const LINKS: NavLink[] = [
     href: "/workspace",
     mega: [
       {
-        icon: <Layout size={18} className="text-brass" />,
+        icon: <Layout size={18} className="text-teal" />,
         title: "Unified Inbox",
         description: "WhatsApp, IG, Gmail in one workspace.",
         href: "/workspace",
       },
       {
-        icon: <Zap size={18} className="text-brass" />,
+        icon: <Zap size={18} className="text-teal" />,
         title: "Actions Queue",
         description: "AI-drafted replies, you just approve.",
         href: "/dashboard/approvals",
@@ -67,13 +69,13 @@ const LINKS: NavLink[] = [
     href: "/intelligence",
     mega: [
       {
-        icon: <Brain size={18} className="text-brass" />,
+        icon: <Brain size={18} className="text-teal" />,
         title: "AI Brain",
         description: "Reads every conversation. Scores every lead.",
         href: "/intelligence",
       },
       {
-        icon: <Sun size={18} className="text-brass" />,
+        icon: <Sun size={18} className="text-teal" />,
         title: "Morning Briefing",
         description: "8 AM WhatsApp report — what to do today.",
         href: "/intelligence",
@@ -137,6 +139,7 @@ export function Navbar() {
     visible: boolean;
   }>({ left: 0, width: 0, visible: false });
   const [activeMega, setActiveMega] = useState<NavLink | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -144,6 +147,13 @@ export function Navbar() {
   useMotionValueEvent(scrollY, "change", (latest) => {
     setScrolled(latest > 40);
   });
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   // Cmd+K
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -276,7 +286,7 @@ export function Navbar() {
               Open App
             </a>
 
-            <Link href="/login">
+            <Link href="/login" className="hidden md:block">
               <motion.button
                 whileHover={{ color: "#FFFFFF" }}
                 className="text-[11px] font-bold uppercase tracking-widest text-os-text-dim transition-colors px-2"
@@ -286,7 +296,7 @@ export function Navbar() {
             </Link>
 
             {/* CTA */}
-            <Link href="/signup">
+            <Link href="/signup" className="hidden md:block">
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -296,9 +306,68 @@ export function Navbar() {
                 <ArrowRight size={12} />
               </motion.button>
             </Link>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              className="md:hidden flex items-center justify-center size-9 rounded-full border border-os-border text-os-ink"
+            >
+              {mobileOpen ? <X size={16} /> : <Menu size={16} />}
+            </button>
           </div>
         </motion.nav>
       </div>
+
+      {/* MOBILE MENU PANEL */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed top-[76px] left-0 w-full z-40 px-6"
+          >
+            <div className="rounded-2xl border border-os-border bg-os-bg/95 backdrop-blur-2xl shadow-2xl overflow-hidden">
+              <div className="p-2">
+                {LINKS.map((l) => (
+                  <Link
+                    key={l.label}
+                    href={l.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-3 rounded-xl text-sm font-semibold text-os-ink hover:bg-os-card transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+              <div className="border-t border-os-border p-4 space-y-3">
+                <a
+                  href="https://app.krova.space"
+                  target="_blank"
+                  rel="noopener"
+                  className="block text-[11px] font-bold uppercase tracking-widest text-os-text-dim"
+                >
+                  Open App
+                </a>
+                <div className="flex items-center gap-3">
+                  <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1">
+                    <button className="w-full py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-os-border text-os-ink">
+                      Log in
+                    </button>
+                  </Link>
+                  <Link href="/signup" onClick={() => setMobileOpen(false)} className="flex-1">
+                    <button className="w-full py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest bg-white text-black flex items-center justify-center gap-1.5">
+                      Start Free <ArrowRight size={12} />
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MEGA MENU PANEL */}
       <AnimatePresence>
@@ -345,7 +414,7 @@ export function Navbar() {
               <div className="border-t border-os-border px-6 py-3 flex items-center justify-end bg-os-bg/40">
                 <Link
                   href={activeMega.href}
-                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white hover:text-brass transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white hover:text-teal transition-colors"
                 >
                   Explore {activeMega.label} <ArrowRight size={11} />
                 </Link>
