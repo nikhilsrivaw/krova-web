@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
+import { DotPattern } from "@/components/magicui/dot-pattern";
+import { Ripple } from "@/components/magicui/ripple";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
@@ -579,18 +581,31 @@ export default function Hero() {
 
       {/* Final CTA */}
       <section className="border-t border-os-border max-w-5xl mx-auto px-6 py-28">
-        <div className="rounded-lg border border-os-border p-16 text-center">
-          <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
-            Your <span className="text-teal">AI analyst</span> is ready.
-          </h2>
-          <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
-            Connect your own WhatsApp Business account and get your first briefing tomorrow morning.
-          </p>
-          <Link href="/signup">
-            <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
-              Start free trial <ArrowRight size={16} />
-            </span>
-          </Link>
+        <div className="relative rounded-2xl border border-os-border p-16 text-center overflow-hidden bg-os-card/40">
+          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[320px] bg-teal/25 blur-[110px] rounded-full pointer-events-none" />
+          <Ripple mainCircleSize={140} mainCircleOpacity={0.12} numCircles={6} />
+          <DotPattern className="fill-white/10 [mask-image:radial-gradient(ellipse_60%_60%_at_50%_40%,white,transparent)]" />
+
+          <div className="relative z-10">
+            <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
+              Your <span className="text-teal">AI analyst</span> is ready.
+            </h2>
+            <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
+              Connect your own WhatsApp Business account and get your first briefing tomorrow morning.
+            </p>
+            <Link href="/signup">
+              <Magnetic>
+                <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
+                  Start free trial <ArrowRight size={16} />
+                </span>
+              </Magnetic>
+            </Link>
+            <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-os-text-dim">
+              <Check size={12} className="text-teal" /> No credit card required · 14-day free trial
+            </p>
+          </div>
+
+          <BorderBeam size={250} duration={10} colorFrom="#5EEAD4" colorTo="#00A387" />
         </div>
       </section>
 
