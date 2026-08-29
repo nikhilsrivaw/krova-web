@@ -37,60 +37,6 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
 
-const PLANS = [
-  {
-    name: "Starter",
-    price: "₹999",
-    period: "/month",
-    desc: "For solo operators and small shops.",
-    highlight: false,
-    features: [
-      "1 channel (WhatsApp or Instagram)",
-      "Up to 500 messages/month",
-      "Nightly AI analysis",
-      "Morning briefing on WhatsApp",
-      "5 AI-drafted replies/day",
-    ],
-    cta: "Get Started",
-    href: "/signup",
-  },
-  {
-    name: "Growth",
-    price: "₹1,999",
-    period: "/month",
-    desc: "For growing businesses managing multiple channels.",
-    highlight: true,
-    badge: "Most popular",
-    features: [
-      "All 4 channels (WhatsApp, IG, Gmail, Outlook)",
-      "Up to 5,000 messages/month",
-      "Nightly AI analysis",
-      "Morning briefing + hot lead alerts",
-      "Unlimited AI-drafted replies",
-      "Customer intelligence dashboard",
-    ],
-    cta: "Start free trial",
-    href: "/signup",
-  },
-  {
-    name: "Pro",
-    price: "₹4,999",
-    period: "/month",
-    desc: "For teams that need real-time intelligence.",
-    highlight: false,
-    features: [
-      "Everything in Growth",
-      "Real-time AI analysis",
-      "Team workspace (up to 5 seats)",
-      "Custom AI guardrails & tone",
-      "API access",
-      "Priority support",
-    ],
-    cta: "Contact sales",
-    href: "/signup",
-  },
-];
-
 const VERTICALS = [
   {
     image: "/images/vertical-coaching.webp",
@@ -549,64 +495,21 @@ export default function Hero() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-28">
-        <div className="max-w-xl mb-16">
-          <Eyebrow>Pricing</Eyebrow>
-          <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
-            Simple, transparent pricing.
-          </h2>
-          <p className="text-os-text-dim mt-4">14-day free trial. No credit card required.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-os-border border border-os-border rounded-lg overflow-hidden">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.name}
-              className={`bg-os-bg p-7 flex flex-col ${plan.highlight ? "relative" : ""}`}
-            >
-              {plan.highlight && (
-                <div className="absolute inset-x-0 top-0 h-px bg-teal" />
-              )}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
-                    {plan.name}
-                  </span>
-                  {plan.badge && (
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-teal">
-                      {plan.badge}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-end gap-1 mb-1">
-                  <span className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
-                    {plan.price}
-                  </span>
-                  <span className="text-os-text-dim text-sm mb-1">{plan.period}</span>
-                </div>
-                <p className="text-xs text-os-text-dim">{plan.desc}</p>
-              </div>
-              <ul className="space-y-3 flex-1 mb-6">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5">
-                    <Check size={12} className="text-seal-bright mt-0.5 shrink-0" />
-                    <span className="text-xs text-os-text-dim">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link href={plan.href}>
-                <button
-                  className={`w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
-                    plan.highlight
-                      ? "bg-os-ink text-os-bg hover:bg-os-accent-dim"
-                      : "border border-os-border text-os-ink hover:bg-os-card"
-                  }`}
-                >
-                  {plan.cta}
-                </button>
-              </Link>
-            </div>
-          ))}
+      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-20">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div>
+            <Eyebrow className="mb-2">Pricing</Eyebrow>
+            <h2 className="font-serif text-2xl font-semibold tracking-tight text-os-ink">
+              Plans start at ₹999/month.
+            </h2>
+            <p className="text-os-text-dim text-sm mt-1">14-day free trial. No credit card required.</p>
+          </div>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 shrink-0 text-sm font-medium text-os-ink hover:text-teal transition-colors"
+          >
+            See full pricing <ArrowRight size={14} />
+          </Link>
         </div>
       </section>
 
