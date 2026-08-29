@@ -346,7 +346,12 @@ export default function Hero() {
       </section>
 
       {/* CHANNELS + CAPABILITIES MARQUEE */}
-      <section className="relative border-y border-os-border py-10 overflow-hidden">
+      <section className="relative border-y border-os-border py-12 overflow-hidden">
+        <div className="text-center mb-6">
+          <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright">
+            Connects with
+          </span>
+        </div>
         <Marquee pauseOnHover className="[--duration:32s]">
           {MARQUEE_ITEMS.map((item, i) => (
             <div
