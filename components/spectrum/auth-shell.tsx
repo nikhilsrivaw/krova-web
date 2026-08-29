@@ -59,7 +59,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           fill
           quality={95}
           sizes="50vw"
-          className="object-cover"
+          className="object-cover object-top"
           priority
         />
       </div>
