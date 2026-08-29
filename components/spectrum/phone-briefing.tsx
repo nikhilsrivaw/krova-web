@@ -26,7 +26,7 @@ export function PhoneBriefing() {
 
         <div className="border-b border-os-border px-4 pt-9 pb-3 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full border border-os-border flex items-center justify-center">
-            <span className="font-serif text-xs text-brass">K</span>
+            <span className="font-serif text-xs text-teal">K</span>
           </div>
           <div>
             <div className="text-xs font-semibold text-os-ink">KROVA</div>
@@ -49,7 +49,7 @@ export function PhoneBriefing() {
               <div
                 className={`rounded-lg rounded-bl-sm px-3 py-2 text-[11px] leading-relaxed whitespace-pre-line border ${
                   m.accent
-                    ? "border-brass/30 bg-brass/[0.06] text-os-ink"
+                    ? "border-teal/30 bg-teal/[0.06] text-os-ink"
                     : "border-os-border bg-os-card text-os-ink/90"
                 }`}
               >

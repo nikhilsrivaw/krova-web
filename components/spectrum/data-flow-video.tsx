@@ -7,7 +7,7 @@ export function DataFlowVideo() {
   return (
     <section className="max-w-5xl mx-auto px-6 py-28">
       <div className="mb-12">
-        <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-os-text-dim mb-4">
+        <div className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright mb-4">
           See the data flow
         </div>
         <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-4 text-os-ink max-w-xl">

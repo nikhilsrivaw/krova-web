@@ -9,7 +9,7 @@ import { motion } from "motion/react";
  */
 export function InkUnderline({
   className,
-  color = "#C9973F",
+  color = "#00A387",
   strokeWidth = 6,
   duration = 0.8,
   delay = 0.9,

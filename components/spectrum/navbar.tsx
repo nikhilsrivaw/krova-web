@@ -51,13 +51,13 @@ const LINKS: NavLink[] = [
     href: "/workspace",
     mega: [
       {
-        icon: <Layout size={18} className="text-brass" />,
+        icon: <Layout size={18} className="text-teal" />,
         title: "Unified Inbox",
         description: "WhatsApp, IG, Gmail in one workspace.",
         href: "/workspace",
       },
       {
-        icon: <Zap size={18} className="text-brass" />,
+        icon: <Zap size={18} className="text-teal" />,
         title: "Actions Queue",
         description: "AI-drafted replies, you just approve.",
         href: "/dashboard/approvals",
@@ -69,13 +69,13 @@ const LINKS: NavLink[] = [
     href: "/intelligence",
     mega: [
       {
-        icon: <Brain size={18} className="text-brass" />,
+        icon: <Brain size={18} className="text-teal" />,
         title: "AI Brain",
         description: "Reads every conversation. Scores every lead.",
         href: "/intelligence",
       },
       {
-        icon: <Sun size={18} className="text-brass" />,
+        icon: <Sun size={18} className="text-teal" />,
         title: "Morning Briefing",
         description: "8 AM WhatsApp report — what to do today.",
         href: "/intelligence",
@@ -414,7 +414,7 @@ export function Navbar() {
               <div className="border-t border-os-border px-6 py-3 flex items-center justify-end bg-os-bg/40">
                 <Link
                   href={activeMega.href}
-                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white hover:text-brass transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white hover:text-teal transition-colors"
                 >
                   Explore {activeMega.label} <ArrowRight size={11} />
                 </Link>

@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
  * A tiny 20x20 pixel creature with an idle-blink loop — KROVA's mascot,
  * standing in for "something is reading your conversations right now"
  * instead of a spinner or a pulsing dot. Themed to the khata palette:
- * brass body on card-dark background.
+ * Teal body (the icon's mark color) on card-dark background.
  */
 
 const BODY = 1;
@@ -71,7 +71,7 @@ const FRAMES: Frame[] = [
 
 export function PixelCreature({
   size = 40,
-  color = "#C9973F",
+  color = "#00A387",
   bg = "#1A1A1A",
   className,
 }: {

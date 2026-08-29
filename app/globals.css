@@ -19,10 +19,17 @@
   --color-os-accent-dim: #B5B2C2;
 
   /* Brass: the signature accent - primary actions, the stamp mark, active
-     nav state. Spent in one place, not sprinkled as a generic highlight. */
+     nav state. Spent in one place, not sprinkled as a generic highlight.
+     Used by the internal app (see FRONTEND_MAP.md) - do not repoint this. */
   --color-brass: #C9973F;
   --color-brass-dim: #9C7530;
   --color-brass-bright: #E0B25E;
+
+  /* Teal: the mark color from app/icon.svg. Marketing-site-only accent -
+     replaces brass on the public landing/pricing/legal pages. */
+  --color-teal: #00A387;
+  --color-teal-dim: #007A63;
+  --color-teal-bright: #5EEAD4;
 
   /* Red ledger-thread: exclusively overdue / they_owe / rejected states -
      colour that means something specific, not a generic "danger" red. */
@@ -37,12 +44,12 @@
   --color-seal-bright: #79AB90;
 
   --color-brand-primary: #ECE9E1;
-  --color-brand-secondary: #C9973F;
+  --color-brand-secondary: #00A387;
 
-  --color-aurora-1: #C9973F;
-  --color-aurora-2: #B5473D;
+  --color-aurora-1: #00A387;
+  --color-aurora-2: #5EEAD4;
   --color-aurora-3: #5B8A72;
-  --color-aurora-4: #E0B25E;
+  --color-aurora-4: #007A63;
 
   --animate-border-beam: border-beam calc(var(--duration) * 1s) infinite linear;
   --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;

@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -17,7 +18,6 @@ import {
   Briefcase,
 } from "lucide-react";
 
-import { PixelCreature } from "@/components/spectrum/pixel-creature";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
@@ -86,25 +86,25 @@ const PLANS = [
 
 const VERTICALS = [
   {
-    icon: <GraduationCap size={16} className="text-brass" />,
+    icon: <GraduationCap size={16} className="text-teal" />,
     name: "Coaching institutes",
     pain: "Admission inquiries get lost across DMs and WhatsApp.",
     win: "KROVA tracks every parent inquiry, follows up on unpaid fees, books demo calls.",
   },
   {
-    icon: <HeartPulse size={16} className="text-brass" />,
+    icon: <HeartPulse size={16} className="text-teal" />,
     name: "Clinics & doctors",
     pain: "Appointment requests pile up, follow-ups slip.",
     win: "KROVA confirms slots, sends prescription reminders, flags no-show risks early.",
   },
   {
-    icon: <Scissors size={16} className="text-brass" />,
+    icon: <Scissors size={16} className="text-teal" />,
     name: "Salons & spas",
     pain: "Booking requests in five different inboxes, regulars forgotten.",
     win: "KROVA confirms bookings, wishes birthdays, brings dormant customers back.",
   },
   {
-    icon: <Briefcase size={16} className="text-brass" />,
+    icon: <Briefcase size={16} className="text-teal" />,
     name: "Agencies & studios",
     pain: "Client commitments drift, quotes go unanswered.",
     win: "KROVA tracks deliverables, flags scope creep, drafts proposal replies in your tone.",
@@ -113,28 +113,28 @@ const VERTICALS = [
 
 const INTELLIGENCE_CARDS = [
   {
-    icon: <Sun size={16} className="text-brass" />,
+    icon: <Sun size={16} className="text-teal" />,
     stat: "8 AM",
     statLabel: "every day, on WhatsApp",
     name: "Morning briefing",
     description: "By 8 AM, KROVA delivers a WhatsApp briefing — who's hot, who's slipping, what to say first.",
   },
   {
-    icon: <DollarSign size={16} className="text-brass" />,
+    icon: <DollarSign size={16} className="text-teal" />,
     stat: "₹47,000",
     statLabel: "flagged in tonight's scoring",
     name: "Revenue leak detector",
     description: "Unpaid quotes, unanswered hot leads — KROVA catches the money slipping through cracks.",
   },
   {
-    icon: <Sparkles size={16} className="text-brass" />,
+    icon: <Sparkles size={16} className="text-teal" />,
     stat: "50 msgs",
     statLabel: "until it sounds like you",
     name: "Ghost writer",
     description: "Drafts replies that sound like you — Hinglish, your tone, your style. You only approve.",
   },
   {
-    icon: <TrendingUp size={16} className="text-brass" />,
+    icon: <TrendingUp size={16} className="text-teal" />,
     stat: "Nightly",
     statLabel: "every conversation, scored",
     name: "Customer intelligence",
@@ -171,9 +171,9 @@ const FAQ_ITEMS = [
 
 const CHANNELS_STRIP = ["WhatsApp Business", "Instagram DM", "Gmail", "Outlook", "Team Inbox"];
 
-function Eyebrow({ children }: { children: React.ReactNode }) {
+function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-os-text-dim mb-4">
+    <div className={`font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright mb-4 ${className ?? ""}`}>
       {children}
     </div>
   );
@@ -215,7 +215,14 @@ function HeroCreature() {
         animate={{ y: [0, -10, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <PixelCreature size="clamp(200px, 44vw, 380px)" color="#C9973F" bg="#121212" />
+        <Image
+          src="/images/krova-hero.webp"
+          alt="KROVA's mascot, sitting on a rock with a laptop"
+          width={1145}
+          height={1374}
+          priority
+          className="w-[clamp(220px,32vw,420px)] h-auto select-none pointer-events-none"
+        />
       </motion.div>
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-40 h-6 rounded-full bg-black/40 blur-xl" />
     </div>
@@ -236,7 +243,7 @@ export default function Hero() {
                 href="/whatsapp"
                 className="inline-flex items-center gap-2 rounded-full border border-os-border bg-os-card/60 pl-1 pr-3 py-1 mb-6 text-xs text-os-text-dim hover:border-os-border-bright hover:text-os-ink transition-colors"
               >
-                <span className="rounded-full bg-brass/15 text-brass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                <span className="rounded-full bg-teal/15 text-teal px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                   New
                 </span>
                 WhatsApp Business embedded signup is live
@@ -257,7 +264,7 @@ export default function Hero() {
               Reads every conversation.
               <br />
               Tells you what to do{" "}
-              <span className="relative inline-block text-brass">
+              <span className="relative inline-block text-teal">
                 next.
                 <InkUnderline className="absolute left-0 -bottom-1.5 w-full h-3" />
               </span>
@@ -323,13 +330,7 @@ export default function Hero() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-28">
-        <div className="max-w-xl mb-16">
-          <Eyebrow>How it works</Eyebrow>
-          <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
-            Channels in. Decisions out.
-          </h2>
-        </div>
+      <section id="how-it-works">
         <HowItWorks />
       </section>
 
@@ -388,7 +389,7 @@ export default function Hero() {
                     {card.icon}
                   </div>
                   <div className="text-right">
-                    <div className="font-serif text-2xl font-semibold text-brass leading-none">{card.stat}</div>
+                    <div className="font-serif text-2xl font-semibold text-teal leading-none">{card.stat}</div>
                     <div className="text-[10px] text-os-text-dim mt-1">{card.statLabel}</div>
                   </div>
                 </div>
@@ -463,7 +464,7 @@ export default function Hero() {
               "See insights from your own customer activity",
             ].map((t) => (
               <li key={t} className="flex items-start gap-2.5 text-sm text-os-text-dim">
-                <Check size={14} className="mt-0.5 shrink-0 text-brass" />
+                <Check size={14} className="mt-0.5 shrink-0 text-teal" />
                 {t}
               </li>
             ))}
@@ -471,7 +472,7 @@ export default function Hero() {
           <div className="flex flex-wrap items-center gap-6 pt-2">
             <Link
               href="/whatsapp"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-os-ink hover:text-brass transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-os-ink hover:text-teal transition-colors"
             >
               How the WhatsApp integration works <ArrowUpRight size={14} />
             </Link>
@@ -499,7 +500,7 @@ export default function Hero() {
               className={`bg-os-bg p-7 flex flex-col ${plan.highlight ? "relative" : ""}`}
             >
               {plan.highlight && (
-                <div className="absolute inset-x-0 top-0 h-px bg-brass" />
+                <div className="absolute inset-x-0 top-0 h-px bg-teal" />
               )}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
@@ -507,7 +508,7 @@ export default function Hero() {
                     {plan.name}
                   </span>
                   {plan.badge && (
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-brass">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-teal">
                       {plan.badge}
                     </span>
                   )}
@@ -561,7 +562,7 @@ export default function Hero() {
       <section className="border-t border-os-border max-w-5xl mx-auto px-6 py-28">
         <div className="rounded-lg border border-os-border p-16 text-center">
           <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
-            Your <span className="text-brass">AI analyst</span> is ready.
+            Your <span className="text-teal">AI analyst</span> is ready.
           </h2>
           <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
             Connect your own WhatsApp Business account and get your first briefing tomorrow morning.

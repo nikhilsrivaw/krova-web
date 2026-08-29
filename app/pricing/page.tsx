@@ -100,7 +100,7 @@ const FAQS = [
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-os-text-dim mb-4">{children}</div>
+    <div className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright mb-4">{children}</div>
   );
 }
 
@@ -122,7 +122,7 @@ export default function PricingPage() {
           transition={{ delay: 0.1, duration: 0.5 }}
           className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink"
         >
-          Simple, <span className="text-brass">transparent pricing.</span>
+          Simple, <span className="text-teal">transparent pricing.</span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 14 }}
@@ -177,12 +177,12 @@ export default function PricingPage() {
               transition={{ delay: i * 0.08 }}
               className={`rounded-xl p-7 flex flex-col relative bg-os-card ${
                 plan.highlight
-                  ? "border-2 border-brass shadow-[0_0_40px_-12px_rgba(201,151,63,0.35)] md:-translate-y-3"
+                  ? "border-2 border-teal shadow-[0_0_40px_-12px_rgba(0,163,135,0.35)] md:-translate-y-3"
                   : "border border-os-border"
               }`}
             >
               {plan.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brass px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-os-bg whitespace-nowrap">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-teal px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-os-bg whitespace-nowrap">
                   {plan.badge}
                 </span>
               )}
@@ -234,7 +234,7 @@ export default function PricingPage() {
                 <button
                   className={`w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
                     plan.highlight
-                      ? "bg-brass text-os-bg hover:bg-brass-bright"
+                      ? "bg-teal text-os-bg hover:bg-teal-bright"
                       : "border border-os-border text-os-ink hover:bg-os-bg"
                   }`}
                 >
@@ -251,7 +251,7 @@ export default function PricingPage() {
         <div className="rounded-lg border border-os-border bg-os-card p-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-11 h-11 rounded-md border border-os-border flex items-center justify-center shrink-0">
-              <Zap size={18} className="text-brass" />
+              <Zap size={18} className="text-teal" />
             </div>
             <div>
               <h3 className="font-semibold text-base text-os-ink mb-1">Not sure which plan?</h3>
@@ -283,7 +283,7 @@ export default function PricingPage() {
       <section className="max-w-5xl mx-auto px-6 py-24">
         <div className="rounded-lg border border-os-border p-16 text-center">
           <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
-            Put your business <span className="text-brass">on autopilot.</span>
+            Put your business <span className="text-teal">on autopilot.</span>
           </h2>
           <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
             Join the Indian SMBs already using KROVA.
