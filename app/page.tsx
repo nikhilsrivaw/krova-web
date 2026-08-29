@@ -331,13 +331,16 @@ export default function Hero() {
       </section>
 
       {/* SHOWCASE */}
-      <section className="max-w-6xl mx-auto px-0 sm:px-6 pb-20 md:pb-28">
+      <section className="max-w-6xl mx-auto pb-20 md:pb-28">
+        <div className="px-6 mb-6">
+          <Eyebrow>At a glance</Eyebrow>
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-10%" }}
           transition={{ duration: 0.6 }}
-          className="relative sm:rounded-2xl overflow-hidden border-y sm:border border-os-border shadow-2xl"
+          className="relative mx-0 sm:mx-6 sm:rounded-2xl overflow-hidden border-y sm:border border-os-border shadow-2xl"
         >
           <Image
             src="/images/krova-showcase.webp"
