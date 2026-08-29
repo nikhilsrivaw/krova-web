@@ -414,7 +414,7 @@ export default function Hero() {
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-[9.25rem] left-1/2 -translate-x-[42%] z-0 sm:-top-[11.25rem] md:-top-[12.7rem]"
+              className="absolute left-1/2 z-0 hidden -translate-x-[42%] lg:block lg:-top-[12.7rem]"
             >
               <Image
                 src="/images/detective-mascot-lean.webp"
@@ -422,7 +422,7 @@ export default function Hero() {
                 width={1254}
                 height={1254}
                 quality={95}
-                className="w-[190px] sm:w-[230px] md:w-[260px] h-auto select-none pointer-events-none drop-shadow-2xl"
+                className="w-[260px] h-auto select-none pointer-events-none drop-shadow-2xl"
               />
             </motion.div>
           </div>
@@ -439,7 +439,7 @@ export default function Hero() {
               width={1354}
               height={1162}
               quality={95}
-              className="absolute left-0 -top-[6.75rem] sm:-top-[8.5rem] md:-top-[10.25rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
+              className="absolute left-0 -top-[7.1rem] sm:-top-[8.8rem] md:-top-[10.5rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
             />
             <Eyebrow>Intelligence layer</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
