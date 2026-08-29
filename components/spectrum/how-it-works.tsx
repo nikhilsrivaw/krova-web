@@ -165,14 +165,24 @@ export function HowItWorks() {
           <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
             {/* Mobile: progress bar + active step only */}
             <div className="md:hidden">
-              <div className="flex items-center gap-2 mb-6">
+              <div className="flex items-center mb-6">
                 {STEPS.map((step, i) => (
-                  <span
-                    key={step.n}
-                    className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                      i <= active ? "bg-teal" : "bg-os-border"
-                    }`}
-                  />
+                  <div key={step.n} className="flex items-center flex-1 last:flex-none">
+                    <span
+                      className={`shrink-0 flex items-center justify-center size-6 rounded-full border font-mono text-[10px] font-bold transition-colors duration-300 ${
+                        i <= active ? "bg-teal border-teal text-os-bg" : "bg-transparent border-os-border-bright text-os-text-dim"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    {i < STEPS.length - 1 && (
+                      <span
+                        className={`h-px flex-1 mx-1.5 transition-colors duration-300 ${
+                          i < active ? "bg-teal" : "bg-os-border"
+                        }`}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
               <AnimatePresence mode="wait">
