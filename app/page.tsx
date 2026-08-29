@@ -16,6 +16,9 @@ import {
   Snowflake,
   IndianRupee,
   Send,
+  Users,
+  Moon,
+  Inbox,
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -184,6 +187,9 @@ const MARQUEE_ITEMS = [
   { icon: <Snowflake size={16} className="text-teal" />, label: "Going cold" },
   { icon: <IndianRupee size={16} className="text-teal" />, label: "Revenue leaks" },
   { icon: <Send size={16} className="text-teal" />, label: "AI replies" },
+  { icon: <Users size={16} className="text-teal" />, label: "Customer intelligence" },
+  { icon: <Moon size={16} className="text-teal" />, label: "Nightly analysis" },
+  { icon: <Inbox size={16} className="text-teal" />, label: "Team inbox" },
 ];
 
 function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -352,7 +358,11 @@ export default function Hero() {
             Connects with
           </span>
         </div>
-        <Marquee pauseOnHover className="[--duration:32s]">
+        <Marquee
+          pauseOnHover
+          repeat={2}
+          className="[--duration:36s] [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
+        >
           {MARQUEE_ITEMS.map((item, i) => (
             <div
               key={`${item.label}-${i}`}
@@ -363,8 +373,6 @@ export default function Hero() {
             </div>
           ))}
         </Marquee>
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-os-bg to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-os-bg to-transparent" />
       </section>
 
       {/* HOW IT WORKS */}
