@@ -361,7 +361,8 @@ export default function Hero() {
         <Marquee
           pauseOnHover
           repeat={2}
-          className="[--duration:36s] [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
+          duration="36s"
+          className="[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
         >
           {MARQUEE_ITEMS.map((item, i) => (
             <div

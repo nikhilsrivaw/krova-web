@@ -45,9 +45,15 @@ export function Marquee({
           key={i}
           className={cn(
             "flex shrink-0 justify-around [gap:var(--gap)]",
+            // Animation applied directly (not via the --animate-* theme alias) so it
+            // actually reads this instance's own --duration: an unregistered custom
+            // property that references another unset custom property computes to the
+            // guaranteed-invalid value at its declaration site (:root, where --duration
+            // isn't set) and that invalid value is what inherits down — redeclaring
+            // --duration deeper in the tree, as this component does, doesn't fix it.
             vertical
-              ? "animate-marquee-vertical flex-col"
-              : "animate-marquee flex-row",
+              ? "[animation:marquee-vertical_var(--duration)_linear_infinite] flex-col"
+              : "[animation:marquee_var(--duration)_linear_infinite] flex-row",
             pauseOnHover && "group-hover:[animation-play-state:paused]",
             reverse && "[animation-direction:reverse]",
           )}
