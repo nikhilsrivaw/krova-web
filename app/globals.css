@@ -183,6 +183,34 @@
     transform: scale(0.95);
   }
   
+  /* Landing-page CTA only (hero + final CTA) - cream body, teal accent icon
+     and glow. Deliberately separate from .os-button-primary so pricing's
+     buttons stay untouched. */
+  .os-button-cta {
+    background-color: var(--color-os-ink);
+    color: var(--color-os-bg);
+    box-shadow: 0 0 0 1px transparent, 0 8px 24px -10px rgba(0, 163, 135, 0);
+  }
+
+  .os-button-cta svg {
+    color: var(--color-teal);
+    transition: transform 0.2s;
+  }
+
+  .os-button-cta:hover {
+    background-color: white;
+    box-shadow: 0 0 0 1px var(--color-teal-bright), 0 10px 30px -8px rgba(0, 163, 135, 0.45);
+    transform: translateY(-2px);
+  }
+
+  .os-button-cta:hover svg {
+    transform: translateX(2px);
+  }
+
+  .os-button-cta:active {
+    transform: scale(0.97);
+  }
+
   .os-button-secondary {
     background-color: var(--color-os-card);
     border: 1px solid var(--color-os-border);

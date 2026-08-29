@@ -288,7 +288,7 @@ export default function Hero() {
             >
               <Link href="/signup">
                 <Magnetic>
-                  <span className="os-button os-button-primary px-7 py-3 text-sm">
+                  <span className="os-button os-button-cta px-7 py-3 text-sm">
                     Start free trial <ArrowRight size={16} />
                   </span>
                 </Magnetic>
@@ -587,7 +587,7 @@ export default function Hero() {
             Connect your own WhatsApp Business account and get your first briefing tomorrow morning.
           </p>
           <Link href="/signup">
-            <span className="os-button os-button-primary px-8 py-3 text-sm inline-flex">
+            <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
               Start free trial <ArrowRight size={16} />
             </span>
           </Link>
