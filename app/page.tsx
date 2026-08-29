@@ -12,11 +12,17 @@ import {
   TrendingUp,
   Sparkles,
   DollarSign,
+  Flame,
+  Snowflake,
+  IndianRupee,
+  Send,
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { Ripple } from "@/components/magicui/ripple";
+import { Marquee } from "@/components/magicui/marquee";
+import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
@@ -168,6 +174,17 @@ const FAQ_ITEMS = [
 ];
 
 const CHANNELS_STRIP = ["WhatsApp Business", "Instagram DM", "Gmail", "Outlook", "Team Inbox"];
+
+const MARQUEE_ITEMS = [
+  { icon: <WhatsAppIcon size={18} />, label: "WhatsApp" },
+  { icon: <InstagramIcon size={18} />, label: "Instagram" },
+  { icon: <GmailIcon size={18} />, label: "Gmail" },
+  { icon: <OutlookIcon size={18} />, label: "Outlook" },
+  { icon: <Flame size={16} className="text-teal" />, label: "Hot leads" },
+  { icon: <Snowflake size={16} className="text-teal" />, label: "Going cold" },
+  { icon: <IndianRupee size={16} className="text-teal" />, label: "Revenue leaks" },
+  { icon: <Send size={16} className="text-teal" />, label: "AI replies" },
+];
 
 function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -328,29 +345,21 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* SHOWCASE */}
-      <section className="max-w-6xl mx-auto pb-20 md:pb-28">
-        <div className="px-6 mb-6">
-          <Eyebrow>At a glance</Eyebrow>
-        </div>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.6 }}
-          className="relative mx-0 sm:mx-6 sm:rounded-2xl overflow-hidden border-y sm:border border-os-border shadow-2xl"
-        >
-          <Image
-            src="/images/krova-showcase.webp"
-            alt="KROVA reads WhatsApp, Instagram, Gmail and Outlook conversations in one place and surfaces hot leads, customers going cold, revenue leaks, and AI-drafted replies"
-            width={1448}
-            height={1086}
-            quality={95}
-            className="w-full h-auto block"
-            sizes="(max-width: 1152px) 100vw, 1152px"
-          />
-          <BorderBeam size={250} duration={10} colorFrom="#5EEAD4" colorTo="#00A387" />
-        </motion.div>
+      {/* CHANNELS + CAPABILITIES MARQUEE */}
+      <section className="relative border-y border-os-border py-10 overflow-hidden">
+        <Marquee pauseOnHover className="[--duration:32s]">
+          {MARQUEE_ITEMS.map((item, i) => (
+            <div
+              key={`${item.label}-${i}`}
+              className="flex items-center gap-2.5 rounded-full border border-os-border bg-os-card px-5 py-2.5 shrink-0"
+            >
+              <span className="shrink-0">{item.icon}</span>
+              <span className="text-sm font-medium text-os-ink whitespace-nowrap">{item.label}</span>
+            </div>
+          ))}
+        </Marquee>
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-os-bg to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-os-bg to-transparent" />
       </section>
 
       {/* HOW IT WORKS */}
