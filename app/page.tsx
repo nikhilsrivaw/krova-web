@@ -432,7 +432,15 @@ export default function Hero() {
       {/* Intelligence layer */}
       <section id="intelligence" className="border-t border-os-border bg-os-card/40">
         <div className="max-w-6xl mx-auto px-6 py-28">
-          <div className="max-w-xl mb-16">
+          <div className="relative max-w-xl mb-16">
+            <Image
+              src="/images/thinking-mascot.webp"
+              alt=""
+              width={1354}
+              height={1162}
+              quality={95}
+              className="absolute left-0 -top-[7.5rem] sm:-top-[9.25rem] md:-top-[11rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
+            />
             <Eyebrow>Intelligence layer</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
               AI that works while you sleep.
