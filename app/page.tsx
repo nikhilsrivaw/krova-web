@@ -12,75 +12,30 @@ import {
   TrendingUp,
   Sparkles,
   DollarSign,
+  Flame,
+  Snowflake,
+  IndianRupee,
+  Send,
+  Users,
+  Moon,
+  Inbox,
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { Ripple } from "@/components/magicui/ripple";
+import { Marquee } from "@/components/magicui/marquee";
+import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
-import { PhoneBriefing } from "@/components/spectrum/phone-briefing";
+import { PhoneCarousel } from "@/components/spectrum/phone-carousel";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
-
-const PLANS = [
-  {
-    name: "Starter",
-    price: "₹999",
-    period: "/month",
-    desc: "For solo operators and small shops.",
-    highlight: false,
-    features: [
-      "1 channel (WhatsApp or Instagram)",
-      "Up to 500 messages/month",
-      "Nightly AI analysis",
-      "Morning briefing on WhatsApp",
-      "5 AI-drafted replies/day",
-    ],
-    cta: "Get Started",
-    href: "/signup",
-  },
-  {
-    name: "Growth",
-    price: "₹1,999",
-    period: "/month",
-    desc: "For growing businesses managing multiple channels.",
-    highlight: true,
-    badge: "Most popular",
-    features: [
-      "All 4 channels (WhatsApp, IG, Gmail, Outlook)",
-      "Up to 5,000 messages/month",
-      "Nightly AI analysis",
-      "Morning briefing + hot lead alerts",
-      "Unlimited AI-drafted replies",
-      "Customer intelligence dashboard",
-    ],
-    cta: "Start free trial",
-    href: "/signup",
-  },
-  {
-    name: "Pro",
-    price: "₹4,999",
-    period: "/month",
-    desc: "For teams that need real-time intelligence.",
-    highlight: false,
-    features: [
-      "Everything in Growth",
-      "Real-time AI analysis",
-      "Team workspace (up to 5 seats)",
-      "Custom AI guardrails & tone",
-      "API access",
-      "Priority support",
-    ],
-    cta: "Contact sales",
-    href: "/signup",
-  },
-];
 
 const VERTICALS = [
   {
@@ -168,6 +123,20 @@ const FAQ_ITEMS = [
 ];
 
 const CHANNELS_STRIP = ["WhatsApp Business", "Instagram DM", "Gmail", "Outlook", "Team Inbox"];
+
+const MARQUEE_ITEMS = [
+  { icon: <WhatsAppIcon size={18} />, label: "WhatsApp" },
+  { icon: <InstagramIcon size={18} />, label: "Instagram" },
+  { icon: <GmailIcon size={18} />, label: "Gmail" },
+  { icon: <OutlookIcon size={18} />, label: "Outlook" },
+  { icon: <Flame size={16} className="text-teal" />, label: "Hot leads" },
+  { icon: <Snowflake size={16} className="text-teal" />, label: "Going cold" },
+  { icon: <IndianRupee size={16} className="text-teal" />, label: "Revenue leaks" },
+  { icon: <Send size={16} className="text-teal" />, label: "AI replies" },
+  { icon: <Users size={16} className="text-teal" />, label: "Customer intelligence" },
+  { icon: <Moon size={16} className="text-teal" />, label: "Nightly analysis" },
+  { icon: <Inbox size={16} className="text-teal" />, label: "Team inbox" },
+];
 
 function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -328,29 +297,29 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* SHOWCASE */}
-      <section className="max-w-6xl mx-auto pb-20 md:pb-28">
-        <div className="px-6 mb-6">
-          <Eyebrow>At a glance</Eyebrow>
+      {/* CHANNELS + CAPABILITIES MARQUEE */}
+      <section className="relative border-y border-os-border py-12 overflow-hidden">
+        <div className="text-center mb-6">
+          <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright">
+            Everything, in one place
+          </span>
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.6 }}
-          className="relative mx-0 sm:mx-6 sm:rounded-2xl overflow-hidden border-y sm:border border-os-border shadow-2xl"
+        <Marquee
+          pauseOnHover
+          repeat={2}
+          duration="36s"
+          className="[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]"
         >
-          <Image
-            src="/images/krova-showcase.webp"
-            alt="KROVA reads WhatsApp, Instagram, Gmail and Outlook conversations in one place and surfaces hot leads, customers going cold, revenue leaks, and AI-drafted replies"
-            width={1448}
-            height={1086}
-            quality={95}
-            className="w-full h-auto block"
-            sizes="(max-width: 1152px) 100vw, 1152px"
-          />
-          <BorderBeam size={250} duration={10} colorFrom="#5EEAD4" colorTo="#00A387" />
-        </motion.div>
+          {MARQUEE_ITEMS.map((item, i) => (
+            <div
+              key={`${item.label}-${i}`}
+              className="flex items-center gap-2.5 rounded-full border border-os-border bg-os-card px-5 py-2.5 shrink-0"
+            >
+              <span className="shrink-0">{item.icon}</span>
+              <span className="text-sm font-medium text-os-ink whitespace-nowrap">{item.label}</span>
+            </div>
+          ))}
+        </Marquee>
       </section>
 
       {/* HOW IT WORKS */}
@@ -384,8 +353,24 @@ export default function Hero() {
               ))}
             </ul>
           </div>
-          <div>
-            <PhoneBriefing />
+          <div className="relative flex justify-center">
+            <div className="relative z-10">
+              <PhoneCarousel />
+            </div>
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute left-1/2 z-0 hidden -translate-x-[42%] lg:block lg:-top-[12.7rem]"
+            >
+              <Image
+                src="/images/detective-mascot-lean.webp"
+                alt="KROVA's mascot, in a detective hat, leaning over the phone to investigate the briefing with a magnifying glass"
+                width={1254}
+                height={1254}
+                quality={95}
+                className="w-[260px] h-auto select-none pointer-events-none drop-shadow-2xl"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -393,16 +378,27 @@ export default function Hero() {
       {/* Intelligence layer */}
       <section id="intelligence" className="border-t border-os-border bg-os-card/40">
         <div className="max-w-6xl mx-auto px-6 py-28">
-          <div className="max-w-xl mb-16">
+          <div className="relative max-w-xl mb-16">
+            <Image
+              src="/images/thinking-mascot.webp"
+              alt=""
+              width={1354}
+              height={1162}
+              quality={95}
+              className="absolute left-0 -top-[7.1rem] sm:-top-[8.8rem] md:-top-[10.5rem] w-36 sm:w-44 md:w-52 h-auto z-10 select-none pointer-events-none"
+            />
             <Eyebrow>Intelligence layer</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
               AI that works while you sleep.
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-os-border border border-os-border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {INTELLIGENCE_CARDS.map((card) => (
-              <div key={card.name} className="bg-os-bg p-8">
+              <div
+                key={card.name}
+                className="rounded-xl border border-os-border bg-os-bg p-8 transition-colors duration-300 hover:border-os-border-bright"
+              >
                 <div className="flex items-center justify-between mb-6">
                   <div className="w-9 h-9 rounded-md border border-os-border flex items-center justify-center">
                     {card.icon}
@@ -499,64 +495,55 @@ export default function Hero() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-28">
-        <div className="max-w-xl mb-16">
-          <Eyebrow>Pricing</Eyebrow>
-          <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
-            Simple, transparent pricing.
-          </h2>
-          <p className="text-os-text-dim mt-4">14-day free trial. No credit card required.</p>
-        </div>
+      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-24">
+        <div className="relative rounded-2xl border border-os-border overflow-hidden bg-os-card/40">
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[260px] bg-teal/20 blur-[100px] rounded-full pointer-events-none" />
+          <DotPattern className="fill-white/[0.06] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_0%,white,transparent)]" />
+          <BorderBeam size={220} duration={11} colorFrom="#5EEAD4" colorTo="#00A387" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-os-border border border-os-border rounded-lg overflow-hidden">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.name}
-              className={`bg-os-bg p-7 flex flex-col ${plan.highlight ? "relative" : ""}`}
-            >
-              {plan.highlight && (
-                <div className="absolute inset-x-0 top-0 h-px bg-teal" />
-              )}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
-                    {plan.name}
-                  </span>
-                  {plan.badge && (
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-teal">
-                      {plan.badge}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-end gap-1 mb-1">
-                  <span className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
-                    {plan.price}
-                  </span>
-                  <span className="text-os-text-dim text-sm mb-1">{plan.period}</span>
-                </div>
-                <p className="text-xs text-os-text-dim">{plan.desc}</p>
-              </div>
-              <ul className="space-y-3 flex-1 mb-6">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5">
-                    <Check size={12} className="text-seal-bright mt-0.5 shrink-0" />
-                    <span className="text-xs text-os-text-dim">{f}</span>
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-10 px-8 py-14 sm:px-14">
+            <div className="flex-1">
+              <Eyebrow className="mb-3">Pricing</Eyebrow>
+              <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-os-ink mb-3">
+                Plans start at{" "}
+                <span className="inline-flex items-baseline text-teal">
+                  <IndianRupee size={26} className="mr-0.5" strokeWidth={2.5} />
+                  999
+                </span>
+                <span className="text-os-text-dim text-xl font-normal">/month</span>
+              </h2>
+              <p className="text-os-text-dim max-w-md leading-relaxed">
+                One AI analyst across every channel you already use. 14-day free trial, no credit
+                card required.
+              </p>
+              <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
+                {[
+                  "All 4 channels",
+                  "Nightly AI analysis",
+                  "Morning briefing",
+                  "AI-drafted replies",
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-2 text-sm text-os-text-dim">
+                    <Check size={14} className="text-teal shrink-0" />
+                    {t}
                   </li>
                 ))}
               </ul>
-              <Link href={plan.href}>
-                <button
-                  className={`w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
-                    plan.highlight
-                      ? "bg-os-ink text-os-bg hover:bg-os-accent-dim"
-                      : "border border-os-border text-os-ink hover:bg-os-card"
-                  }`}
-                >
-                  {plan.cta}
-                </button>
-              </Link>
             </div>
-          ))}
+
+            <div className="flex flex-col items-start lg:items-end gap-3 shrink-0">
+              <Link href="/pricing">
+                <Magnetic>
+                  <span className="os-button os-button-cta px-7 py-3 text-sm inline-flex">
+                    See full pricing <ArrowRight size={16} />
+                  </span>
+                </Magnetic>
+              </Link>
+              <span className="flex items-center gap-1.5 text-xs text-os-text-dim lg:self-end">
+                <Sparkles size={11} className="text-teal" /> 3 plans · cancel anytime
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 

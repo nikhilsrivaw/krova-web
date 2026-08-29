@@ -27,10 +27,9 @@ import {
   ChevronDown,
   BookOpen,
   Smartphone,
-  Menu,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WhatsAppIcon } from "@/components/spectrum/brand-icons";
 
 interface NavLink {
   label: string;
@@ -129,6 +128,54 @@ function MagneticLink({
     </Link>
   );
 }
+
+const MOBILE_ICONS: Record<string, ReactNode> = {
+  Workspace: <Layout size={16} className="text-teal" />,
+  Intelligence: <Brain size={16} className="text-teal" />,
+  WhatsApp: <WhatsAppIcon size={16} />,
+  Mobile: <Smartphone size={16} className="text-teal" />,
+  Docs: <BookOpen size={16} className="text-teal" />,
+  Pricing: <DollarSign size={16} className="text-teal" />,
+};
+
+/** Three-line hamburger that morphs into an X instead of an instant icon swap. */
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <div className="relative flex h-4 w-4 items-center justify-center">
+      <motion.span
+        className="absolute h-[1.5px] w-4 rounded-full bg-current"
+        animate={{ rotate: open ? 45 : 0, y: open ? 0 : -5 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      />
+      <motion.span
+        className="absolute h-[1.5px] w-4 rounded-full bg-current"
+        animate={{ opacity: open ? 0 : 1, scale: open ? 0.5 : 1 }}
+        transition={{ duration: 0.15 }}
+      />
+      <motion.span
+        className="absolute h-[1.5px] w-4 rounded-full bg-current"
+        animate={{ rotate: open ? -45 : 0, y: open ? 0 : 5 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </div>
+  );
+}
+
+const mobilePanelVariants = {
+  hidden: { opacity: 0, y: -16, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] as const, staggerChildren: 0.045, delayChildren: 0.06 },
+  },
+  exit: { opacity: 0, y: -12, scale: 0.98, transition: { duration: 0.15 } },
+};
+
+const mobileItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.2 } },
+};
 
 export function Navbar() {
   const { scrollY } = useScroll();
@@ -308,46 +355,77 @@ export function Navbar() {
             </Link>
 
             {/* Mobile hamburger */}
-            <button
+            <motion.button
               onClick={() => setMobileOpen((v) => !v)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              className="md:hidden flex items-center justify-center size-9 rounded-full border border-os-border text-os-ink"
+              whileTap={{ scale: 0.9 }}
+              className={cn(
+                "md:hidden flex items-center justify-center size-9 rounded-full border transition-colors duration-300",
+                mobileOpen
+                  ? "border-teal/40 bg-teal/10 text-teal"
+                  : "border-os-border text-os-ink",
+              )}
             >
-              {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-            </button>
+              <HamburgerIcon open={mobileOpen} />
+            </motion.button>
           </div>
         </motion.nav>
       </div>
+
+      {/* MOBILE MENU BACKDROP */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="mobile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden fixed inset-0 z-30 bg-black/50 backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
 
       {/* MOBILE MENU PANEL */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden fixed top-[76px] left-0 w-full z-40 px-6"
+            key="mobile-panel"
+            variants={mobilePanelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="md:hidden fixed top-[88px] left-0 w-full z-40 px-6"
           >
-            <div className="rounded-2xl border border-os-border bg-os-bg/95 backdrop-blur-2xl shadow-2xl overflow-hidden">
+            <div className="relative rounded-2xl border border-os-border bg-os-bg/95 backdrop-blur-2xl shadow-2xl overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal/60 to-transparent" />
               <div className="p-2">
                 {LINKS.map((l) => (
-                  <Link
-                    key={l.label}
-                    href={l.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="block px-4 py-3 rounded-xl text-sm font-semibold text-os-ink hover:bg-os-card transition-colors"
-                  >
-                    {l.label}
-                  </Link>
+                  <motion.div key={l.label} variants={mobileItemVariants}>
+                    <Link
+                      href={l.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-os-ink hover:bg-os-card transition-colors"
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-lg border border-os-border bg-os-card/60 shrink-0">
+                        {MOBILE_ICONS[l.label]}
+                      </span>
+                      <span className="flex-1">{l.label}</span>
+                      <ArrowRight
+                        size={13}
+                        className="text-os-text-dim opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                      />
+                    </Link>
+                  </motion.div>
                 ))}
               </div>
-              <div className="border-t border-os-border p-4 space-y-3">
+              <motion.div variants={mobileItemVariants} className="border-t border-os-border p-4 space-y-3">
                 <a
                   href="https://app.krova.space"
                   target="_blank"
                   rel="noopener"
-                  className="block text-[11px] font-bold uppercase tracking-widest text-os-text-dim"
+                  className="block text-[11px] font-bold uppercase tracking-widest text-os-text-dim hover:text-white transition-colors"
                 >
                   Open App
                 </a>
@@ -363,7 +441,7 @@ export function Navbar() {
                     </button>
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         )}
