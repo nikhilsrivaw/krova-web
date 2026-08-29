@@ -217,6 +217,7 @@ function HeroCreature() {
           alt="KROVA's mascot, sitting on a rock with a laptop"
           width={1145}
           height={1374}
+          quality={95}
           priority
           className="w-[clamp(220px,32vw,420px)] h-auto select-none pointer-events-none"
         />
@@ -343,6 +344,7 @@ export default function Hero() {
             alt="KROVA reads WhatsApp, Instagram, Gmail and Outlook conversations in one place and surfaces hot leads, customers going cold, revenue leaks, and AI-drafted replies"
             width={1448}
             height={1086}
+            quality={95}
             className="w-full h-auto block"
             sizes="(max-width: 1152px) 100vw, 1152px"
           />
@@ -449,6 +451,7 @@ export default function Hero() {
                 alt={`${v.name}: ${v.pain} ${v.win}`}
                 width={1376}
                 height={1032}
+                quality={95}
                 className="w-full h-auto block"
                 sizes="(max-width: 768px) 100vw, 552px"
               />

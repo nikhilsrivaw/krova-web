@@ -151,6 +151,7 @@ export function HowItWorks() {
               alt=""
               width={1536}
               height={1024}
+              quality={95}
               className="absolute left-0 -top-[5.3rem] sm:-top-[6.5rem] md:-top-32 w-32 sm:w-40 md:w-48 h-auto z-10 select-none pointer-events-none"
             />
             <div className="font-mono text-sm sm:text-base uppercase tracking-[0.2em] text-teal-bright mb-4">
