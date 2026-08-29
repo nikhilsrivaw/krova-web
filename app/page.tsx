@@ -12,10 +12,6 @@ import {
   TrendingUp,
   Sparkles,
   DollarSign,
-  GraduationCap,
-  HeartPulse,
-  Scissors,
-  Briefcase,
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -87,25 +83,25 @@ const PLANS = [
 
 const VERTICALS = [
   {
-    icon: <GraduationCap size={16} className="text-teal" />,
+    image: "/images/vertical-coaching.webp",
     name: "Coaching institutes",
     pain: "Admission inquiries get lost across DMs and WhatsApp.",
     win: "KROVA tracks every parent inquiry, follows up on unpaid fees, books demo calls.",
   },
   {
-    icon: <HeartPulse size={16} className="text-teal" />,
+    image: "/images/vertical-clinics.webp",
     name: "Clinics & doctors",
     pain: "Appointment requests pile up, follow-ups slip.",
     win: "KROVA confirms slots, sends prescription reminders, flags no-show risks early.",
   },
   {
-    icon: <Scissors size={16} className="text-teal" />,
+    image: "/images/vertical-salons.webp",
     name: "Salons & spas",
     pain: "Booking requests in five different inboxes, regulars forgotten.",
     win: "KROVA confirms bookings, wishes birthdays, brings dormant customers back.",
   },
   {
-    icon: <Briefcase size={16} className="text-teal" />,
+    image: "/images/vertical-agencies.webp",
     name: "Agencies & studios",
     pain: "Client commitments drift, quotes go unanswered.",
     win: "KROVA tracks deliverables, flags scope creep, drafts proposal replies in your tone.",
@@ -438,30 +434,25 @@ export default function Hero() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-os-border border border-os-border rounded-lg overflow-hidden">
-          {VERTICALS.map((v) => (
-            <div key={v.name} className="bg-os-bg p-8">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-md border border-os-border flex items-center justify-center">
-                  {v.icon}
-                </div>
-                <h3 className="text-base font-semibold text-os-ink">{v.name}</h3>
-              </div>
-              <div className="space-y-2.5">
-                <p className="text-sm text-os-text-dim">
-                  <span className="text-thread-bright font-mono text-[10px] uppercase tracking-widest mr-2">
-                    Pain
-                  </span>
-                  {v.pain}
-                </p>
-                <p className="text-sm text-os-ink/90">
-                  <span className="text-seal-bright font-mono text-[10px] uppercase tracking-widest mr-2">
-                    KROVA
-                  </span>
-                  {v.win}
-                </p>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {VERTICALS.map((v, i) => (
+            <motion.div
+              key={v.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-10%" }}
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+              className="group relative rounded-xl overflow-hidden border border-os-border shadow-xl transition-transform duration-300 hover:-translate-y-1"
+            >
+              <Image
+                src={v.image}
+                alt={`${v.name}: ${v.pain} ${v.win}`}
+                width={1376}
+                height={1032}
+                className="w-full h-auto block"
+                sizes="(max-width: 768px) 100vw, 552px"
+              />
+            </motion.div>
           ))}
         </div>
       </section>
