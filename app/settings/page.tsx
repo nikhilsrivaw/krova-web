@@ -285,6 +285,22 @@ export default function SettingsPage() {
     }
   };
 
+  // Temporary - retesting the original "Instagram API with Instagram
+  // Login" path's webhook delivery, separate from the Facebook Login
+  // route above. Remove once that investigation concludes.
+  const handleConnectInstagramLegacy = async () => {
+    try {
+      const res = await channels.instagramConnectUrl();
+      if (res?.url) {
+        window.location.href = res.url;
+      } else {
+        alert("Instagram (legacy) isn't configured for this account yet.");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not connect Instagram (legacy).");
+    }
+  };
+
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
 
@@ -548,13 +564,23 @@ export default function SettingsPage() {
                   {igConnection.status === "active" ? "Connected" : igConnection.status}
                 </Badge>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleConnectInstagram}
-                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                >
-                  Connect Instagram
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConnectInstagram}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                  >
+                    Connect Instagram
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConnectInstagramLegacy}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                    title="Temporary - testing the original Instagram Login path"
+                  >
+                    Connect Instagram (legacy)
+                  </button>
+                </div>
               )}
             </div>
           </div>
