@@ -21,7 +21,6 @@ import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
 import { PhoneBriefing } from "@/components/spectrum/phone-briefing";
-import { DataFlowVideo } from "@/components/spectrum/data-flow-video";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 
@@ -358,11 +357,6 @@ export default function Hero() {
       <section id="how-it-works">
         <HowItWorks />
       </section>
-
-      {/* SEE THE DATA FLOW */}
-      <div className="border-t border-os-border">
-        <DataFlowVideo />
-      </div>
 
       {/* PHONE MOCKUP SECTION */}
       <section className="border-t border-os-border max-w-6xl mx-auto px-6 py-28">
