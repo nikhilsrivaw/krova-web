@@ -272,7 +272,7 @@ export default function SettingsPage() {
 
   const handleConnectInstagram = async () => {
     try {
-      const res = await channels.instagramConnectUrl();
+      const res = await channels.instagramFbConnectUrl();
       if (res?.url) {
         // A real redirect, not a popup - Instagram Business Login is a
         // classic OAuth round trip, unlike WhatsApp's Embedded Signup dialog.

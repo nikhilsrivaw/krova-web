@@ -540,6 +540,10 @@ export const channels = {
   instagramConnectUrl: () =>
     api.get<{ url: string }>("/channels/instagram/connect-url"),
 
+  /** The Page-based Facebook Login route, in place of the above - see backend for why. */
+  instagramFbConnectUrl: () =>
+    api.get<{ url: string }>("/channels/instagram/fb-connect-url"),
+
   gmailBackfillNow: () =>
     api.post<{
       mailbox: string; messages_read: number; messages_stored: number;
