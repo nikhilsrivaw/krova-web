@@ -204,7 +204,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <div className="bg-os-bg min-h-screen relative">
+    <div className="min-h-screen relative">
       <Navbar />
 
       {/* Hero */}
