@@ -29,7 +29,7 @@ import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/component
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
-import { PhoneBriefing } from "@/components/spectrum/phone-briefing";
+import { PhoneCarousel } from "@/components/spectrum/phone-carousel";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 
@@ -408,7 +408,7 @@ export default function Hero() {
             </ul>
           </div>
           <div>
-            <PhoneBriefing />
+            <PhoneCarousel />
           </div>
         </div>
       </section>
