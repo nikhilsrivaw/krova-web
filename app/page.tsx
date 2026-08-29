@@ -495,21 +495,55 @@ export default function Hero() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-20">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div>
-            <Eyebrow className="mb-2">Pricing</Eyebrow>
-            <h2 className="font-serif text-2xl font-semibold tracking-tight text-os-ink">
-              Plans start at ₹999/month.
-            </h2>
-            <p className="text-os-text-dim text-sm mt-1">14-day free trial. No credit card required.</p>
+      <section id="pricing" className="border-t border-os-border max-w-6xl mx-auto px-6 py-24">
+        <div className="relative rounded-2xl border border-os-border overflow-hidden bg-os-card/40">
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[260px] bg-teal/20 blur-[100px] rounded-full pointer-events-none" />
+          <DotPattern className="fill-white/[0.06] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_0%,white,transparent)]" />
+          <BorderBeam size={220} duration={11} colorFrom="#5EEAD4" colorTo="#00A387" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-10 px-8 py-14 sm:px-14">
+            <div className="flex-1">
+              <Eyebrow className="mb-3">Pricing</Eyebrow>
+              <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-os-ink mb-3">
+                Plans start at{" "}
+                <span className="inline-flex items-baseline text-teal">
+                  <IndianRupee size={26} className="mr-0.5" strokeWidth={2.5} />
+                  999
+                </span>
+                <span className="text-os-text-dim text-xl font-normal">/month</span>
+              </h2>
+              <p className="text-os-text-dim max-w-md leading-relaxed">
+                One AI analyst across every channel you already use. 14-day free trial, no credit
+                card required.
+              </p>
+              <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
+                {[
+                  "All 4 channels",
+                  "Nightly AI analysis",
+                  "Morning briefing",
+                  "AI-drafted replies",
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-2 text-sm text-os-text-dim">
+                    <Check size={14} className="text-teal shrink-0" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col items-start lg:items-end gap-3 shrink-0">
+              <Link href="/pricing">
+                <Magnetic>
+                  <span className="os-button os-button-cta px-7 py-3 text-sm inline-flex">
+                    See full pricing <ArrowRight size={16} />
+                  </span>
+                </Magnetic>
+              </Link>
+              <span className="flex items-center gap-1.5 text-xs text-os-text-dim lg:self-end">
+                <Sparkles size={11} className="text-teal" /> 3 plans · cancel anytime
+              </span>
+            </div>
           </div>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-1.5 shrink-0 text-sm font-medium text-os-ink hover:text-teal transition-colors"
-          >
-            See full pricing <ArrowRight size={14} />
-          </Link>
         </div>
       </section>
 
