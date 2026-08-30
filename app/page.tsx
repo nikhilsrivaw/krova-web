@@ -64,6 +64,8 @@ const VERTICALS = [
   },
 ];
 
+const VOICE_WAVE_BARS = [28, 48, 72, 40, 88, 58, 32, 66, 46, 82, 36, 60, 44, 76, 30];
+
 const INTELLIGENCE_CARDS = [
   {
     icon: <Sun size={16} className="text-teal" />,
@@ -490,6 +492,66 @@ export default function Hero() {
             <Link href="/privacy" className="text-sm text-os-text-dim underline underline-offset-4 hover:text-os-ink">
               How we handle your data
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* VOICE AGENT */}
+      <section id="voice-agent" className="border-t border-os-border max-w-6xl mx-auto px-6 py-28 overflow-hidden">
+        <div className="max-w-xl mb-16">
+          <Eyebrow>Coming soon</Eyebrow>
+          <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
+            A voice that answers when you can&apos;t.
+          </h2>
+          <p className="text-os-text-dim mt-4">
+            An AI voice agent that picks up the call, understands your customer, and speaks back — in
+            your business&apos;s voice, around the clock.
+          </p>
+        </div>
+
+        <div className="relative flex flex-col md:flex-row items-center justify-center gap-6 md:gap-2">
+          {/* Mascot */}
+          <div className="relative shrink-0 z-10">
+            <div className="absolute inset-0 bg-teal/25 blur-[90px] rounded-full pointer-events-none" />
+            <Image
+              src="/images/voice-agent-mascot.png"
+              alt="KROVA voice agent mascot"
+              width={1185}
+              height={1327}
+              quality={95}
+              className="relative w-44 sm:w-52 md:w-60 h-auto select-none pointer-events-none"
+            />
+          </div>
+
+          {/* Wave bridge */}
+          <div className="relative flex items-center justify-center gap-[3px] h-14 md:h-20 px-2 md:px-6 shrink-0 rotate-90 md:rotate-0">
+            {VOICE_WAVE_BARS.map((h, i) => (
+              <span
+                key={i}
+                className="w-1 md:w-1.5 rounded-full bg-gradient-to-b from-teal-bright to-teal"
+                style={{
+                  height: `${h}%`,
+                  animation: `voice-wave 1.4s linear ${i * 0.06}s infinite`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* People */}
+          <div className="relative shrink-0 w-full max-w-sm mx-auto md:max-w-none md:w-auto md:mx-0">
+            <div className="absolute inset-0 bg-teal/25 blur-[90px] rounded-full pointer-events-none" />
+            <Image
+              src="/images/voice-agent-people.png"
+              alt="Business owners, clinics, and shop staff answering calls"
+              width={1536}
+              height={1024}
+              quality={95}
+              className="relative w-full md:w-[420px] h-auto block select-none pointer-events-none"
+              style={{
+                maskImage: "radial-gradient(ellipse 70% 70% at center, black 55%, transparent 100%)",
+                WebkitMaskImage: "radial-gradient(ellipse 70% 70% at center, black 55%, transparent 100%)",
+              }}
+            />
           </div>
         </div>
       </section>
