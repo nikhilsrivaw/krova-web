@@ -575,15 +575,11 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white">Instagram Business</h4>
-                  {igConnection ? (
-                    <p className="text-sm text-pink-300 font-mono font-semibold">
-                      Connected as {igConnection.handle || igConnection.display_name || "—"}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-os-text-dim font-mono">
-                      DMs and comments in the same unified timeline as WhatsApp.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {igConnection
+                      ? igConnection.handle || igConnection.display_name || "Connected"
+                      : "DMs and comments in the same unified timeline as WhatsApp."}
+                  </p>
                 </div>
               </div>
               {igConnection ? (
@@ -610,6 +606,36 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            {igConnection && (
+              <div className="p-4 rounded-xl bg-pink-500/[0.04] border border-pink-500/[0.15] grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Username</p>
+                  <p className="text-sm text-white font-mono font-semibold">
+                    {igConnection.handle || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Display name</p>
+                  <p className="text-sm text-white font-mono font-semibold">
+                    {igConnection.display_name || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Account ID</p>
+                  <p className="text-sm text-white font-mono font-semibold">
+                    {igConnection.external_account_id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Connected since</p>
+                  <p className="text-sm text-white font-mono font-semibold">
+                    {igConnection.connected_at
+                      ? new Date(igConnection.connected_at).toLocaleString()
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            )}
             {igConnection && (
               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
                 <p className="text-[11px] text-os-text-dim font-mono">
