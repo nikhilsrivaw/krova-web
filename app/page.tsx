@@ -538,15 +538,19 @@ export default function Hero() {
           </div>
 
           {/* People */}
-          <div className="relative rounded-2xl overflow-hidden border border-os-border/60 shadow-xl shrink-0 w-full max-w-sm mx-auto md:max-w-none md:w-auto md:mx-0">
-            <div className="absolute inset-0 bg-teal/10 blur-2xl pointer-events-none" />
+          <div className="relative shrink-0 w-full max-w-sm mx-auto md:max-w-none md:w-auto md:mx-0">
+            <div className="absolute inset-0 bg-teal/25 blur-[90px] rounded-full pointer-events-none" />
             <Image
               src="/images/voice-agent-people.png"
               alt="Business owners, clinics, and shop staff answering calls"
               width={1536}
               height={1024}
               quality={95}
-              className="w-full md:w-[420px] h-auto block"
+              className="relative w-full md:w-[420px] h-auto block select-none pointer-events-none"
+              style={{
+                maskImage: "radial-gradient(ellipse 70% 70% at center, black 55%, transparent 100%)",
+                WebkitMaskImage: "radial-gradient(ellipse 70% 70% at center, black 55%, transparent 100%)",
+              }}
             />
           </div>
         </div>
