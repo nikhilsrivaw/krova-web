@@ -111,9 +111,15 @@
   }
   @keyframes voice-wave {
     0%, 100% { transform: scaleY(0.3); opacity: 0.5; }
-    25% { transform: scaleY(0.55); opacity: 0.7; }
+    10% { transform: scaleY(0.367); opacity: 0.548; }
+    20% { transform: scaleY(0.542); opacity: 0.673; }
+    30% { transform: scaleY(0.758); opacity: 0.827; }
+    40% { transform: scaleY(0.933); opacity: 0.952; }
     50% { transform: scaleY(1); opacity: 1; }
-    75% { transform: scaleY(0.55); opacity: 0.7; }
+    60% { transform: scaleY(0.933); opacity: 0.952; }
+    70% { transform: scaleY(0.758); opacity: 0.827; }
+    80% { transform: scaleY(0.542); opacity: 0.673; }
+    90% { transform: scaleY(0.367); opacity: 0.548; }
   }
 }
 
