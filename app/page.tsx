@@ -538,7 +538,8 @@ export default function Hero() {
           </div>
 
           {/* People */}
-          <div className="relative rounded-2xl overflow-hidden border border-os-border shadow-xl shrink-0 w-full md:w-auto">
+          <div className="relative rounded-2xl overflow-hidden border border-os-border/60 shadow-xl shrink-0 w-full max-w-sm mx-auto md:max-w-none md:w-auto md:mx-0">
+            <div className="absolute inset-0 bg-teal/10 blur-2xl pointer-events-none" />
             <Image
               src="/images/voice-agent-people.png"
               alt="Business owners, clinics, and shop staff answering calls"
