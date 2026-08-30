@@ -110,8 +110,10 @@
     30%, 60% { background-position: calc(100% + var(--shiny-width)) 0; }
   }
   @keyframes voice-wave {
-    0%, 100% { transform: scaleY(0.35); opacity: 0.55; }
+    0%, 100% { transform: scaleY(0.3); opacity: 0.5; }
+    25% { transform: scaleY(0.55); opacity: 0.7; }
     50% { transform: scaleY(1); opacity: 1; }
+    75% { transform: scaleY(0.55); opacity: 0.7; }
   }
 }
 

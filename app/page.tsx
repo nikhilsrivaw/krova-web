@@ -531,7 +531,7 @@ export default function Hero() {
                 className="w-1 md:w-1.5 rounded-full bg-gradient-to-b from-teal-bright to-teal"
                 style={{
                   height: `${h}%`,
-                  animation: `voice-wave 1.3s ease-in-out ${i * 0.06}s infinite`,
+                  animation: `voice-wave 1.4s linear ${i * 0.06}s infinite`,
                 }}
               />
             ))}
