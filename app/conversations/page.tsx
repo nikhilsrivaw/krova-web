@@ -263,7 +263,7 @@ export default function ConversationsPage() {
             </div>
 
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-              {["all", "whatsapp", "voice", "email"].map((ch) => (
+              {["all", "whatsapp", "instagram", "voice", "email"].map((ch) => (
                 <button
                   key={ch}
                   type="button"
