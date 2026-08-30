@@ -575,11 +575,15 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white">Instagram Business</h4>
-                  <p className="text-[11px] text-os-text-dim font-mono">
-                    {igConnection
-                      ? igConnection.handle || igConnection.display_name || "Connected"
-                      : "DMs and comments in the same unified timeline as WhatsApp."}
-                  </p>
+                  {igConnection ? (
+                    <p className="text-sm text-pink-300 font-mono font-semibold">
+                      Connected as {igConnection.handle || igConnection.display_name || "—"}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-os-text-dim font-mono">
+                      DMs and comments in the same unified timeline as WhatsApp.
+                    </p>
+                  )}
                 </div>
               </div>
               {igConnection ? (
