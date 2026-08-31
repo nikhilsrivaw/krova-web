@@ -731,6 +731,24 @@ export const voice = {
     api.post<void>(`/voice-onboarding/numbers/${encodeURIComponent(number)}/release`),
 
   logs: () => api.get<CallLog[]>("/voice-onboarding/logs"),
+
+  agentSettings: () => api.get<AgentSettings>("/voice-onboarding/agent-settings"),
+
+  updateAgentSettings: (data: {
+    greeting?: string;
+    language?: "en-IN" | "hi-IN";
+    language_mode?: "adaptive" | "fixed";
+    speaker?: string;
+  }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
+};
+
+export type AgentSettings = {
+  greeting: string;
+  language: "en-IN" | "hi-IN";
+  language_mode: "adaptive" | "fixed";
+  speaker: string;
+  male_speakers: string[];
+  female_speakers: string[];
 };
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────

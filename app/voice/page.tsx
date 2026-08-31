@@ -32,6 +32,7 @@ import {
   type VoiceNumber,
   type CallLog,
   type ChannelConnection,
+  type AgentSettings,
 } from "@/lib/api";
 
 const STATUS_LABEL: Record<VoiceApplication["status"], string> = {
@@ -69,12 +70,22 @@ export default function VoicePage() {
   // Transcript Drawer
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
 
+  // Agent Speech & Greeting - null means "no voice number connected yet",
+  // which the tab treats differently from "still loading".
+  const [agentSettings, setAgentSettings] = useState<AgentSettings | null>(null);
+  const [greetingDraft, setGreetingDraft] = useState("");
+  const [languageModeDraft, setLanguageModeDraft] = useState<"adaptive" | "fixed">("adaptive");
+  const [languageDraft, setLanguageDraft] = useState<"en-IN" | "hi-IN">("en-IN");
+  const [speakerDraft, setSpeakerDraft] = useState("shubh");
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
   const loadData = async () => {
     setIsLoading(true);
-    const [appRes, chRes, logsRes] = await Promise.allSettled([
+    const [appRes, chRes, logsRes, agentRes] = await Promise.allSettled([
       voice.applicationStatus(),
       channels.list(),
       voice.logs(),
+      voice.agentSettings(),
     ]);
 
     if (appRes.status === "fulfilled") {
@@ -86,6 +97,16 @@ export default function VoicePage() {
       setVoiceConnections(chRes.value.filter((c) => c.channel === "voice"));
     }
     if (logsRes.status === "fulfilled") setCallLogs(logsRes.value);
+    if (agentRes.status === "fulfilled") {
+      setAgentSettings(agentRes.value);
+      setGreetingDraft(agentRes.value.greeting);
+      setLanguageModeDraft(agentRes.value.language_mode);
+      setLanguageDraft(agentRes.value.language);
+      setSpeakerDraft(agentRes.value.speaker);
+    }
+    // agentRes rejecting (409, no voice number yet) is expected and left
+    // as agentSettings === null - the tab shows its own explanatory state
+    // for that rather than surfacing it as an error banner.
     setIsLoading(false);
   };
 
@@ -142,6 +163,19 @@ export default function VoicePage() {
     run("resubmit", async () => {
       const app = await voice.resubmitApplication();
       setApplication(app);
+    });
+
+  const handleSaveAgentSettings = () =>
+    run("agent-settings", async () => {
+      const updated = await voice.updateAgentSettings({
+        greeting: greetingDraft,
+        language_mode: languageModeDraft,
+        language: languageDraft,
+        speaker: speakerDraft,
+      });
+      setAgentSettings(updated);
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 3000);
     });
 
   const handleSearchNumbers = async () => {
@@ -579,13 +613,143 @@ export default function VoicePage() {
             {/* TAB 4: AGENT SPEECH & GREETING */}
             {activeTab === "settings" && (
               <div className="max-w-2xl mx-auto space-y-6">
-                <GlassCard className="p-6">
-                  <EmptyState
-                    icon={Volume2}
-                    title="Not configurable yet"
-                    description="The voice agent's greeting and speech style are fixed per business today. A control for changing them isn't wired up on the backend yet."
-                  />
-                </GlassCard>
+                {!agentSettings ? (
+                  <GlassCard className="p-6">
+                    <EmptyState
+                      icon={Volume2}
+                      title="Connect a phone number first"
+                      description="Speech and greeting are per-number - once a voice number is bought under Phone Numbers, its voice and language become configurable here."
+                    />
+                  </GlassCard>
+                ) : (
+                  <GlassCard className="p-6 space-y-6">
+                    <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+                      <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        <Volume2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Agent Speech & Greeting</h3>
+                        <p className="text-xs text-os-text-dim mt-0.5">
+                          What callers hear on this connected number.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Greeting */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Greeting
+                      </label>
+                      <textarea
+                        value={greetingDraft}
+                        onChange={(e) => setGreetingDraft(e.target.value)}
+                        rows={2}
+                        maxLength={500}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none resize-none"
+                        placeholder="Hello, thank you for calling..."
+                      />
+                    </div>
+
+                    {/* Voice */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Agent Voice
+                      </label>
+                      <select
+                        value={speakerDraft}
+                        onChange={(e) => setSpeakerDraft(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                      >
+                        <optgroup label="Male">
+                          {agentSettings.male_speakers.map((s) => (
+                            <option key={s} value={s} className="capitalize">
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Female">
+                          {agentSettings.female_speakers.map((s) => (
+                            <option key={s} value={s} className="capitalize">
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {/* Language mode */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Language
+                      </label>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        {[
+                          {
+                            key: "adaptive" as const,
+                            title: "Adaptive (Recommended)",
+                            desc: "Replies in whatever the caller speaks - Hindi, English, or a mix.",
+                          },
+                          {
+                            key: "fixed" as const,
+                            title: "Fixed",
+                            desc: "Always replies in one chosen language, regardless of the caller.",
+                          },
+                        ].map((m) => (
+                          <div
+                            key={m.key}
+                            onClick={() => setLanguageModeDraft(m.key)}
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                              languageModeDraft === m.key
+                                ? "border-cyan-500/50 bg-cyan-500/10 text-white font-bold"
+                                : "border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
+                            }`}
+                          >
+                            <p className="text-xs text-white mb-0.5">{m.title}</p>
+                            <p className="text-[10px] font-mono text-os-text-dim leading-relaxed">
+                              {m.desc}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {languageModeDraft === "fixed" && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            { key: "en-IN" as const, title: "English only" },
+                            { key: "hi-IN" as const, title: "Hindi only" },
+                          ].map((l) => (
+                            <button
+                              key={l.key}
+                              type="button"
+                              onClick={() => setLanguageDraft(l.key)}
+                              className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                                languageDraft === l.key
+                                  ? "bg-cyan-600 border-cyan-500 text-white"
+                                  : "bg-white/[0.02] border-white/[0.06] text-os-text-dim hover:text-white"
+                              }`}
+                            >
+                              {l.title}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-end gap-3">
+                      {settingsSaved && (
+                        <span className="text-xs text-seal-bright font-mono">Saved.</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSaveAgentSettings}
+                        disabled={busy === "agent-settings"}
+                        className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-md shadow-cyan-600/20 cursor-pointer"
+                      >
+                        {busy === "agent-settings" ? "Saving..." : "Save Settings"}
+                      </button>
+                    </div>
+                  </GlassCard>
+                )}
               </div>
             )}
           </>
