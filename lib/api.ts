@@ -740,6 +740,11 @@ export const voice = {
     language_mode?: "adaptive" | "fixed";
     speaker?: string;
   }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
+
+  previewVoice: (speaker: string, language: "en-IN" | "hi-IN") =>
+    api.post<{ audio_base64: string; format: string }>("/voice-onboarding/preview-voice", {
+      speaker, language,
+    }),
 };
 
 export type AgentSettings = {

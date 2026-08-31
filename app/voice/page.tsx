@@ -16,6 +16,7 @@ import {
   Search,
   Trash2,
   ExternalLink,
+  Play,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -78,6 +79,8 @@ export default function VoicePage() {
   const [languageDraft, setLanguageDraft] = useState<"en-IN" | "hi-IN">("en-IN");
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -177,6 +180,20 @@ export default function VoicePage() {
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 3000);
     });
+
+  const handlePreviewVoice = async () => {
+    setIsPreviewing(true);
+    setPreviewError(null);
+    try {
+      const result = await voice.previewVoice(speakerDraft, languageDraft);
+      const audio = new Audio(`data:audio/${result.format};base64,${result.audio_base64}`);
+      await audio.play();
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Could not play a preview.");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
 
   const handleSearchNumbers = async () => {
     setIsSearchingNumbers(true);
@@ -655,26 +672,40 @@ export default function VoicePage() {
                       <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
                         Agent Voice
                       </label>
-                      <select
-                        value={speakerDraft}
-                        onChange={(e) => setSpeakerDraft(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                      >
-                        <optgroup label="Male">
-                          {agentSettings.male_speakers.map((s) => (
-                            <option key={s} value={s} className="capitalize">
-                              {s.charAt(0).toUpperCase() + s.slice(1)}
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Female">
-                          {agentSettings.female_speakers.map((s) => (
-                            <option key={s} value={s} className="capitalize">
-                              {s.charAt(0).toUpperCase() + s.slice(1)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={speakerDraft}
+                          onChange={(e) => setSpeakerDraft(e.target.value)}
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                        >
+                          <optgroup label="Male">
+                            {agentSettings.male_speakers.map((s) => (
+                              <option key={s} value={s} className="capitalize">
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Female">
+                            {agentSettings.female_speakers.map((s) => (
+                              <option key={s} value={s} className="capitalize">
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handlePreviewVoice}
+                          disabled={isPreviewing}
+                          className="px-3.5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          {isPreviewing ? "Playing..." : "Preview"}
+                        </button>
+                      </div>
+                      {previewError && (
+                        <p className="text-[11px] text-red-400 font-mono mt-1.5">{previewError}</p>
+                      )}
                     </div>
 
                     {/* Language mode */}
