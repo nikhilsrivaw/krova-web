@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppIcon } from "@/components/spectrum/brand-icons";
+import { PixelLoader } from "@/components/spectrum/pixel-loader";
 
 interface NavLink {
   label: string;
@@ -187,6 +188,7 @@ export function Navbar() {
   }>({ left: 0, width: 0, visible: false });
   const [activeMega, setActiveMega] = useState<NavLink | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [testLoaderOpen, setTestLoaderOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,6 +325,14 @@ export function Navbar() {
 
           {/* Right: cmdK + auth + CTA */}
           <div className="relative z-10 flex items-center gap-2 pr-2">
+            {/* TEMP: loader preview button — remove once loader design is signed off */}
+            <button
+              onClick={() => setTestLoaderOpen(true)}
+              className="text-[11px] font-bold uppercase tracking-widest text-teal hover:text-teal-bright transition-colors px-2"
+            >
+              Loader
+            </button>
+
             {/* Cmd+K */}
             <a
               href="https://app.krova.space"
@@ -498,6 +508,25 @@ export function Navbar() {
                 </Link>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TEMP: loader preview overlay — remove once loader design is signed off */}
+      <AnimatePresence>
+        {testLoaderOpen && (
+          <motion.div
+            key="loader-preview"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setTestLoaderOpen(false)}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-os-bg cursor-pointer"
+          >
+            <PixelLoader size={140} />
+            <p className="font-mono text-xs tracking-[0.3em] text-os-text-dim uppercase">Loading</p>
+            <p className="text-[10px] text-os-text-dim/60 uppercase tracking-widest">Click anywhere to close</p>
           </motion.div>
         )}
       </AnimatePresence>

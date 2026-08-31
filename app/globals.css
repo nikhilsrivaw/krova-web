@@ -155,6 +155,16 @@
     80% { transform: scaleY(0.542); opacity: 0.673; }
     90% { transform: scaleY(0.367); opacity: 0.548; }
   }
+
+  @keyframes pixel-flow {
+    0%, 50% { background-color: var(--color-teal-dim); transform: scale(1); box-shadow: none; }
+    62% { background-color: var(--color-teal); transform: scale(1.02); box-shadow: none; }
+    72% { background-color: var(--color-teal); transform: scale(1.06); box-shadow: 0 0 2px 0 rgba(94, 234, 212, 0.35); }
+    82% { background-color: var(--color-teal-bright); transform: scale(1.14); box-shadow: 0 0 4px 0 rgba(94, 234, 212, 0.7); }
+    88% { background-color: var(--color-teal-bright); transform: scale(1.18); box-shadow: 0 0 5px 0.5px rgba(94, 234, 212, 0.85); }
+    95% { background-color: var(--color-teal); transform: scale(1.05); box-shadow: 0 0 2px 0 rgba(94, 234, 212, 0.3); }
+    100% { background-color: var(--color-teal-dim); transform: scale(1); box-shadow: none; }
+  }
 }
 
 @layer components {
