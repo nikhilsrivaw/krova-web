@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
+import { getEmail } from "@/lib/auth";
 import {
   conversations,
   channels,
@@ -68,6 +69,10 @@ export default function ConversationsPage() {
   const [activeThread, setActiveThread] = useState<ConversationThread | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<string>("all");
+  // "all" | "mine" | "unassigned" - triage filters, the shared-inbox pattern
+  // every dedicated inbox product (WhatChimp included) offers alongside the
+  // per-conversation assign dropdown that already existed here.
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isCustomerDrawerOpen, setIsCustomerDrawerOpen] = useState(false);
@@ -230,6 +235,8 @@ export default function ConversationsPage() {
     }
   };
 
+  const myUserId = teamMembers.find((m) => m.email === getEmail())?.user_id || null;
+
   const filteredThreads = threadList.filter((item) => {
     const phone = phoneOf(item.identities) || "";
     const matchesSearch =
@@ -238,8 +245,15 @@ export default function ConversationsPage() {
       (item.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesChannel =
       channelFilter === "all" || item.channels.includes(channelFilter);
-    return matchesSearch && matchesChannel;
+    const matchesAssignee =
+      assigneeFilter === "all" ||
+      (assigneeFilter === "mine" && item.assigned_to_user_id === myUserId) ||
+      (assigneeFilter === "unassigned" && !item.assigned_to_user_id);
+    return matchesSearch && matchesChannel && matchesAssignee;
   });
+
+  const teamMemberById = (userId: string | null) =>
+    userId ? teamMembers.find((m) => m.user_id === userId) : undefined;
 
   return (
     <AppLayout
@@ -278,6 +292,25 @@ export default function ConversationsPage() {
                 </button>
               ))}
             </div>
+
+            {teamMembers.length > 1 && (
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                {["all", "mine", "unassigned"].map((af) => (
+                  <button
+                    key={af}
+                    type="button"
+                    onClick={() => setAssigneeFilter(af)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-mono capitalize transition-all shrink-0 ${
+                      assigneeFilter === af
+                        ? "bg-brass text-white font-bold"
+                        : "bg-white/[0.02] text-os-text-dim hover:text-white"
+                    }`}
+                  >
+                    {af}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Thread Scroll List */}
@@ -323,14 +356,34 @@ export default function ConversationsPage() {
                         )}
                       </div>
 
-                      {thread.last_message_at && (
-                        <span className="text-[10px] font-mono text-os-text-dim shrink-0">
-                          {new Date(thread.last_message_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {teamMembers.length > 1 && thread.assigned_to_user_id && (
+                          <span
+                            title={
+                              teamMemberById(thread.assigned_to_user_id)?.full_name ||
+                              teamMemberById(thread.assigned_to_user_id)?.email ||
+                              "Assigned"
+                            }
+                            className="w-[18px] h-[18px] rounded-full bg-gradient-to-br from-brass to-slate-800 border border-white/20 flex items-center justify-center text-[9px] font-bold text-white"
+                          >
+                            {(
+                              teamMemberById(thread.assigned_to_user_id)?.full_name ||
+                              teamMemberById(thread.assigned_to_user_id)?.email ||
+                              "?"
+                            )
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                        {thread.last_message_at && (
+                          <span className="text-[10px] font-mono text-os-text-dim">
+                            {new Date(thread.last_message_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 mb-1.5">
