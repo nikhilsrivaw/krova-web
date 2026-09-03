@@ -1,220 +1,119 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import {
-  Zap,
-  ArrowRight,
-  Clock,
-  MessageSquare,
-  Brain,
-  CheckSquare,
-  TrendingUp,
-  Moon,
-  Sun,
-  Bell,
-  X,
-  Lightbulb,
-  AlertTriangle,
-  DollarSign,
-  ShieldCheck,
-  Check,
-} from "lucide-react";
-
-import { BorderBeam } from "@/components/magicui/border-beam";
-import { TypingAnimation } from "@/components/magicui/typing-animation";
+import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 
-const STATS = [
-  { label: "Messages analyzed", value: "2.8M+" },
-  { label: "Avg accuracy", value: "94%" },
-  { label: "Languages", value: "3" },
-  { label: "Models running", value: "7" },
-];
-
-const TIMELINE = [
+/** The three things the AI pulled out of one real-looking WhatsApp message. */
+const SIGNALS = [
   {
-    time: "10:00 PM",
-    icon: <Moon size={18} />,
-    title: "Nightly scan",
-    desc: "KROVA reads every message that came in today across all your connected channels.",
+    n: 1,
+    label: "Pricing intent",
+    detail: "Asking for a number, not a brochure. This is a buying-stage question.",
+    confidence: 92,
   },
   {
-    time: "10:05 PM",
-    icon: <Brain size={18} />,
-    title: "AI analysis",
-    desc: "Each conversation is scored by intent, urgency, and value. The AI uses your catalogue and guardrails to draft the right reply.",
+    n: 2,
+    label: "Urgency",
+    detail: "Wants a start date. The decision is time-boxed, so a slow reply loses it.",
+    confidence: 88,
   },
   {
-    time: "10:20 PM",
-    icon: <CheckSquare size={18} />,
-    title: "Approval queue built",
-    desc: "Replies are ranked HOT → WARM → COLD and loaded into your queue, ready for the morning.",
-  },
-  {
-    time: "8:00 AM",
-    icon: <Sun size={18} />,
-    title: "Morning briefing",
-    desc: "You wake up to a WhatsApp from KROVA: overnight activity, hot leads to call, pending approvals.",
-  },
-  {
-    time: "8:05 AM",
-    icon: <Bell size={18} />,
-    title: "You approve. KROVA sends.",
-    desc: "Tap Approve. KROVA sends via the original channel — no copy-paste, no switching apps.",
+    n: 3,
+    label: "Known contact",
+    detail: "Same number opened your pricing page three times last week.",
+    confidence: 96,
   },
 ];
 
-const SCORING = [
+const TIERS = [
   {
-    label: "HOT 🔥",
-    color: "text-thread-bright",
-    border: "border-thread/30",
-    dot: "bg-thread-bright",
-    desc: "Asked about pricing, ready to buy, or explicitly requesting a follow-up. Needs a reply within hours.",
-    signals: [
-      "Mentioned price / cost / budget",
-      "Asked about delivery / timeline",
-      "Returning customer with new request",
-      "Said \"interested\", \"let's do it\", \"send the link\"",
-    ],
+    tier: "Hot",
+    window: "Reply within the hour",
+    filled: 3,
+    accent: "text-thread-bright",
+    bar: "bg-thread-bright",
+    border: "border-thread/40",
+    desc: "Asked a price, a date, or for the link. The decision is already being made.",
+    signals: ["Mentions cost, budget or EMI", "Asks about delivery or start date", "Returns after a quote"],
   },
   {
-    label: "WARM ⚡",
-    color: "text-brass-bright",
-    border: "border-brass/30",
-    dot: "bg-brass-bright",
-    desc: "Showing genuine interest but hasn't committed. Needs nurturing — the right message at the right time.",
-    signals: [
-      "Viewed pricing multiple times",
-      "Engaged with content",
-      "Asked general product questions",
-      "Existing customer exploring new services",
-    ],
+    tier: "Warm",
+    window: "Reply today",
+    filled: 2,
+    accent: "text-teal-bright",
+    bar: "bg-teal-bright",
+    border: "border-teal/40",
+    desc: "Interested, not committed. The right nudge moves them; a sales pitch loses them.",
+    signals: ["Opens pricing more than once", "Asks what is included", "Existing customer, new service"],
   },
   {
-    label: "COLD 🧊",
-    color: "text-teal-bright",
-    border: "border-teal/30",
-    dot: "bg-teal",
-    desc: "Went quiet, never replied, or low-intent browsing. Needs a re-engagement message, not a hard sell.",
-    signals: [
-      "No reply in 3+ days",
-      "Only said \"hi\" or asked a vague question",
-      "Bounced from the website",
-      "Long-dormant contact",
-    ],
+    tier: "Cold",
+    window: "Re-engage this week",
+    filled: 1,
+    accent: "text-os-text-dim",
+    bar: "bg-os-text-dim",
+    border: "border-os-border",
+    desc: "Quiet for days, or only ever said hello. Needs a reason to come back, not a follow-up.",
+    signals: ["No reply in 3+ days", "Vague first message", "Dormant past customer"],
   },
 ];
 
-const CAPABILITIES = [
-  {
-    icon: <MessageSquare size={16} className="text-teal" />,
-    title: "Context-aware replies",
-    desc: "The AI reads the full conversation thread — not just the last message — so replies are always contextually accurate.",
-  },
-  {
-    icon: <TrendingUp size={16} className="text-teal" />,
-    title: "Intent detection",
-    desc: "Trained on buying signals, objections, and urgency cues specific to Indian SMB customer language.",
-  },
-  {
-    icon: <CheckSquare size={16} className="text-teal" />,
-    title: "Guardrails",
-    desc: "Define what the AI should never say — competitors, prices without approval, anything sensitive.",
-  },
-  {
-    icon: <Zap size={16} className="text-teal" />,
-    title: "Brand voice cloning",
-    desc: "Set your greeting style and tone once. The AI writes in your voice — formal, friendly, or Hinglish — every time.",
-  },
-  {
-    icon: <Clock size={16} className="text-teal" />,
-    title: "Real-time mode (Pro)",
-    desc: "On Pro, KROVA doesn't wait until 10 PM. It processes messages as they arrive and alerts you instantly.",
-  },
-  {
-    icon: <Brain size={16} className="text-teal" />,
-    title: "Learns over time",
-    desc: "The more you approve and reject, the sharper it gets. Every interaction makes it more you.",
-  },
-];
-
-const OUTPUTS = [
-  {
-    type: "Prediction",
-    icon: <TrendingUp size={14} className="text-brass" />,
-    title: "Rahul will churn in 5–7 days",
-    body: "Engagement dropped 60% · last 3 replies took 4h+ · price objection unresolved.",
-    confidence: 87,
-    action: "Send win-back offer",
-  },
-  {
-    type: "Revenue leak",
-    icon: <DollarSign size={14} className="text-seal-bright" />,
-    title: "₹47,000 in unpaid quotes",
-    body: "3 quotes sent 12+ days ago, never followed up. Highest value: Mehta Interiors ₹22k.",
-    confidence: 99,
-    action: "Send reminders",
-  },
-  {
-    type: "Hot signal",
-    icon: <AlertTriangle size={14} className="text-thread-bright" />,
-    title: "Priya asked pricing twice",
-    body: "First DM on Mon, follow-up on Wed. Strong intent + viewed pricing page 3×.",
-    confidence: 94,
-    action: "Approve draft",
-  },
-  {
-    type: "Voice of customer",
-    icon: <MessageSquare size={14} className="text-teal" />,
-    title: "4 customers asked for EMI",
-    body: "Repeated pattern this week — consider adding EMI tier or partner.",
-    confidence: 76,
-    action: "View cluster",
-  },
-  {
-    type: "Competitor mention",
-    icon: <ShieldCheck size={14} className="text-brass" />,
-    title: '"Zoho karta tha pehle" — Anjali',
-    body: "Switched from Zoho 2 weeks ago. Reason: too many features, no AI. Use as case study.",
-    confidence: 91,
-    action: "Tag as advocate",
-  },
-  {
-    type: "Growth opportunity",
-    icon: <Lightbulb size={14} className="text-seal-bright" />,
-    title: "12 dormant clients · 90+ days",
-    body: "All used your service once. Avg ticket ₹8k. Win-back campaign opportunity.",
-    confidence: 82,
-    action: "Draft campaign",
-  },
-];
-
-const VOICE_SAMPLES = [
+const VOICES = [
   {
     tone: "Formal",
     tag: "EN · Professional",
-    body: "Hello Priya, thank you for reaching out. Our Elite plan is priced at ₹2,499/month. Onboarding typically begins within 2 business days. Would you like me to send the payment link?",
+    body: "Hello Priya, thank you for reaching out. The Elite plan is ₹2,499 per month, and onboarding usually begins within two working days. Shall I send across the payment link?",
   },
   {
     tone: "Friendly Hinglish",
     tag: "HI-EN · Warm",
-    body: "Hi Priya 🙌 Elite plan ₹2,499/mo hai — full access milta hai. Aaj lock kar lein toh kal hi start kar dete hain. Payment link bhej dun?",
-    badge: "your voice",
+    body: "Hi Priya! Elite plan ₹2,499/mo hai, full access ke saath. Aaj lock kar lein toh kal se hi start ho jayega. Payment link bhej dun?",
+    yours: true,
   },
   {
-    tone: "Casual Hindi",
-    tag: "HI · Local",
-    body: "Priya ji namaste 🙏 Elite plan ka rate ₹2,499 maheene ka hai. Aaj confirm kar dijiye toh kal se hi service shuru ho jayegi. Payment link bhejun?",
+    tone: "Local Hindi",
+    tag: "HI · Neighbourhood",
+    body: "Priya ji namaste. Elite plan ka rate ₹2,499 maheene ka hai. Aaj confirm kar dijiye toh kal se service shuru ho jayegi. Payment link bhejun?",
   },
 ];
 
-function Eyebrow({ children }: { children: React.ReactNode }) {
+const RESTRAINTS = [
+  {
+    never: "Never sends without you",
+    then: "Every draft waits in your approval queue. Nothing leaves until you tap send.",
+  },
+  {
+    never: "Never quotes a price you have not set",
+    then: "Numbers come from your catalogue. If it is not there, the draft asks you instead of guessing.",
+  },
+  {
+    never: "Never promises a date it cannot check",
+    then: "Delivery and slot commitments are left blank for you to fill, not invented to sound helpful.",
+  },
+  {
+    never: "Never trains a shared model on your chats",
+    then: "Your conversations stay yours, and one click deletes all of them along with the export.",
+  },
+];
+
+function Eyebrow({ children }: { children: ReactNode }) {
   return (
     <div className="font-mono text-[13px] uppercase tracking-[0.2em] text-teal-bright mb-4">{children}</div>
+  );
+}
+
+/** A phrase the AI latched onto, underlined and numbered like a margin note. */
+function Mark({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <span className="whitespace-nowrap text-os-ink">
+      <span className="border-b-2 border-dashed border-teal/70 pb-0.5">{children}</span>
+      <sup className="ml-0.5 font-mono text-[10px] font-bold text-teal">{n}</sup>
+    </span>
   );
 }
 
@@ -223,525 +122,273 @@ export default function IntelligencePage() {
     <div className="bg-os-bg min-h-screen relative">
       <Navbar />
 
-      {/* HERO */}
-      <section className="pt-40 pb-16 px-6 max-w-3xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Eyebrow>Intelligence layer</Eyebrow>
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink"
-        >
-          The AI brain <span className="text-teal">behind every reply.</span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-os-text-dim text-lg mb-8"
-        >
-          KROVA doesn&apos;t just send auto-replies. It reads every conversation, scores every
-          lead, drafts context-aware messages, and gets sharper every time you use it.
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="flex items-center justify-center gap-6"
-        >
-          <Link href="/signup">
-            <span className="os-button os-button-primary px-8 py-3 text-sm inline-flex">
-              See it in action <ArrowRight size={16} />
-            </span>
-          </Link>
-          <Link
-            href="/pricing"
-            className="text-sm font-medium text-os-text-dim hover:text-os-ink transition-colors inline-flex items-center gap-1.5"
-          >
-            View plans <ArrowRight size={14} />
-          </Link>
-        </motion.div>
-      </section>
-
-      {/* STATS */}
-      <section className="max-w-4xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {STATS.map((s) => (
-            <div key={s.label} className="rounded-lg border border-os-border bg-os-card p-5 text-center">
-              <div className="font-serif text-3xl font-semibold text-teal">{s.value}</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim mt-1.5">
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* LIVE AI TERMINAL */}
-      <section className="border-t border-os-border bg-os-card/40">
-        <div className="max-w-4xl mx-auto px-6 py-24">
-          <div className="text-center mb-12">
-            <Eyebrow>Inside the brain</Eyebrow>
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-3 text-os-ink">
-              Watch the AI <span className="text-teal">actually think.</span>
-            </h2>
-            <p className="text-os-text-dim max-w-lg mx-auto">
-              Not a black box. Here&apos;s exactly how KROVA reads a conversation, scores it, and
-              drafts your reply.
-            </p>
+      {/* 01 — READ */}
+      <section className="pt-40 pb-28 px-6 max-w-6xl mx-auto">
+        <div className="grid lg:grid-cols-12 gap-14 items-center">
+          <div className="lg:col-span-5">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <Eyebrow>01 — Read</Eyebrow>
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.6 }}
+              className="font-serif text-4xl md:text-5xl font-semibold tracking-tight leading-[1.08] text-os-ink mb-6"
+            >
+              One message.
+              <br />
+              <span className="text-teal">Three things</span> you would have missed.
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-lg text-os-text-dim leading-relaxed mb-8"
+            >
+              Auto-replies match keywords. KROVA reads the whole thread the way a good
+              salesperson would &mdash; what they asked, how fast they need it, and what
+              they already did on your site.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-wrap items-center gap-6"
+            >
+              <Link href="/signup">
+                <span className="os-button os-button-cta px-7 py-3 text-sm inline-flex">
+                  Start free trial <ArrowRight size={16} />
+                </span>
+              </Link>
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-os-text-dim hover:text-os-ink transition-colors inline-flex items-center gap-1.5"
+              >
+                See plans <ArrowRight size={14} />
+              </Link>
+            </motion.div>
           </div>
 
+          {/* The annotated message — this page's centrepiece. */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative os-window"
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.6 }}
+            className="lg:col-span-7"
           >
-            <BorderBeam size={200} duration={12} colorFrom="#5EEAD4" colorTo="#00A387" />
-
-            <div className="h-9 border-b border-os-border flex items-center px-4 bg-os-bg/50">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-os-border" />
-                <div className="w-2.5 h-2.5 rounded-full bg-os-border" />
-                <div className="w-2.5 h-2.5 rounded-full bg-os-border" />
-              </div>
-              <span className="mx-auto text-[10px] font-mono text-os-text-dim uppercase tracking-widest flex items-center gap-2">
-                krova-brain.exe
-                <span className="w-1.5 h-1.5 rounded-full bg-seal animate-pulse" />
-              </span>
-            </div>
-
-            <div className="p-6 bg-os-bg font-mono text-[12px] leading-relaxed space-y-2 min-h-[360px]">
-              <div className="text-seal-bright">$ krova analyze --conversation priya_d</div>
-              <div className="text-os-text-dim">→ reading 14 messages across whatsapp + instagram...</div>
-              <div className="text-os-text-dim">→ detecting intent signals...</div>
-              <div>
-                <span className="text-teal">[brain]</span>{" "}
-                <span className="text-os-ink">found: &quot;kitna lagega?&quot; (pricing intent, 92% confidence)</span>
-              </div>
-              <div>
-                <span className="text-teal">[brain]</span>{" "}
-                <span className="text-os-ink">found: &quot;kab tak deliver hoga?&quot; (urgency, 88% confidence)</span>
-              </div>
-              <div>
-                <span className="text-teal">[brain]</span>{" "}
-                <span className="text-os-ink">cross-ref: pricing page viewed 3× last week</span>
-              </div>
-              <div className="text-os-text-dim">→ scoring lead...</div>
-              <div>
-                <span className="text-thread-bright font-bold">[score]</span>{" "}
-                <span className="text-thread-bright font-bold">HOT 🔥</span>{" "}
-                <span className="text-os-text-dim">(confidence: 0.94)</span>
-              </div>
-              <div className="text-os-text-dim">→ matching brand voice...</div>
-              <div>
-                <span className="text-brass-bright">[voice]</span>{" "}
-                <span className="text-os-ink">tone: friendly · register: hinglish · greeting: &quot;Hi&quot;</span>
-              </div>
-              <div className="text-os-text-dim">→ checking guardrails...</div>
-              <div>
-                <span className="text-seal-bright">[guardrail]</span>{" "}
-                <span className="text-os-ink">no pricing without approval ✓</span>
-              </div>
-              <div className="text-os-text-dim">→ drafting reply...</div>
-              <div className="pt-2 px-3 py-2 rounded border border-seal/20 bg-seal/5">
-                <span className="text-seal-bright text-[10px] font-bold uppercase tracking-widest">
-                  draft ready ↓
+            <div className="rounded-2xl border border-os-border bg-os-card/40 p-6 sm:p-8">
+              <div className="relative rounded-xl border border-os-border bg-os-card px-5 py-4">
+                <span className="absolute -top-2 left-4 rounded bg-os-bg border border-os-border px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-os-text-dim">
+                  Priya · WhatsApp · 11:42 PM
                 </span>
-                <div className="mt-2 text-os-ink">
-                  <TypingAnimation
-                    text='"Hi Priya! Happy to share — our Elite plan is ₹2,499/mo. Can lock today, sharing payment link 🙌"'
-                    duration={25}
-                    loop
-                  />
-                </div>
+                <p className="pt-1 text-[15px] leading-[2.1] text-os-text-dim">
+                  &ldquo;Hi, <Mark n={1}>kitna lagega</Mark> aapka Elite plan? Aur{" "}
+                  <Mark n={2}>kab tak start</Mark> ho sakta hai?&rdquo;
+                </p>
               </div>
-              <div className="pt-2">
-                <span className="text-seal-bright">→ ready for approval ✓</span>
+
+              <div className="mt-6">
+                {SIGNALS.map((s, i) => (
+                  <motion.div
+                    key={s.n}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.12, duration: 0.45 }}
+                    className="flex items-start gap-4 py-3 border-t border-os-border first:border-t-0"
+                  >
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-teal/40 font-mono text-[10px] font-bold text-teal">
+                      {s.n}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-os-ink">{s.label}</div>
+                      <p className="text-xs text-os-text-dim leading-relaxed mt-0.5">{s.detail}</p>
+                    </div>
+                    <div className="shrink-0 w-20 pt-1">
+                      <div className="h-1 rounded-full bg-os-border overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${s.confidence}%` }}
+                          transition={{ delay: 0.7 + i * 0.12, duration: 0.7, ease: "easeOut" }}
+                          className="h-full rounded-full bg-teal"
+                        />
+                      </div>
+                      <div className="mt-1 text-right font-mono text-[9px] text-os-text-dim">
+                        {s.confidence}%
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.1 }}
+                className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-thread/30 bg-thread/5 px-4 py-3"
+              >
+                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-os-text-dim">
+                  Verdict
+                </span>
+                <span className="text-sm font-semibold text-thread-bright">Hot</span>
+                <span className="text-xs text-os-text-dim">
+                  Draft queued for approval, top of tomorrow&rsquo;s briefing.
+                </span>
+              </motion.div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* TIMELINE */}
-      <section className="max-w-4xl mx-auto px-6 py-24">
-        <div className="text-center mb-12">
-          <Eyebrow>10 PM → 8 AM</Eyebrow>
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-3 text-os-ink">
-            From inbox to <span className="text-teal">approval in one night.</span>
+      {/* 02 — SCORE */}
+      <section className="border-t border-os-border bg-os-card/40">
+        <div className="max-w-6xl mx-auto px-6 py-28">
+          <div className="max-w-xl mb-14">
+            <Eyebrow>02 — Score</Eyebrow>
+            <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
+              Every conversation leaves the night with a temperature.
+            </h2>
+            <p className="text-os-text-dim mt-4 leading-relaxed">
+              Not a queue sorted by who messaged last. A queue sorted by who is about to spend
+              money, and how long you have before they stop wanting to.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {TIERS.map((t, i) => (
+              <motion.div
+                key={t.tier}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-10%" }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className={`h-full rounded-xl border-2 ${t.border} bg-os-bg p-7 flex flex-col`}
+              >
+                <div className="flex items-end gap-1 mb-5">
+                  {[0, 1, 2].map((seg) => (
+                    <span
+                      key={seg}
+                      className={`h-1.5 flex-1 rounded-full ${seg < t.filled ? t.bar : "bg-os-border"}`}
+                    />
+                  ))}
+                </div>
+                <h3 className={`font-serif text-2xl font-semibold ${t.accent}`}>{t.tier}</h3>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mt-1 mb-4">
+                  {t.window}
+                </div>
+                <p className="text-sm text-os-text-dim leading-relaxed mb-6">{t.desc}</p>
+                <ul className="space-y-2 mt-auto pt-5 border-t border-os-border">
+                  {t.signals.map((sig) => (
+                    <li key={sig} className="text-xs text-os-text-dim leading-relaxed">
+                      {sig}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 03 — SPEAK */}
+      <section className="border-t border-os-border max-w-6xl mx-auto px-6 py-28">
+        <div className="max-w-xl mb-14">
+          <Eyebrow>03 — Speak</Eyebrow>
+          <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
+            Same question. Your voice, not a template&rsquo;s.
           </h2>
-          <p className="text-os-text-dim max-w-lg mx-auto">
-            The full intelligence cycle — every single day, automatically.
+          <p className="text-os-text-dim mt-4 leading-relaxed">
+            Here is Priya&rsquo;s message answered three ways. KROVA picks yours out of the first
+            fifty messages you send, then sharpens it every time you edit a draft.
           </p>
         </div>
 
-        <div className="space-y-4">
-          {TIMELINE.map((step, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {VOICES.map((v, i) => (
             <motion.div
-              key={step.title}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-              className="rounded-xl border border-os-border bg-os-card p-6 flex items-center gap-5 transition-colors duration-300 hover:border-os-border-bright"
+              key={v.tone}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-10%" }}
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+              className={`relative h-full rounded-xl border-2 p-6 flex flex-col bg-os-card ${
+                v.yours
+                  ? "border-teal shadow-[0_0_40px_-12px_rgba(0,163,135,0.35)]"
+                  : "border-os-border transition-colors duration-300 hover:border-os-border-bright"
+              }`}
             >
-              <div className="w-12 h-12 rounded-2xl bg-os-bg border border-os-border flex items-center justify-center shrink-0 text-teal">
-                {step.icon}
+              {v.yours && (
+                <span className="absolute -top-3 right-5 rounded-full bg-teal px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-os-bg">
+                  Your voice
+                </span>
+              )}
+              <div className="text-sm font-semibold text-os-ink">{v.tone}</div>
+              <div className="font-mono text-[9px] uppercase tracking-widest text-os-text-dim mt-1 mb-5">
+                {v.tag}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1.5">
-                  <span className="text-[10px] font-bold font-mono text-teal">{step.time}</span>
-                  <h3 className="font-semibold text-base text-os-ink">{step.title}</h3>
-                </div>
-                <p className="text-sm text-os-text-dim leading-relaxed">{step.desc}</p>
-              </div>
+              <p className="text-sm text-os-ink/90 leading-relaxed flex-1">{v.body}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* LEAD SCORING */}
+      {/* 04 — RESTRAINT */}
       <section className="border-t border-os-border bg-os-card/40">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-12">
-            <Eyebrow>Scoring</Eyebrow>
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-3 text-os-ink">
-              Know who to call. <span className="text-teal">Right now.</span>
+        <div className="max-w-6xl mx-auto px-6 py-28 grid lg:grid-cols-12 gap-14">
+          <div className="lg:col-span-5">
+            <Eyebrow>04 — Restraint</Eyebrow>
+            <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
+              The smartest thing it does is <span className="text-teal">stop.</span>
             </h2>
-            <p className="text-os-text-dim max-w-lg mx-auto">
-              KROVA classifies every lead into three tiers so you never waste time on the wrong
-              conversation.
+            <p className="text-os-text-dim mt-4 leading-relaxed">
+              An AI left alone with your customers is a liability. KROVA is built around the four
+              things it refuses to do on its own.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {SCORING.map((s, i) => (
-              <motion.div
-                key={s.label}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={`rounded-xl border ${s.border} bg-os-bg p-6`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`text-xl font-bold ${s.color}`}>{s.label}</span>
-                  <div className={`w-2 h-2 rounded-full ${s.dot} animate-pulse`} />
-                </div>
-                <p className="text-sm text-os-text-dim leading-relaxed mb-5">{s.desc}</p>
-                <div className="space-y-2.5">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-os-text-dim">Signals</p>
-                  {s.signals.map((sig) => (
-                    <div key={sig} className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${s.dot}`} />
-                      <span className="text-xs text-os-text-dim">{sig}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* VOICE SAMPLES */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
-        <div className="text-center mb-12">
-          <Eyebrow>Brand voice</Eyebrow>
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-3 text-os-ink">
-            Writes in <span className="text-teal">your voice.</span>
-          </h2>
-          <p className="text-os-text-dim max-w-lg mx-auto">
-            Same customer message. Three different brand voices. KROVA matches yours from
-            your first 50 sent messages.
-          </p>
-        </div>
-
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-os-text-dim mb-2 text-center">
-            Customer message
-          </div>
-          <div className="rounded-2xl border border-os-border bg-os-card p-4 relative">
-            <div className="absolute top-0 left-4 -translate-y-1/2 px-2 py-0.5 rounded bg-os-bg border border-os-border text-[9px] font-mono text-os-text-dim">
-              Priya · WhatsApp
-            </div>
-            <p className="text-sm text-os-ink pt-1">
-              &quot;Hi, kitna lagega aapka Elite plan? Aur kab tak start ho sakta hai?&quot;
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {VOICE_SAMPLES.map((v) => (
-            <div
-              key={v.tone}
-              className={`rounded-xl border p-5 h-full flex flex-col bg-os-card transition-colors duration-300 ${
-                v.badge ? "border-teal/40" : "border-os-border hover:border-os-border-bright"
-              }`}
+            <Link
+              href="/privacy"
+              className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-os-ink hover:text-teal transition-colors"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm font-semibold text-os-ink">{v.tone}</div>
-                  <div className="text-[9px] font-mono text-os-text-dim uppercase tracking-widest mt-0.5">
-                    {v.tag}
-                  </div>
-                </div>
-                {v.badge && (
-                  <span className="text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-teal/15 text-teal border border-teal/30">
-                    {v.badge}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-os-ink/90 leading-relaxed flex-1">{v.body}</p>
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-os-border text-[10px]">
-                <span className="text-os-text-dim font-mono">~ai drafted</span>
-                <button className="font-bold uppercase tracking-widest text-teal">Approve →</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CAPABILITIES */}
-      <section className="border-t border-os-border bg-os-card/40">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-12">
-            <Eyebrow>Capabilities</Eyebrow>
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-os-ink">
-              What the AI <span className="text-teal">actually does.</span>
-            </h2>
+              How we handle your data <ArrowUpRight size={14} />
+            </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CAPABILITIES.map((cap, i) => (
+
+          <div className="lg:col-span-7">
+            {RESTRAINTS.map((r, i) => (
               <motion.div
-                key={cap.title}
+                key={r.never}
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.07 }}
-                className="rounded-xl border border-os-border bg-os-bg p-6 transition-colors duration-300 hover:border-os-border-bright"
+                viewport={{ once: true, margin: "-10%" }}
+                transition={{ delay: i * 0.07, duration: 0.45 }}
+                className="flex items-start gap-4 py-5 border-t border-os-border first:border-t-0 first:pt-0"
               >
-                <div className="w-9 h-9 rounded-md border border-os-border flex items-center justify-center mb-4">
-                  {cap.icon}
-                </div>
-                <h3 className="font-semibold text-base mb-2 text-os-ink">{cap.title}</h3>
-                <p className="text-xs text-os-text-dim leading-relaxed">{cap.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* COMPARISON */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
-        <div className="text-center mb-12">
-          <Eyebrow>Why KROVA</Eyebrow>
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-os-ink">
-            Not auto-replies. Not templates. <br />
-            <span className="text-teal">An actual brain.</span>
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-          <div className="rounded-xl border border-os-border bg-os-card p-6">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-3">
-              Doing it yourself
-            </div>
-            <h3 className="text-xl font-semibold mb-4 text-os-ink">Manual</h3>
-            <ul className="space-y-2.5 text-sm">
-              {[
-                { label: "Reads every message", ok: true },
-                { label: "Tone matches you", ok: true },
-                { label: "Catches every lead", ok: false },
-                { label: "Works at 2 AM", ok: false },
-                { label: "Scales with volume", ok: false },
-                { label: "Hours/day saved", ok: false },
-              ].map((r) => (
-                <li key={r.label} className="flex items-center gap-2.5 text-os-text-dim">
-                  {r.ok ? (
-                    <Check size={14} className="text-seal-bright shrink-0" />
-                  ) : (
-                    <X size={14} className="text-thread-bright shrink-0" />
-                  )}
-                  <span>{r.label}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 pt-4 border-t border-os-border text-[10px] text-os-text-dim">
-              ~3 hrs/day lost
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-os-border bg-os-card p-6">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-3">
-              Most automation tools
-            </div>
-            <h3 className="text-xl font-semibold mb-4 text-os-ink">Templates / Rules</h3>
-            <ul className="space-y-2.5 text-sm">
-              {[
-                { label: "Reads every message", ok: false },
-                { label: "Tone matches you", ok: false },
-                { label: "Catches every lead", ok: true },
-                { label: "Works at 2 AM", ok: true },
-                { label: "Scales with volume", ok: true },
-                { label: "Hours/day saved", ok: true },
-              ].map((r) => (
-                <li key={r.label} className="flex items-center gap-2.5 text-os-text-dim">
-                  {r.ok ? (
-                    <Check size={14} className="text-seal-bright shrink-0" />
-                  ) : (
-                    <X size={14} className="text-thread-bright shrink-0" />
-                  )}
-                  <span>{r.label}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 pt-4 border-t border-os-border text-[10px] text-thread-bright">
-              feels robotic · customers notice
-            </div>
-          </div>
-
-          <div className="relative rounded-xl border-2 border-teal bg-os-card p-6 shadow-[0_0_40px_-12px_rgba(0,163,135,0.35)] md:-translate-y-3">
-            <div className="absolute -top-3 right-4 px-2 py-0.5 rounded-full bg-teal text-[9px] font-bold uppercase tracking-widest text-os-bg">
-              KROVA
-            </div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim mb-3">
-              AI analyst
-            </div>
-            <h3 className="text-xl font-semibold mb-4 text-os-ink">KROVA brain</h3>
-            <ul className="space-y-2.5 text-sm">
-              {[
-                "Reads every message",
-                "Tone matches you",
-                "Catches every lead",
-                "Works at 2 AM",
-                "Scales with volume",
-                "Hours/day saved",
-              ].map((label) => (
-                <li key={label} className="flex items-center gap-2.5 text-os-ink">
-                  <Check size={14} className="text-seal-bright shrink-0" />
-                  <span>{label}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 pt-4 border-t border-os-border text-[10px] text-teal font-bold uppercase tracking-widest">
-              ~18 hrs/week back
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* INTELLIGENCE OUTPUTS */}
-      <section className="border-t border-os-border bg-os-card/40">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-12">
-            <Eyebrow>Real outputs</Eyebrow>
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-3 text-os-ink">
-              What KROVA <span className="text-teal">found this week.</span>
-            </h2>
-            <p className="text-os-text-dim max-w-lg mx-auto">
-              Live examples from a sample workspace. This is what the brain surfaces — not
-              metrics, decisions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {OUTPUTS.map((it, i) => (
-              <motion.div
-                key={it.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.06 }}
-                className="rounded-xl border border-os-border bg-os-bg p-5 h-full flex flex-col transition-colors duration-300 hover:border-os-border-bright"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-os-card border border-os-border flex items-center justify-center">
-                      {it.icon}
-                    </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-os-text-dim">
-                      {it.type}
-                    </span>
-                  </div>
-                  <div className="text-[9px] font-mono text-os-text-dim">{it.confidence}% conf</div>
-                </div>
-                <h3 className="text-sm font-semibold mb-2 leading-snug text-os-ink">{it.title}</h3>
-                <p className="text-xs text-os-text-dim leading-relaxed mb-4 flex-1">{it.body}</p>
-                <button className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 text-teal">
-                  {it.action} <ArrowRight size={11} />
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PRIVACY + TRUST */}
-      <section className="max-w-5xl mx-auto px-6 py-24">
-        <div className="rounded-2xl border border-os-border bg-os-card p-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <div>
-            <Eyebrow>Privacy</Eyebrow>
-            <h2 className="font-serif text-3xl font-semibold tracking-tight mb-3 leading-tight text-os-ink">
-              Your data, <span className="text-teal">your data.</span>
-            </h2>
-            <p className="text-os-text-dim text-sm leading-relaxed">
-              Conversations never train shared models. Everything stays in Indian data centers.
-              Delete it all with one click any time.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {[
-              { k: "End-to-end encrypted", v: "AES-256 at rest, TLS 1.3 in transit" },
-              { k: "Indian data residency", v: "Mumbai region · DPDPA compliant" },
-              { k: "No model training on your data", v: "Your conversations stay yours" },
-              { k: "One-click data delete", v: "Full export · zero questions asked" },
-            ].map((r) => (
-              <div
-                key={r.k}
-                className="flex items-start gap-3 p-3 rounded-xl border border-os-border bg-os-bg"
-              >
-                <ShieldCheck size={14} className="text-seal-bright mt-0.5 shrink-0" />
+                <Check size={15} className="mt-1 shrink-0 text-teal" />
                 <div>
-                  <div className="text-xs font-semibold text-os-ink">{r.k}</div>
-                  <div className="text-[10px] text-os-text-dim">{r.v}</div>
+                  <div className="text-base font-semibold text-os-ink">{r.never}</div>
+                  <p className="text-sm text-os-text-dim leading-relaxed mt-1">{r.then}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="max-w-5xl mx-auto px-6 py-24">
-        <div className="rounded-lg border border-os-border p-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-os-ink flex items-center justify-center mx-auto mb-6">
-            <Zap size={26} className="text-os-bg" />
-          </div>
-          <h2 className="font-serif text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-os-ink">
-            Start your <span className="text-teal">14-day free trial.</span>
+      <section className="border-t border-os-border max-w-5xl mx-auto px-6 py-24">
+        <div className="rounded-2xl border border-os-border p-14 text-center">
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight mb-4 text-os-ink">
+            Point it at one channel and see what it finds.
           </h2>
-          <p className="text-os-text-dim text-lg mb-8 max-w-xl mx-auto">
-            Connect your first channel in minutes. KROVA delivers your first AI analysis
-            tomorrow morning.
+          <p className="text-os-text-dim mb-8 max-w-lg mx-auto leading-relaxed">
+            Connect a channel tonight, and read the signals it pulled out of your own
+            conversations tomorrow morning.
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/signup">
-              <span className="os-button os-button-primary px-8 py-3 text-sm inline-flex">
-                Get started <ArrowRight size={16} />
-              </span>
-            </Link>
-            <Link href="/pricing">
-              <span className="os-button os-button-secondary px-8 py-3 text-sm inline-flex">
-                See pricing
-              </span>
-            </Link>
-          </div>
-          <p className="text-[11px] text-os-text-dim mt-4">
-            No credit card · Cancel any time · Setup in 5 minutes
+          <Link href="/signup">
+            <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
+              Start free trial <ArrowRight size={16} />
+            </span>
+          </Link>
+          <p className="text-[11px] text-os-text-dim mt-5">
+            No credit card · 14-day free trial · Setup in 5 minutes
           </p>
         </div>
       </section>
