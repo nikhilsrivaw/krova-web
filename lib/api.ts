@@ -739,6 +739,10 @@ export const voice = {
     language?: "en-IN" | "hi-IN";
     language_mode?: "adaptive" | "fixed";
     speaker?: string;
+    /** Send "" to clear a previously-set number. E.164, with or without a leading "+". */
+    staff_phone_number?: string;
+    /** Requires staff_phone_number to already be set (in this call or previously) - the backend rejects otherwise. */
+    copilot_mode?: boolean;
   }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
 
   previewVoice: (speaker: string, language: "en-IN" | "hi-IN") =>
@@ -754,6 +758,10 @@ export type AgentSettings = {
   speaker: string;
   male_speakers: string[];
   female_speakers: string[];
+  /** Set for a warm transfer-on-escalate and/or copilot mode to have anywhere to ring. */
+  staff_phone_number: string | null;
+  /** Human answers directly, AI only listens and suggests - see /voice/live-assist. */
+  copilot_mode: boolean;
 };
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────

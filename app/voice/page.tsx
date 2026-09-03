@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   PhoneCall,
   Phone,
@@ -17,6 +18,7 @@ import {
   Trash2,
   ExternalLink,
   Play,
+  Headset,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -78,6 +80,8 @@ export default function VoicePage() {
   const [languageModeDraft, setLanguageModeDraft] = useState<"adaptive" | "fixed">("adaptive");
   const [languageDraft, setLanguageDraft] = useState<"en-IN" | "hi-IN">("en-IN");
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
+  const [staffNumberDraft, setStaffNumberDraft] = useState("");
+  const [copilotModeDraft, setCopilotModeDraft] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -106,6 +110,8 @@ export default function VoicePage() {
       setLanguageModeDraft(agentRes.value.language_mode);
       setLanguageDraft(agentRes.value.language);
       setSpeakerDraft(agentRes.value.speaker);
+      setStaffNumberDraft(agentRes.value.staff_phone_number || "");
+      setCopilotModeDraft(agentRes.value.copilot_mode);
     }
     // agentRes rejecting (409, no voice number yet) is expected and left
     // as agentSettings === null - the tab shows its own explanatory state
@@ -175,6 +181,8 @@ export default function VoicePage() {
         language_mode: languageModeDraft,
         language: languageDraft,
         speaker: speakerDraft,
+        staff_phone_number: staffNumberDraft,
+        copilot_mode: copilotModeDraft,
       });
       setAgentSettings(updated);
       setSettingsSaved(true);
@@ -763,6 +771,73 @@ export default function VoicePage() {
                             </button>
                           ))}
                         </div>
+                      )}
+                    </div>
+
+                    {/* Staff phone number - shared by warm transfer and copilot mode */}
+                    <div className="pt-2 border-t border-white/[0.06]">
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Staff Phone Number
+                      </label>
+                      <p className="text-[11px] text-os-text-dim mb-2">
+                        A real person the agent can bring onto a call - used both when it escalates
+                        (a live warm transfer instead of an apology) and, if enabled below, as who
+                        answers every call directly in Live Copilot mode.
+                      </p>
+                      <input
+                        type="tel"
+                        value={staffNumberDraft}
+                        onChange={(e) => setStaffNumberDraft(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Live copilot mode */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Call Answering
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div
+                          onClick={() => setCopilotModeDraft(false)}
+                          className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                            !copilotModeDraft
+                              ? "border-cyan-500/50 bg-cyan-500/10 text-white font-bold"
+                              : "border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
+                          }`}
+                        >
+                          <p className="text-xs text-white mb-0.5">AI Answers (Default)</p>
+                          <p className="text-[10px] font-mono text-os-text-dim leading-relaxed">
+                            The agent speaks directly to every caller.
+                          </p>
+                        </div>
+                        <div
+                          onClick={() => staffNumberDraft.trim() && setCopilotModeDraft(true)}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            !staffNumberDraft.trim()
+                              ? "opacity-40 cursor-not-allowed border-white/[0.06] bg-white/[0.02] text-os-text-dim"
+                              : copilotModeDraft
+                              ? "cursor-pointer border-cyan-500/50 bg-cyan-500/10 text-white font-bold"
+                              : "cursor-pointer border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
+                          }`}
+                        >
+                          <p className="text-xs text-white mb-0.5">Live Copilot Mode</p>
+                          <p className="text-[10px] font-mono text-os-text-dim leading-relaxed">
+                            {staffNumberDraft.trim()
+                              ? "Staff Phone Number rings directly; the agent listens and suggests."
+                              : "Set a Staff Phone Number above first."}
+                          </p>
+                        </div>
+                      </div>
+                      {agentSettings.copilot_mode && (
+                        <Link
+                          href="/voice/live-assist"
+                          className="mt-3 inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
+                        >
+                          <Headset className="w-3.5 h-3.5" />
+                          Open Live Assist
+                        </Link>
                       )}
                     </div>
 
