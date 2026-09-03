@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import {
   BookOpen,
@@ -28,6 +28,7 @@ import {
   HelpCircle,
   Check,
   ChevronDown,
+  List,
 } from "lucide-react";
 
 import { Navbar } from "@/components/spectrum/navbar";
@@ -144,6 +145,9 @@ export default function DocsPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTop, setShowTop] = useState(false);
+  // The mobile section picker gets out of the way while you read downward.
+  const [barHidden, setBarHidden] = useState(false);
+  const lastY = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -155,9 +159,15 @@ export default function DocsPage() {
       offsets.sort((a, b) => a.top - b.top);
       if (offsets[0]) setActive(offsets[0].id);
 
+      const y = window.scrollY;
       const scrollable = document.body.scrollHeight - window.innerHeight;
-      setProgress(scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0);
-      setShowTop(window.scrollY > 900);
+      setProgress(scrollable > 0 ? Math.min(1, y / scrollable) : 0);
+      setShowTop(y > 900);
+
+      // Ignore jitter, and always keep the bar up near the top of the page.
+      if (y < 240) setBarHidden(false);
+      else if (Math.abs(y - lastY.current) > 8) setBarHidden(y > lastY.current);
+      lastY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("hashchange", handleScroll);
@@ -244,16 +254,19 @@ export default function DocsPage() {
       </header>
 
       {/* MOBILE SECTION PICKER */}
-      <div className="lg:hidden sticky top-[84px] z-40 border-y border-os-border bg-os-bg/95 backdrop-blur-sm">
+      <div
+        className="lg:hidden sticky top-[84px] z-40 border-y border-os-border bg-os-bg/95 backdrop-blur-sm transition-transform duration-300 ease-out"
+        style={{
+          transform: barHidden && !navOpen ? "translateY(calc(-100% - 88px))" : "none",
+        }}
+      >
         <button
           onClick={() => setNavOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-6 py-3.5 text-left"
+          className="w-full flex items-center justify-between gap-3 px-6 py-3 text-left"
         >
-          <span className="min-w-0">
-            <span className="block font-mono text-[9px] uppercase tracking-[0.2em] text-os-text-dim">
-              On this page
-            </span>
-            <span className="block truncate text-sm font-semibold text-os-ink">{activeTitle}</span>
+          <span className="flex min-w-0 items-center gap-2.5">
+            <List size={14} className="shrink-0 text-teal" />
+            <span className="truncate text-sm font-semibold text-os-ink">{activeTitle}</span>
           </span>
           <ChevronDown
             size={16}
@@ -1037,7 +1050,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-[12rem] lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
+    <section id={id} className="scroll-mt-40 lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
       <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-teal-bright mb-3">
         {eyebrow}
       </div>
