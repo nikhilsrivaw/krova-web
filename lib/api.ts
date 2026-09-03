@@ -977,6 +977,43 @@ export const callCampaigns = {
   list: () => api.get<CallCampaign[]>("/call-campaigns"),
 };
 
+// ── 140/160-series number requests ────────────────────────────────────────
+// Not a purchase flow - Plivo doesn't sell these as searchable inventory
+// (confirmed directly). A business submits a request; Krova's own operator
+// works through the queue and updates status once real Plivo coordination
+// happens. No per-request approval gate - see components/voice/NumberRequestForm.tsx.
+
+export type NumberRequestType = "promotional_140" | "transactional_160";
+export type NumberRequestStatus = "requested" | "submitted_to_plivo" | "provisioned" | "rejected";
+
+export type NumberRequest = {
+  id: string;
+  business_id: string;
+  request_type: NumberRequestType;
+  justification: string;
+  bfsi_declaration: boolean;
+  status: NumberRequestStatus;
+  admin_notes: string | null;
+  provisioned_number: string | null;
+  created_at: string;
+};
+
+export const numberRequests = {
+  create: (data: { request_type: NumberRequestType; justification: string; bfsi_declaration?: boolean }) =>
+    api.post<NumberRequest>("/voice-onboarding/number-requests", data),
+
+  listOwn: () => api.get<NumberRequest[]>("/voice-onboarding/number-requests"),
+
+  /** Platform-admin only (PLATFORM_ADMIN_EMAIL) - every business's requests. */
+  listAll: () => api.get<NumberRequest[]>("/voice-onboarding/number-requests/all"),
+
+  /** Platform-admin only. */
+  update: (
+    id: string,
+    data: Partial<{ status: NumberRequestStatus; admin_notes: string; provisioned_number: string }>,
+  ) => api.patch<NumberRequest>(`/voice-onboarding/number-requests/${id}`, data),
+};
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export type AgeingBucket = {

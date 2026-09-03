@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { CallCampaignsTab } from "@/components/voice/CallCampaignsTab";
+import { NumberRequestForm } from "@/components/voice/NumberRequestForm";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
@@ -553,6 +554,8 @@ export default function VoicePage() {
                     )}
                   </GlassCard>
                 )}
+
+                <NumberRequestForm />
               </div>
             )}
 
