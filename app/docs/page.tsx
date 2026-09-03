@@ -271,7 +271,7 @@ export default function DocsPage() {
 
       {/* BODY */}
       <div className="max-w-7xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-12 gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* SIDEBAR (desktop) */}
           <aside className="hidden lg:block lg:col-span-3 lg:sticky lg:top-28 lg:h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-4">
             <div className="relative mb-5">
@@ -301,7 +301,7 @@ export default function DocsPage() {
           </aside>
 
           {/* MAIN */}
-          <main className="col-span-12 lg:col-span-9 max-w-3xl space-y-16 pt-10 lg:pt-0">
+          <main className="min-w-0 lg:col-span-9 max-w-3xl space-y-16 pt-10 lg:pt-0">
             {/* INTRODUCTION */}
             <Section id="introduction" eyebrow="Start here" title="What is KROVA?">
               <Lead>
@@ -1037,7 +1037,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-40 lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
+    <section id={id} className="scroll-mt-[12rem] lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
       <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-teal-bright mb-3">
         {eyebrow}
       </div>
