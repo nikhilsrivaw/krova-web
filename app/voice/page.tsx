@@ -21,6 +21,7 @@ import {
   Headset,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { CallCampaignsTab } from "@/components/voice/CallCampaignsTab";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
@@ -53,7 +54,7 @@ const STATUS_VARIANT: Record<VoiceApplication["status"], "emerald" | "amber" | "
 };
 
 export default function VoicePage() {
-  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings">("compliance");
+  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "call-campaigns">("compliance");
   const [subaccount, setSubaccount] = useState<Subaccount | null>(null);
   const [requirement, setRequirement] = useState<ComplianceRequirement | null>(null);
   const [hasEndUser, setHasEndUser] = useState(false);
@@ -252,6 +253,7 @@ export default function VoicePage() {
             { key: "numbers", label: `Phone Numbers (${voiceConnections.length})` },
             { key: "logs", label: `Call Logs (${callLogs.length})` },
             { key: "settings", label: "Agent Speech & Greeting" },
+            { key: "call-campaigns", label: "Call Campaigns" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -850,6 +852,9 @@ export default function VoicePage() {
                 )}
               </div>
             )}
+
+            {/* TAB 5: OUTBOUND CALL CAMPAIGNS */}
+            {activeTab === "call-campaigns" && <CallCampaignsTab />}
           </>
         )}
 

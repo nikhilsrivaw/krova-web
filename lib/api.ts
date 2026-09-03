@@ -912,6 +912,71 @@ export const campaigns = {
   list: () => api.get<Campaign[]>("/campaigns"),
 };
 
+// ── Outbound call campaigns ───────────────────────────────────────────────
+// The voice-channel counterpart to campaigns above - same audience
+// segmentation (the ledger, not a spreadsheet), but a phone call has no
+// template/variable-mapping concept. `objective` is a plain-language brief
+// ("Remind them about the outstanding balance") the AI drafts an actual
+// opening line from once a call connects - never a fixed script.
+//
+// Real-world note this UI should say out loud, not hide: automated
+// outbound calling in India needs a business number in the right
+// TRAI-registered series (140 promotional, 160 BFSI-only transactional)
+// and DLT registration - neither is instant-buy the way a regular local
+// number is. This calls on whatever voice number IS connected; getting a
+// compliant number connected is a separate, real-world step.
+
+export type CallCampaignRequest = {
+  name: string;
+  audience: AudienceKey;
+  audience_params?: Record<string, unknown>;
+  objective: string;
+};
+
+export type CallRecipientPreview = {
+  customer_id: string;
+  name: string | null;
+  phone_masked: string;
+};
+
+export type CallCampaignPreview = {
+  audience: string;
+  audience_label: string;
+  will_reach: number;
+  will_skip: number;
+  skipped_reasons: { customer_id?: string; name?: string | null; reason: string }[];
+  sample: CallRecipientPreview[];
+};
+
+export type CallCampaign = {
+  id: string;
+  name: string;
+  audience: string;
+  audience_label: string;
+  objective: string;
+  status: "draft" | "sending" | "sent" | "paused" | "cancelled" | "failed";
+  recipients: number;
+  /** Calls actually placed (jobs enqueued), not calls that were answered. */
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export const callCampaigns = {
+  audiences: () => api.get<AudienceSegment[]>("/call-campaigns/audiences"),
+
+  preview: (data: CallCampaignRequest) =>
+    api.post<CallCampaignPreview>("/call-campaigns/preview", data),
+
+  create: (data: CallCampaignRequest) => api.post<CallCampaign>("/call-campaigns", data),
+
+  send: (id: string) => api.post<CallCampaign>(`/call-campaigns/${id}/send`),
+
+  list: () => api.get<CallCampaign[]>("/call-campaigns"),
+};
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export type AgeingBucket = {
