@@ -78,7 +78,7 @@ export default function VoicePage() {
   const [agentSettings, setAgentSettings] = useState<AgentSettings | null>(null);
   const [greetingDraft, setGreetingDraft] = useState("");
   const [languageModeDraft, setLanguageModeDraft] = useState<"adaptive" | "fixed">("adaptive");
-  const [languageDraft, setLanguageDraft] = useState<"en-IN" | "hi-IN">("en-IN");
+  const [languageDraft, setLanguageDraft] = useState("en-IN");
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
   const [staffNumberDraft, setStaffNumberDraft] = useState("");
   const [copilotModeDraft, setCopilotModeDraft] = useState(false);
@@ -752,25 +752,17 @@ export default function VoicePage() {
                       </div>
 
                       {languageModeDraft === "fixed" && (
-                        <div className="grid grid-cols-2 gap-3">
-                          {[
-                            { key: "en-IN" as const, title: "English only" },
-                            { key: "hi-IN" as const, title: "Hindi only" },
-                          ].map((l) => (
-                            <button
-                              key={l.key}
-                              type="button"
-                              onClick={() => setLanguageDraft(l.key)}
-                              className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                                languageDraft === l.key
-                                  ? "bg-cyan-600 border-cyan-500 text-white"
-                                  : "bg-white/[0.02] border-white/[0.06] text-os-text-dim hover:text-white"
-                              }`}
-                            >
-                              {l.title}
-                            </button>
+                        <select
+                          value={languageDraft}
+                          onChange={(e) => setLanguageDraft(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                        >
+                          {agentSettings.languages.map((l) => (
+                            <option key={l.code} value={l.code}>
+                              {l.label} only
+                            </option>
                           ))}
-                        </div>
+                        </select>
                       )}
                     </div>
 

@@ -736,7 +736,8 @@ export const voice = {
 
   updateAgentSettings: (data: {
     greeting?: string;
-    language?: "en-IN" | "hi-IN";
+    /** One of the codes from agentSettings().languages - not a fixed union, the real list comes from the server. */
+    language?: string;
     language_mode?: "adaptive" | "fixed";
     speaker?: string;
     /** Send "" to clear a previously-set number. E.164, with or without a leading "+". */
@@ -745,19 +746,23 @@ export const voice = {
     copilot_mode?: boolean;
   }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
 
-  previewVoice: (speaker: string, language: "en-IN" | "hi-IN") =>
+  previewVoice: (speaker: string, language: string) =>
     api.post<{ audio_base64: string; format: string }>("/voice-onboarding/preview-voice", {
       speaker, language,
     }),
 };
 
+export type LanguageOption = { code: string; label: string };
+
 export type AgentSettings = {
   greeting: string;
-  language: "en-IN" | "hi-IN";
+  /** A Sarvam bulbul:v3 language code - see `languages` for the real, current list. Never hardcode one here. */
+  language: string;
   language_mode: "adaptive" | "fixed";
   speaker: string;
   male_speakers: string[];
   female_speakers: string[];
+  languages: LanguageOption[];
   /** Set for a warm transfer-on-escalate and/or copilot mode to have anywhere to ring. */
   staff_phone_number: string | null;
   /** Human answers directly, AI only listens and suggests - see /voice/live-assist. */
