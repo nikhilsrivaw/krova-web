@@ -28,14 +28,12 @@ import {
   HelpCircle,
   Check,
   ChevronDown,
-  AlertTriangle,
-  Lightbulb,
-  Info,
 } from "lucide-react";
 
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
+import { Callout } from "@/components/spectrum/callout";
 import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
 
 interface TocSection {
@@ -334,10 +332,10 @@ export default function DocsPage() {
                 ))}
               </div>
 
-              <Note title="Who this is for">
+              <Callout title="Who this is for">
                 Owners of Indian SMBs — coaching institutes, clinics, salons, boutiques, agencies,
                 freelancers. If your customers find you on WhatsApp, this is for you.
-              </Note>
+              </Callout>
             </Section>
 
             {/* SIGNUP */}
@@ -371,10 +369,10 @@ export default function DocsPage() {
                   },
                 ]}
               />
-              <Note tone="tip" title="More than one owner?">
+              <Callout type="tip" title="More than one owner?">
                 Sign up with whoever holds the master WhatsApp number — that&rsquo;s the account that
                 receives the 8 AM briefing. Team members can be invited later from Settings.
-              </Note>
+              </Callout>
             </Section>
 
             {/* LOGIN */}
@@ -410,11 +408,11 @@ export default function DocsPage() {
                   </div>
                 ))}
               </div>
-              <Note tone="caution" title="Trouble signing in?">
+              <Callout type="warning" title="Trouble signing in?">
                 If you signed up with Google you don&rsquo;t have a password — use the Google button
                 rather than the email form. If you forgot your password, reset it from the sign-in
                 page. Still stuck, email us.
-              </Note>
+              </Callout>
             </Section>
 
             {/* SETUP */}
@@ -443,10 +441,10 @@ export default function DocsPage() {
                   },
                 ]}
               />
-              <Note tone="tip" title="You can skip steps">
+              <Callout type="tip" title="You can skip steps">
                 Channel connections can wait — add them from Settings later. The only required step
                 is the business profile.
-              </Note>
+              </Callout>
             </Section>
 
             {/* BRIEFING */}
@@ -488,10 +486,10 @@ export default function DocsPage() {
                   "Reply STOP to pause briefings — you can turn them back on any time",
                 ]}
               />
-              <Note title="Want a different time?">
+              <Callout title="Want a different time?">
                 Settings → Briefing → Schedule. Move it to 7 AM, 9 AM, or split it into a morning
                 and an evening briefing.
-              </Note>
+              </Callout>
             </Section>
 
             {/* ACTIONS */}
@@ -547,10 +545,10 @@ export default function DocsPage() {
                   "Notes and commitments — anything you promised them",
                 ]}
               />
-              <Note tone="tip" title="Searching">
+              <Callout type="tip" title="Searching">
                 The search bar in Relationships finds someone by name, phone or email, across all
                 channels at once.
-              </Note>
+              </Callout>
             </Section>
 
             {/* INTELLIGENCE */}
@@ -609,11 +607,11 @@ export default function DocsPage() {
                   </div>
                 ))}
               </div>
-              <Note title="Where to connect">
+              <Callout title="Where to connect">
                 Either during the onboarding wizard, or any time afterwards from{" "}
                 <strong className="font-semibold text-os-ink">Settings → Channels</strong>. Removing
                 a channel doesn&rsquo;t delete past conversations.
-              </Note>
+              </Callout>
             </Section>
 
             {/* WHATSAPP */}
@@ -640,10 +638,10 @@ export default function DocsPage() {
                   },
                 ]}
               />
-              <Note tone="caution" title="Personal WhatsApp won't work">
+              <Callout type="warning" title="Personal WhatsApp won't work">
                 You need the free WhatsApp Business app. If you only have personal WhatsApp,
                 download Business first — it can take over the same number during transfer.
-              </Note>
+              </Callout>
             </Section>
 
             {/* INSTAGRAM */}
@@ -670,10 +668,10 @@ export default function DocsPage() {
                   { title: "Approve permissions", body: "Allow KROVA to read and send DMs." },
                 ]}
               />
-              <Note tone="tip" title="Story replies and comments">
+              <Callout type="tip" title="Story replies and comments">
                 KROVA also captures story replies and DMs opened from comment buttons. Story replies
                 are treated as fresh conversations.
-              </Note>
+              </Callout>
             </Section>
 
             {/* GMAIL */}
@@ -711,11 +709,11 @@ export default function DocsPage() {
                   },
                 ]}
               />
-              <Note title="Workspace admin approval">
+              <Callout title="Workspace admin approval">
                 Some Microsoft 365 tenants require IT admin approval before third-party apps can
                 connect. If you see that message, forward the Microsoft consent page to your IT team
                 — it&rsquo;s a one-click approval at their end.
-              </Note>
+              </Callout>
             </Section>
 
             {/* VOICE */}
@@ -779,10 +777,10 @@ export default function DocsPage() {
                   "Never share my personal phone number",
                 ]}
               />
-              <Note tone="security" title="Enforced on every draft">
+              <Callout type="security" title="Enforced on every draft">
                 Guardrails are checked twice — once while reading the conversation, and again before
                 a draft reaches your queue. The brain holds them even if a customer asks directly.
-              </Note>
+              </Callout>
             </Section>
 
             {/* AUTOPILOT */}
@@ -821,10 +819,10 @@ export default function DocsPage() {
                   </div>
                 ))}
               </div>
-              <Note tone="tip" title="Where to set them">
+              <Callout type="tip" title="Where to set them">
                 Settings → Autopilot → New rule. Pick a trigger, pick an action, toggle it on. Up to
                 50 active rules per workspace.
-              </Note>
+              </Callout>
             </Section>
 
             {/* TEAM */}
@@ -893,10 +891,10 @@ export default function DocsPage() {
                   </div>
                 ))}
               </div>
-              <Note title="Where to download">
+              <Callout title="Where to download">
                 The mobile app is in private beta. Email us to request access and we&rsquo;ll send a
                 TestFlight or Play Store invite within 24 hours.
-              </Note>
+              </Callout>
             </Section>
 
             {/* SETTINGS MAP */}
@@ -969,7 +967,7 @@ export default function DocsPage() {
                   </div>
                 ))}
               </div>
-              <Note tone="security" title="See something off?">
+              <Callout type="security" title="See something off?">
                 Email{" "}
                 <a
                   href="mailto:privacy@aqirox.com"
@@ -978,7 +976,7 @@ export default function DocsPage() {
                   privacy@aqirox.com
                 </a>
                 . We take every report seriously and reply within 24 hours.
-              </Note>
+              </Callout>
             </Section>
 
             {/* CLOSING CTA */}
@@ -1089,40 +1087,5 @@ function Steps({ items }: { items: { title: string; body: ReactNode }[] }) {
         </li>
       ))}
     </ol>
-  );
-}
-
-const NOTE_TONES = {
-  note: { icon: <Info size={14} />, border: "border-teal/25", bg: "bg-teal/5", accent: "text-teal" },
-  tip: { icon: <Lightbulb size={14} />, border: "border-teal/25", bg: "bg-teal/5", accent: "text-teal" },
-  security: { icon: <ShieldCheck size={14} />, border: "border-teal/25", bg: "bg-teal/5", accent: "text-teal" },
-  caution: {
-    icon: <AlertTriangle size={14} />,
-    border: "border-thread/30",
-    bg: "bg-thread/5",
-    accent: "text-thread-bright",
-  },
-} as const;
-
-function Note({
-  tone = "note",
-  title,
-  children,
-}: {
-  tone?: keyof typeof NOTE_TONES;
-  title: string;
-  children: ReactNode;
-}) {
-  const s = NOTE_TONES[tone];
-  return (
-    <div className={`rounded-xl border ${s.border} ${s.bg} p-5`}>
-      <div className="flex items-start gap-3">
-        <span className={`mt-0.5 shrink-0 ${s.accent}`}>{s.icon}</span>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-os-ink mb-1">{title}</div>
-          <div className="text-sm leading-relaxed text-os-text-dim">{children}</div>
-        </div>
-      </div>
-    </div>
   );
 }
