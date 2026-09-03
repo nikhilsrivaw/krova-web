@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -39,28 +39,36 @@ function scrollTo(id: string) {
 
 const VERTICALS = [
   {
+    tab: "Coaching",
     image: "/images/vertical-coaching.webp",
     name: "Coaching institutes",
     pain: "Admission inquiries get lost across DMs and WhatsApp.",
     win: "KROVA tracks every parent inquiry, follows up on unpaid fees, books demo calls.",
+    does: ["Tracks every parent inquiry", "Chases unpaid fees", "Books demo classes"],
   },
   {
+    tab: "Clinics",
     image: "/images/vertical-clinics.webp",
     name: "Clinics & doctors",
     pain: "Appointment requests pile up, follow-ups slip.",
     win: "KROVA confirms slots, sends prescription reminders, flags no-show risks early.",
+    does: ["Confirms appointment slots", "Sends prescription reminders", "Flags no-show risk early"],
   },
   {
+    tab: "Salons",
     image: "/images/vertical-salons.webp",
     name: "Salons & spas",
-    pain: "Booking requests in five different inboxes, regulars forgotten.",
+    pain: "Booking requests sit in five different inboxes, and regulars get forgotten.",
     win: "KROVA confirms bookings, wishes birthdays, brings dormant customers back.",
+    does: ["Confirms bookings", "Wishes birthdays", "Wins back dormant regulars"],
   },
   {
+    tab: "Agencies",
     image: "/images/vertical-agencies.webp",
     name: "Agencies & studios",
-    pain: "Client commitments drift, quotes go unanswered.",
+    pain: "Client commitments drift and quotes go unanswered.",
     win: "KROVA tracks deliverables, flags scope creep, drafts proposal replies in your tone.",
+    does: ["Tracks deliverables", "Flags scope creep", "Drafts proposal replies"],
   },
 ];
 
@@ -170,6 +178,121 @@ function Magnetic({ children, className }: { children: ReactNode; className?: st
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * The four verticals, one at a time: pick a trade and the panel swaps to that
+ * illustration alongside what KROVA actually does for it. Cycles on its own
+ * until the reader takes over.
+ */
+function VerticalShowcase() {
+  const [idx, setIdx] = useState(0);
+  const [held, setHeld] = useState(false);
+  const v = VERTICALS[idx];
+
+  useEffect(() => {
+    if (held) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % VERTICALS.length), 6000);
+    return () => clearInterval(t);
+  }, [held]);
+
+  return (
+    <div>
+      {/* Trade picker */}
+      <div className="-mx-6 mb-8 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-max gap-2">
+          {VERTICALS.map((item, i) => (
+            <button
+              key={item.tab}
+              onClick={() => {
+                setIdx(i);
+                setHeld(true);
+              }}
+              className={`relative shrink-0 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors duration-300 ${
+                i === idx
+                  ? "border-teal bg-teal/10 text-teal-bright"
+                  : "border-os-border text-os-text-dim hover:border-os-border-bright hover:text-os-ink"
+              }`}
+            >
+              {item.tab}
+              {i === idx && !held && (
+                <motion.span
+                  key={idx}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 6, ease: "linear" }}
+                  className="absolute inset-x-3 bottom-1 h-px origin-left bg-teal/60"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Panel */}
+      <div className="overflow-hidden rounded-2xl border border-os-border bg-os-card">
+        <div className="grid lg:grid-cols-2">
+          <div className="relative aspect-[4/3] lg:aspect-auto lg:min-h-[24rem]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={v.image}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="absolute inset-0"
+              >
+                <Image
+                  src={v.image}
+                  alt={`${v.name}: ${v.pain} ${v.win}`}
+                  fill
+                  quality={95}
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 576px"
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-col justify-center gap-6 border-t border-os-border p-8 sm:p-10 lg:border-l lg:border-t-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={v.name}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="flex flex-col gap-6"
+              >
+                <h3 className="font-serif text-2xl font-semibold tracking-tight text-os-ink">
+                  {v.name}
+                </h3>
+
+                <div className="flex items-start gap-3">
+                  <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-thread-bright" />
+                  <p className="text-sm leading-relaxed text-os-text-dim">{v.pain}</p>
+                </div>
+
+                <div className="border-t border-os-border pt-6">
+                  <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-teal-bright">
+                    With KROVA
+                  </div>
+                  <ul className="flex flex-col gap-3">
+                    {v.does.map((d) => (
+                      <li key={d} className="flex items-center gap-3">
+                        <Check size={14} className="shrink-0 text-teal" />
+                        <span className="text-sm text-os-ink/90">{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -430,28 +553,7 @@ export default function Hero() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {VERTICALS.map((v, i) => (
-            <motion.div
-              key={v.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-10%" }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="group relative rounded-xl overflow-hidden border border-os-border shadow-xl transition-transform duration-300 hover:-translate-y-1"
-            >
-              <Image
-                src={v.image}
-                alt={`${v.name}: ${v.pain} ${v.win}`}
-                width={1376}
-                height={1032}
-                quality={95}
-                className="w-full h-auto block"
-                sizes="(max-width: 768px) 100vw, 552px"
-              />
-            </motion.div>
-          ))}
-        </div>
+        <VerticalShowcase />
       </section>
 
       {/* WHATSAPP BUSINESS INTEGRATION */}
