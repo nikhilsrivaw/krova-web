@@ -54,6 +54,26 @@ const STATUS_VARIANT: Record<VoiceApplication["status"], "emerald" | "amber" | "
   compliance_rejected: "rose",
 };
 
+const OUTCOME_LABEL: Record<NonNullable<CallLog["outcome"]>, string> = {
+  resolved: "Resolved",
+  escalated: "Escalated",
+  booked: "Booked",
+  no_action: "No Action",
+};
+
+const OUTCOME_VARIANT: Record<NonNullable<CallLog["outcome"]>, "emerald" | "amber" | "cyan" | "default"> = {
+  resolved: "emerald",
+  booked: "emerald",
+  escalated: "amber",
+  no_action: "default",
+};
+
+const SENTIMENT_VARIANT: Record<NonNullable<CallLog["sentiment"]>, "emerald" | "rose" | "default"> = {
+  positive: "emerald",
+  negative: "rose",
+  neutral: "default",
+};
+
 export default function VoicePage() {
   const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "call-campaigns">("compliance");
   const [subaccount, setSubaccount] = useState<Subaccount | null>(null);
@@ -584,6 +604,7 @@ export default function VoicePage() {
                         <thead className="border-b border-white/[0.06] text-os-text-dim font-mono uppercase text-[10px]">
                           <tr>
                             <th className="py-3 px-3">Caller</th>
+                            <th className="py-3 px-3">Outcome</th>
                             <th className="py-3 px-3">Duration</th>
                             <th className="py-3 px-3">Cost Breakdown</th>
                             <th className="py-3 px-3">Ended</th>
@@ -601,6 +622,20 @@ export default function VoicePage() {
                                 <p className="font-mono text-[10px] text-os-text-dim">
                                   {log.customer_phone || "—"}
                                 </p>
+                              </td>
+                              <td className="py-3 px-3">
+                                {log.outcome ? (
+                                  <Badge variant={OUTCOME_VARIANT[log.outcome]} size="sm">
+                                    {OUTCOME_LABEL[log.outcome]}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-os-text-dim text-[11px]">—</span>
+                                )}
+                                {log.topic && (
+                                  <p className="mt-1 text-[10px] text-os-text-dim truncate max-w-[160px]">
+                                    {log.topic}
+                                  </p>
+                                )}
                               </td>
                               <td className="py-3 px-3 font-mono">
                                 {log.duration_seconds != null
@@ -788,6 +823,11 @@ export default function VoicePage() {
                         placeholder="+91 98765 43210"
                         className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                       />
+                      {agentSettings.staff_phone_number && (
+                        <p className="mt-2 text-[11px] text-os-text-dim">
+                          Callers can also press 0 anytime to reach this number directly.
+                        </p>
+                      )}
                     </div>
 
                     {/* Live copilot mode */}
@@ -887,6 +927,44 @@ export default function VoicePage() {
                   <span className="text-white font-bold">{selectedCall.hangup_cause || "—"}</span>
                 </div>
               </div>
+
+              {(selectedCall.outcome || selectedCall.sentiment || selectedCall.topic || selectedCall.summary) && (
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedCall.outcome && (
+                      <Badge variant={OUTCOME_VARIANT[selectedCall.outcome]}>
+                        {OUTCOME_LABEL[selectedCall.outcome]}
+                      </Badge>
+                    )}
+                    {selectedCall.sentiment && (
+                      <Badge variant={SENTIMENT_VARIANT[selectedCall.sentiment]} dot>
+                        {selectedCall.sentiment}
+                      </Badge>
+                    )}
+                  </div>
+                  {selectedCall.topic && (
+                    <div>
+                      <span className="text-os-text-dim block text-[10px] font-mono mb-0.5">Topic</span>
+                      <span className="text-white text-xs font-semibold">{selectedCall.topic}</span>
+                    </div>
+                  )}
+                  {selectedCall.summary && (
+                    <div>
+                      <span className="text-os-text-dim block text-[10px] font-mono mb-0.5">Summary</span>
+                      <p className="text-xs text-os-text-dim leading-relaxed">{selectedCall.summary}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedCall.escalated && (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                  <span className="text-amber-300 block text-[10px] font-mono uppercase">Escalated</span>
+                  <p className="text-xs text-amber-100">
+                    {selectedCall.escalation_reason || "The agent could not help with this."}
+                  </p>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-white/[0.06]">
                 <a

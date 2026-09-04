@@ -672,6 +672,12 @@ export type CallLog = {
   };
   hangup_cause: string | null;
   started_at: string;
+  escalated: boolean;
+  escalation_reason: string | null;
+  outcome: "resolved" | "escalated" | "booked" | "no_action" | null;
+  sentiment: "positive" | "neutral" | "negative" | null;
+  topic: string | null;
+  summary: string | null;
 };
 
 export const voice = {
