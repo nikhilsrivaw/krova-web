@@ -41,6 +41,7 @@ const VERTICALS = [
   {
     tab: "Coaching",
     image: "/images/vertical-coaching.webp",
+    bg: "#1c1c1c",
     name: "Coaching institutes",
     pain: "Admission inquiries get lost across DMs and WhatsApp.",
     win: "KROVA tracks every parent inquiry, follows up on unpaid fees, books demo calls.",
@@ -49,6 +50,7 @@ const VERTICALS = [
   {
     tab: "Clinics",
     image: "/images/vertical-clinics.webp",
+    bg: "#1c1c1c",
     name: "Clinics & doctors",
     pain: "Appointment requests pile up, follow-ups slip.",
     win: "KROVA confirms slots, sends prescription reminders, flags no-show risks early.",
@@ -57,6 +59,7 @@ const VERTICALS = [
   {
     tab: "Salons",
     image: "/images/vertical-salons.webp",
+    bg: "#101010",
     name: "Salons & spas",
     pain: "Booking requests sit in five different inboxes, and regulars get forgotten.",
     win: "KROVA confirms bookings, wishes birthdays, brings dormant customers back.",
@@ -65,6 +68,7 @@ const VERTICALS = [
   {
     tab: "Agencies",
     image: "/images/vertical-agencies.webp",
+    bg: "#0c0c0c",
     name: "Agencies & studios",
     pain: "Client commitments drift and quotes go unanswered.",
     win: "KROVA tracks deliverables, flags scope creep, drafts proposal replies in your tone.",
@@ -233,8 +237,8 @@ function VerticalShowcase() {
       {/* Panel */}
       <div className="overflow-hidden rounded-2xl border border-os-border bg-os-card">
         <div className="grid lg:grid-cols-2">
-          <div className="relative aspect-[4/3] lg:aspect-auto lg:min-h-[24rem]">
-            <AnimatePresence mode="wait">
+          <div className="relative aspect-[1.55]" style={{ backgroundColor: v.bg }}>
+            <AnimatePresence initial={false}>
               <motion.div
                 key={v.image}
                 initial={{ opacity: 0, scale: 1.02 }}
