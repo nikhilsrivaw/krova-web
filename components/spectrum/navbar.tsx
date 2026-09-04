@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WhatsAppIcon } from "@/components/spectrum/brand-icons";
-import { PixelLoader } from "@/components/spectrum/pixel-loader";
 
 interface NavLink {
   label: string;
@@ -188,7 +187,6 @@ export function Navbar() {
   }>({ left: 0, width: 0, visible: false });
   const [activeMega, setActiveMega] = useState<NavLink | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [testLoaderOpen, setTestLoaderOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,41 +321,22 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Right: cmdK + auth + CTA */}
-          <div className="relative z-10 flex items-center gap-2 pr-2">
-            {/* TEMP: loader preview button — remove once loader design is signed off */}
-            <button
-              onClick={() => setTestLoaderOpen(true)}
-              className="text-[11px] font-bold uppercase tracking-widest text-teal hover:text-teal-bright transition-colors px-2"
-            >
-              Loader
-            </button>
+          {/* Right: auth pair, hairline-separated from the nav links */}
+          <div className="relative z-10 flex items-center gap-1.5 pr-2">
+            <span className="hidden md:block mr-1.5 h-5 w-px bg-os-border" />
 
-            {/* Cmd+K */}
-            <a
-              href="https://app.krova.space"
-              target="_blank"
-              rel="noopener"
-              className="hidden md:block text-[11px] font-bold uppercase tracking-widest text-os-text-dim hover:text-white transition-colors px-2"
+            <Link
+              href="/login"
+              className="hidden md:flex h-9 items-center rounded-full px-4 text-[11px] font-bold uppercase tracking-widest text-os-text-dim transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
             >
-              Open App
-            </a>
-
-            <Link href="/login" className="hidden md:block">
-              <motion.button
-                whileHover={{ color: "#FFFFFF" }}
-                className="text-[11px] font-bold uppercase tracking-widest text-os-text-dim transition-colors px-2"
-              >
-                Log in
-              </motion.button>
+              Log in
             </Link>
 
-            {/* CTA */}
             <Link href="/signup" className="hidden md:block">
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className="bg-white text-black px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5"
+                className="flex h-9 items-center gap-1.5 rounded-full bg-white px-4 text-[11px] font-bold uppercase tracking-widest text-black"
               >
                 Start Free
                 <ArrowRight size={12} />
@@ -430,23 +409,15 @@ export function Navbar() {
                   </motion.div>
                 ))}
               </div>
-              <motion.div variants={mobileItemVariants} className="border-t border-os-border p-4 space-y-3">
-                <a
-                  href="https://app.krova.space"
-                  target="_blank"
-                  rel="noopener"
-                  className="block text-[11px] font-bold uppercase tracking-widest text-os-text-dim hover:text-white transition-colors"
-                >
-                  Open App
-                </a>
+              <motion.div variants={mobileItemVariants} className="border-t border-os-border p-4">
                 <div className="flex items-center gap-3">
                   <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1">
-                    <button className="w-full py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-os-border text-os-ink">
+                    <button className="flex h-11 w-full items-center justify-center rounded-full border border-os-border text-[11px] font-bold uppercase tracking-widest text-os-ink transition-colors hover:border-os-border-bright">
                       Log in
                     </button>
                   </Link>
                   <Link href="/signup" onClick={() => setMobileOpen(false)} className="flex-1">
-                    <button className="w-full py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest bg-white text-black flex items-center justify-center gap-1.5">
+                    <button className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-white text-[11px] font-bold uppercase tracking-widest text-black">
                       Start Free <ArrowRight size={12} />
                     </button>
                   </Link>
@@ -508,25 +479,6 @@ export function Navbar() {
                 </Link>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* TEMP: loader preview overlay — remove once loader design is signed off */}
-      <AnimatePresence>
-        {testLoaderOpen && (
-          <motion.div
-            key="loader-preview"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setTestLoaderOpen(false)}
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-os-bg cursor-pointer"
-          >
-            <PixelLoader size={140} />
-            <p className="font-mono text-xs tracking-[0.3em] text-os-text-dim uppercase">Loading</p>
-            <p className="text-[10px] text-os-text-dim/60 uppercase tracking-widest">Click anywhere to close</p>
           </motion.div>
         )}
       </AnimatePresence>

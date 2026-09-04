@@ -18,12 +18,17 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-teal/10 blur-[100px]" />
 
         <div className="relative z-10 w-full max-w-sm">
-          <div className="mb-10 flex items-center justify-center gap-2">
-            <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-os-ink">
-              <div className="h-3.5 w-3.5 rounded-sm bg-os-bg" />
-            </Link>
-            <Link href="/" className="text-2xl font-black tracking-tighter">
-              KROVA
+          <div className="mb-10 flex justify-center">
+            <Link href="/" aria-label="KROVA home" className="group relative inline-flex">
+              <span className="absolute -inset-4 rounded-full bg-teal/20 blur-2xl opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
+              <Image
+                src="/logo-mark.svg"
+                alt="KROVA"
+                width={64}
+                height={64}
+                priority
+                className="relative h-16 w-16 drop-shadow-[0_10px_30px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.03]"
+              />
             </Link>
           </div>
 

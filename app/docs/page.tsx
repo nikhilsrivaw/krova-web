@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import {
   BookOpen,
@@ -27,7 +27,7 @@ import {
   Settings as SettingsIcon,
   HelpCircle,
   Check,
-  ChevronDown,
+  X,
   List,
 } from "lucide-react";
 
@@ -145,9 +145,6 @@ export default function DocsPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTop, setShowTop] = useState(false);
-  // The mobile section picker gets out of the way while you read downward.
-  const [barHidden, setBarHidden] = useState(false);
-  const lastY = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -163,11 +160,6 @@ export default function DocsPage() {
       const scrollable = document.body.scrollHeight - window.innerHeight;
       setProgress(scrollable > 0 ? Math.min(1, y / scrollable) : 0);
       setShowTop(y > 900);
-
-      // Ignore jitter, and always keep the bar up near the top of the page.
-      if (y < 240) setBarHidden(false);
-      else if (Math.abs(y - lastY.current) > 8) setBarHidden(y > lastY.current);
-      lastY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("hashchange", handleScroll);
@@ -180,6 +172,14 @@ export default function DocsPage() {
       window.removeEventListener("hashchange", handleScroll);
     };
   }, []);
+
+  // Don't let the page scroll behind the open drawer.
+  useEffect(() => {
+    document.body.style.overflow = navOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [navOpen]);
 
   const visibleToc = TOC.filter(
     (t) => !search || t.title.toLowerCase().includes(search.toLowerCase()),
@@ -253,34 +253,55 @@ export default function DocsPage() {
         </div>
       </header>
 
-      {/* MOBILE SECTION PICKER */}
+      {/* MOBILE CONTENTS — a collapsible sidebar, so nothing sits over the text */}
       <div
-        className="lg:hidden sticky top-[84px] z-40 border-y border-os-border bg-os-bg/95 backdrop-blur-sm transition-transform duration-300 ease-out"
-        style={{
-          transform: barHidden && !navOpen ? "translateY(calc(-100% - 88px))" : "none",
-        }}
+        onClick={() => setNavOpen(false)}
+        className={`lg:hidden fixed inset-0 z-40 bg-black/70 transition-opacity duration-300 ${
+          navOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+      <aside
+        aria-hidden={!navOpen}
+        className={`lg:hidden fixed inset-y-0 left-0 z-50 flex w-[86%] max-w-xs flex-col border-r border-os-border bg-os-bg transition-transform duration-300 ease-out ${
+          navOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        <button
-          onClick={() => setNavOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-3 px-6 py-3 text-left"
-        >
-          <span className="flex min-w-0 items-center gap-2.5">
-            <List size={14} className="shrink-0 text-teal" />
-            <span className="truncate text-sm font-semibold text-os-ink">{activeTitle}</span>
+        <div className="flex items-center justify-between border-b border-os-border px-5 py-4">
+          <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-teal-bright">
+            On this page
           </span>
-          <ChevronDown
-            size={16}
-            className={`shrink-0 text-os-text-dim transition-transform duration-300 ${
-              navOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {navOpen && (
-          <div className="max-h-[65vh] overflow-y-auto border-t border-os-border bg-os-bg px-3 py-4">
-            {navList(() => setNavOpen(false))}
+          <button
+            onClick={() => setNavOpen(false)}
+            aria-label="Close contents"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-os-border text-os-text-dim transition-colors hover:border-os-border-bright hover:text-os-ink"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="border-b border-os-border px-5 py-4">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-os-text-dim" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the guide"
+              className="w-full rounded-lg border border-os-border bg-os-card py-2 pl-9 pr-3 text-xs text-os-ink placeholder:text-os-text-dim focus:border-os-border-bright focus:outline-none"
+            />
           </div>
-        )}
-      </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-2 py-4">{navList(() => setNavOpen(false))}</div>
+      </aside>
+
+      {/* The trigger — bottom left, opposite back-to-top */}
+      <button
+        onClick={() => setNavOpen(true)}
+        className="lg:hidden fixed bottom-6 left-6 z-30 flex max-w-[70vw] items-center gap-2.5 rounded-full border border-os-border bg-os-card/95 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+      >
+        <List size={14} className="shrink-0 text-teal" />
+        <span className="truncate text-xs font-semibold text-os-ink">{activeTitle}</span>
+      </button>
 
       {/* BODY */}
       <div className="max-w-7xl mx-auto px-6 pb-24">
@@ -1050,7 +1071,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-40 lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
+    <section id={id} className="scroll-mt-28 lg:scroll-mt-32 border-t border-os-border pt-14 first:border-t-0 first:pt-0">
       <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-teal-bright mb-3">
         {eyebrow}
       </div>
