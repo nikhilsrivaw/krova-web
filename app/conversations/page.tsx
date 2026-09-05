@@ -37,6 +37,11 @@ import {
   channels,
   formatPaise,
   team,
+  account,
+  queue as queueApi,
+  type Capability,
+  type Shift,
+  type ShiftSession,
   type ConversationItem,
   type ConversationThread,
   type TeamMember,
@@ -80,12 +85,47 @@ export default function ConversationsPage() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [isBookingToken, setIsBookingToken] = useState(false);
+  const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
+  const [bookingShift, setBookingShift] = useState<Shift | "">("");
+  const [isSubmittingToken, setIsSubmittingToken] = useState(false);
+  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift } | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
   useEffect(() => {
     team.list().then(setTeamMembers).catch(() => {
       // A missing team list shouldn't block the inbox - assignment just
       // won't have anyone to offer.
     });
+    account.profile().then((p) => setCapabilities(p.capabilities || [])).catch(() => {});
   }, []);
+
+  const openBookingPanel = async () => {
+    setIsBookingToken(true);
+    setTokenResult(null);
+    setTokenError(null);
+    try {
+      const sessions = await queueApi.listShifts();
+      setOpenShiftSessions(sessions.filter((s) => !s.closed_at));
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : "Could not load open shifts.");
+    }
+  };
+
+  const handleBookToken = async () => {
+    if (!activeThread || !bookingShift) return;
+    setIsSubmittingToken(true);
+    setTokenError(null);
+    try {
+      const entry = await queueApi.checkIn({ customer_id: activeThread.customer_id, shift: bookingShift });
+      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift });
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : "Could not book a token.");
+    } finally {
+      setIsSubmittingToken(false);
+    }
+  };
 
   // Load conversation thread list
   useEffect(() => {
@@ -494,7 +534,13 @@ export default function ConversationsPage() {
                 {/* Inspect Customer 360 */}
                 <button
                   type="button"
-                  onClick={() => setIsCustomerDrawerOpen(true)}
+                  onClick={() => {
+                    setIsBookingToken(false);
+                    setBookingShift("");
+                    setTokenResult(null);
+                    setTokenError(null);
+                    setIsCustomerDrawerOpen(true);
+                  }}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <User className="w-3.5 h-3.5" />
@@ -644,7 +690,7 @@ export default function ConversationsPage() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-white/[0.06]">
+            <div className="pt-4 border-t border-white/[0.06] space-y-2">
               <a
                 href={`/ledger`}
                 className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all"
@@ -652,6 +698,55 @@ export default function ConversationsPage() {
                 <Layers className="w-4 h-4" />
                 View Full Commitment Ledger
               </a>
+
+              {capabilities.includes("opd_queue") && (
+                !isBookingToken ? (
+                  <button
+                    type="button"
+                    onClick={openBookingPanel}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Clock className="w-4 h-4" />
+                    Book Token
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                    {tokenResult ? (
+                      <p className="text-xs text-emerald-400 text-center font-semibold">
+                        Booked: {tokenResult.shift} #{tokenResult.queue_number}
+                      </p>
+                    ) : (
+                      <>
+                        {tokenError && <p className="text-[11px] text-red-400">{tokenError}</p>}
+                        {openShiftSessions.length === 0 ? (
+                          <p className="text-[11px] text-os-text-dim">No shift is open right now.</p>
+                        ) : (
+                          <>
+                            <select
+                              value={bookingShift}
+                              onChange={(e) => setBookingShift(e.target.value as Shift)}
+                              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                            >
+                              <option value="">Select shift...</option>
+                              {openShiftSessions.map((s) => (
+                                <option key={s.id} value={s.shift}>{s.shift}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={handleBookToken}
+                              disabled={!bookingShift || isSubmittingToken}
+                              className="w-full py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50"
+                            >
+                              {isSubmittingToken ? "Booking..." : "Confirm Token"}
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )
+              )}
             </div>
           </div>
         )}

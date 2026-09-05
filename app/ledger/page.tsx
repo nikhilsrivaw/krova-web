@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Phone,
   Mail,
+  Download,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -54,6 +55,30 @@ export default function LedgerPage() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const [tallyFrom, setTallyFrom] = useState(monthStart);
+  const [tallyTo, setTallyTo] = useState(today);
+  const [isExportingTally, setIsExportingTally] = useState(false);
+
+  const handleExportTally = async () => {
+    setIsExportingTally(true);
+    setActionError(null);
+    try {
+      const blob = await ledger.exportTally({ from: tallyFrom, to: tallyTo });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "krova_tally_receipts.xml";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not export for Tally.");
+    } finally {
+      setIsExportingTally(false);
+    }
+  };
 
   const loadLedger = async () => {
     setIsLoading(true);
@@ -125,6 +150,33 @@ export default function LedgerPage() {
     <AppLayout
       title="Commitment Ledger"
       subtitle="Two-way extracted promises, payment deadlines & conversational evidence"
+      actions={
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={tallyFrom}
+            onChange={(e) => setTallyFrom(e.target.value)}
+            className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+          />
+          <span className="text-os-text-dim text-xs">to</span>
+          <input
+            type="date"
+            value={tallyTo}
+            onChange={(e) => setTallyTo(e.target.value)}
+            className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleExportTally}
+            disabled={isExportingTally}
+            title="Export settled payments as a Tally-importable file for your CA"
+            className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {isExportingTally ? "Exporting..." : "Export for Tally"}
+          </button>
+        </div>
+      }
     >
       <div className="space-y-6 max-w-7xl mx-auto">
         {loadError && (

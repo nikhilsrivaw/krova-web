@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +15,8 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   churn_risk: { label: "Churn Risk", icon: TrendingDown, badge: "rose" },
   praise: { label: "Praise", icon: Heart, badge: "emerald" },
   account_health: { label: "Account Health", icon: Activity, badge: "purple" },
+  overdue_followup: { label: "Overdue Follow-up", icon: Clock, badge: "amber" },
+  report_not_collected: { label: "Not Yet Collected", icon: FileWarning, badge: "amber" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
@@ -78,8 +80,8 @@ export default function SignalsPage() {
 
   return (
     <AppLayout
-      title="Product Feedback Signals"
-      subtitle="What users are actually telling you - bugs, feature requests, complaints, churn risk, and praise."
+      title="Signals"
+      subtitle="What's worth knowing right now - product feedback signals, or overdue follow-ups and uncollected reports, depending on your business."
     >
       <div className="space-y-6 max-w-6xl mx-auto">
         {loadError && (
@@ -149,7 +151,7 @@ export default function SignalsPage() {
           <EmptyState
             icon={Radar}
             title="No signals to review"
-            description="As users message you, KROVA reads for bugs, feature requests, complaints, churn risk and praise - each one cited to the real conversation it came from."
+            description="KROVA surfaces what's worth knowing without you having to dig for it - bugs, feature requests, complaints, churn risk and praise from conversations, or overdue follow-ups and uncollected reports from your commitment ledger."
           />
         ) : (
           <div className="space-y-3">

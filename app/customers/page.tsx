@@ -35,11 +35,16 @@ import { PipelineBoard } from "@/components/crm/PipelineBoard";
 import {
   ledger,
   crm,
+  account,
+  queue as queueApi,
   formatPaise,
   type CustomerSummary,
   type ContactImportResult,
   type CustomerTag,
   type CustomerNote,
+  type Capability,
+  type Shift,
+  type ShiftSession,
 } from "@/lib/api";
 
 function parseContactsCsv(text: string): { phone: string; name?: string }[] {
@@ -100,6 +105,39 @@ export default function CustomersPage() {
   const [isBulkTagging, setIsBulkTagging] = useState(false);
   const [bulkTagResult, setBulkTagResult] = useState<string | null>(null);
 
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [isBookingToken, setIsBookingToken] = useState(false);
+  const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
+  const [bookingShift, setBookingShift] = useState<Shift | "">("");
+  const [isSubmittingToken, setIsSubmittingToken] = useState(false);
+  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift } | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  const openBookingPanel = async () => {
+    setIsBookingToken(true);
+    setTokenError(null);
+    try {
+      const sessions = await queueApi.listShifts();
+      setOpenShiftSessions(sessions.filter((s) => !s.closed_at));
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : "Could not load open shifts.");
+    }
+  };
+
+  const handleBookToken = async () => {
+    if (!selectedCustomer || !bookingShift) return;
+    setIsSubmittingToken(true);
+    setTokenError(null);
+    try {
+      const entry = await queueApi.checkIn({ customer_id: selectedCustomer.id, shift: bookingShift });
+      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift });
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : "Could not book a token.");
+    } finally {
+      setIsSubmittingToken(false);
+    }
+  };
+
   const reloadCustomers = async () => {
     try {
       const data = await ledger.customers();
@@ -119,6 +157,16 @@ export default function CustomersPage() {
   };
 
   useEffect(() => {
+    let mounted = true;
+    account.profile().then((p) => {
+      if (mounted) setCapabilities(p.capabilities || []);
+    }).catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedCustomer) {
       setTags([]);
       setNotes([]);
@@ -127,6 +175,13 @@ export default function CustomersPage() {
     setNewDealValue(
       selectedCustomer.deal_value_paise ? String(selectedCustomer.deal_value_paise / 100) : "",
     );
+    // Reset the Book Token mini-flow for whichever patient the drawer now
+    // shows - a stale token result from a previously-viewed patient must
+    // never linger onto this one.
+    setIsBookingToken(false);
+    setBookingShift("");
+    setTokenResult(null);
+    setTokenError(null);
     let mounted = true;
     setIsLoadingCrm(true);
     Promise.allSettled([
@@ -925,6 +980,55 @@ export default function CustomersPage() {
                   <Layers className="w-4 h-4" />
                   Inspect Commitment Ledger
                 </Link>
+
+                {capabilities.includes("opd_queue") && (
+                  !isBookingToken ? (
+                    <button
+                      type="button"
+                      onClick={openBookingPanel}
+                      className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Book Token
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                      {tokenResult ? (
+                        <p className="text-xs text-emerald-400 text-center font-semibold">
+                          Booked: {tokenResult.shift} #{tokenResult.queue_number}
+                        </p>
+                      ) : (
+                        <>
+                          {tokenError && <p className="text-[11px] text-red-400">{tokenError}</p>}
+                          {openShiftSessions.length === 0 ? (
+                            <p className="text-[11px] text-os-text-dim">No shift is open right now.</p>
+                          ) : (
+                            <>
+                              <select
+                                value={bookingShift}
+                                onChange={(e) => setBookingShift(e.target.value as Shift)}
+                                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                              >
+                                <option value="">Select shift...</option>
+                                {openShiftSessions.map((s) => (
+                                  <option key={s.id} value={s.shift}>{s.shift}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={handleBookToken}
+                                disabled={!bookingShift || isSubmittingToken}
+                                className="w-full py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50"
+                              >
+                                {isSubmittingToken ? "Booking..." : "Confirm Token"}
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
             </div>
           )}

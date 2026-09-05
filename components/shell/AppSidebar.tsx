@@ -26,6 +26,8 @@ import {
   Package,
   Building2,
   Workflow,
+  Clock,
+  FileCheck2,
 } from "lucide-react";
 import { approvals, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -77,7 +79,10 @@ export function AppSidebar({
     shortcut?: string;
     badge?: number;
     badgeColor?: string;
-    requiresCapability?: Capability;
+    // A single capability, or any-of a list - the Signals item needs the
+    // latter (product_feedback OR care_recall, two different verticals'
+    // reasons to see the same page).
+    requiresCapability?: Capability | Capability[];
   };
 
   const ALL_NAV_ITEMS: NavItem[] = [
@@ -146,8 +151,24 @@ export function AppSidebar({
       href: "/signals",
       icon: Radar,
       accent: "text-brass-bright",
-      requiresCapability: "product_feedback",
+      requiresCapability: ["product_feedback", "care_recall"],
       shortcut: "G I",
+    },
+    {
+      label: "Queue",
+      href: "/queue",
+      icon: Clock,
+      accent: "text-brass-bright",
+      requiresCapability: "opd_queue",
+      shortcut: "G Q",
+    },
+    {
+      label: "Claims",
+      href: "/claims",
+      icon: FileCheck2,
+      accent: "text-brass-bright",
+      requiresCapability: "tpa_claim_tracking",
+      shortcut: "G T",
     },
     {
       label: "Orders",
@@ -203,9 +224,11 @@ export function AppSidebar({
     },
   ];
 
-  const NAV_ITEMS = ALL_NAV_ITEMS.filter(
-    (item) => !item.requiresCapability || capabilities.includes(item.requiresCapability),
-  );
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => {
+    if (!item.requiresCapability) return true;
+    const required = Array.isArray(item.requiresCapability) ? item.requiresCapability : [item.requiresCapability];
+    return required.some((cap) => capabilities.includes(cap));
+  });
 
   return (
     <aside className="w-64 shrink-0 h-screen bg-os-bg border-r border-os-border flex flex-col justify-between select-none z-30 sticky top-0">

@@ -77,8 +77,31 @@ async function request<T>(
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
+// A file download (Tally XML export, so far) needs the response body raw,
+// never JSON.parse'd - same auth/refresh contract as request<T>, different
+// final step.
+async function requestBlob(method: string, path: string): Promise<Blob> {
+  if (!getAccessToken()) throw new NotAuthenticated();
+
+  let res = await send(method, path);
+  if (res.status === 401 && (await refreshSession())) {
+    res = await send(method, path);
+  }
+  if (res.status === 401) {
+    clearSession();
+    throw new NotAuthenticated();
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = Array.isArray(err?.detail) ? err.detail[0]?.msg : err?.detail;
+    throw new Error(detail || `Something went wrong (${res.status})`);
+  }
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
+  getBlob: (path: string) => requestBlob("GET", path),
   post: <T>(path: string, body?: unknown, isFormData = false) =>
     request<T>("POST", path, body, isFormData),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
@@ -156,6 +179,17 @@ export const ledger = {
 
   importCustomers: (contacts: { phone: string; name?: string | null }[]) =>
     api.post<ContactImportResult>("/ledger/customers/import", { contacts }),
+
+  // Settled payments as a Tally-importable Receipt Voucher XML - clinics
+  // hand this straight to their CA. Scope: payments received only, see the
+  // backend's shared/reports/tally_export.py for why.
+  exportTally: (params?: { from?: string; to?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set("from", params.from);
+    if (params?.to) qs.set("to", params.to);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.getBlob(`/ledger/export/tally${suffix}`);
+  },
 };
 
 export type ContactImportRowResult = {
@@ -1135,7 +1169,10 @@ export type Capability =
   | "case_tracking"
   | "order_sync"
   | "property_listings"
-  | "product_feedback";
+  | "product_feedback"
+  | "care_recall"
+  | "opd_queue"
+  | "tpa_claim_tracking";
 
 export type UserProfile = {
   user_id: string;
@@ -1424,7 +1461,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {
@@ -1449,6 +1486,116 @@ export const signals = {
   },
 
   dismiss: (id: string) => api.post<Signal>(`/signals/${id}/dismiss`),
+};
+
+// ── OPD Queue (Clinics) ───────────────────────────────────────────────────────
+//
+// Indian OPD is a token/shift system (Morning/Evening/Emergency), not a
+// calendar slot - a shift must be opened by staff before anyone (staff,
+// kiosk, or the voice/WhatsApp agent) can issue a token into it. Emergency
+// is a fully separate token sequence, never an insertion into the regular
+// queue.
+
+export type Shift = "morning" | "evening" | "emergency";
+export type QueueStatus = "waiting" | "in_consultation" | "done" | "skipped" | "cancelled";
+
+export type ShiftSession = {
+  id: string;
+  shift: Shift;
+  session_date: string;
+  opened_at: string;
+  closed_at: string | null;
+};
+
+export type QueueEntry = {
+  id: string;
+  customer_id: string | null;
+  doctor_id: string | null;
+  shift: Shift;
+  queue_date: string;
+  queue_number: number;
+  status: QueueStatus;
+  checked_in_at: string;
+  called_at: string | null;
+  completed_at: string | null;
+};
+
+export const queue = {
+  checkIn: (data: { shift: Shift; customer_id?: string; doctor_id?: string }) =>
+    api.post<QueueEntry>("/queue/check-in", data),
+
+  list: (params?: { doctor_id?: string; shift?: Shift; status?: QueueStatus; queue_date?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.doctor_id) qs.set("doctor_id", params.doctor_id);
+    if (params?.shift) qs.set("shift", params.shift);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.queue_date) qs.set("queue_date", params.queue_date);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<QueueEntry[]>(`/queue${suffix}`);
+  },
+
+  update: (id: string, status: QueueStatus) => api.patch<QueueEntry>(`/queue/${id}`, { status }),
+
+  listShifts: () => api.get<ShiftSession[]>("/queue/shifts"),
+  openShift: (shift: Shift) => api.post<ShiftSession>("/queue/shifts/open", { shift }),
+  closeShift: (sessionId: string) => api.post<ShiftSession>(`/queue/shifts/${sessionId}/close`),
+
+  getKioskConfig: () => api.get<{ enabled: boolean; token: string | null }>("/queue/kiosk"),
+  enableKiosk: () => api.post<{ enabled: boolean; token: string | null }>("/queue/kiosk/enable"),
+  disableKiosk: () => api.post<{ enabled: boolean; token: string | null }>("/queue/kiosk/disable"),
+};
+
+// ── TPA / Insurance Claims (Clinics) ──────────────────────────────────────────
+
+export type ClaimStatus = "submitted" | "under_review" | "query_raised" | "approved" | "rejected" | "settled";
+
+export type InsuranceClaim = {
+  id: string;
+  customer_id: string;
+  insurer_or_tpa_name: string | null;
+  policy_number: string | null;
+  claim_number: string | null;
+  status: ClaimStatus;
+  claim_amount_paise: number | null;
+  approved_amount_paise: number | null;
+  submitted_at: string | null;
+  decided_at: string | null;
+  notes: string | null;
+};
+
+export const claims = {
+  list: (params?: { customer_id?: string; status?: ClaimStatus }) => {
+    const qs = new URLSearchParams();
+    if (params?.customer_id) qs.set("customer_id", params.customer_id);
+    if (params?.status) qs.set("status", params.status);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<InsuranceClaim[]>(`/insurance-claims${suffix}`);
+  },
+
+  create: (data: {
+    customer_id: string;
+    insurer_or_tpa_name?: string;
+    policy_number?: string;
+    claim_number?: string;
+    claim_amount_paise?: number;
+    submitted_at?: string;
+    notes?: string;
+  }) => api.post<InsuranceClaim>("/insurance-claims", data),
+
+  update: (
+    id: string,
+    data: Partial<{
+      insurer_or_tpa_name: string;
+      policy_number: string;
+      claim_number: string;
+      status: ClaimStatus;
+      claim_amount_paise: number;
+      approved_amount_paise: number;
+      submitted_at: string;
+      decided_at: string;
+      notes: string;
+    }>,
+  ) => api.patch<InsuranceClaim>(`/insurance-claims/${id}`, data),
 };
 
 // ── Canned Responses ──────────────────────────────────────────────────────────
