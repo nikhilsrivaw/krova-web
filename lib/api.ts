@@ -1840,3 +1840,50 @@ export const flows = {
   ) => api.post<FlowSendResult>(`/flows/${id}/send`, data),
 };
 
+// ── Outbound integrations ───────────────────────────────────────────────────
+
+export type CalendarStatus = {
+  connected: boolean;
+  status: string | null;
+  connected_at: string | null;
+};
+
+export type OutboundWebhookRow = {
+  id: string;
+  target_url: string;
+  event_types: string[];
+  active: boolean;
+  secret: string | null; // only present in the create response
+  last_delivery_at: string | null;
+  last_delivery_status: string | null;
+  failure_count: number;
+};
+
+export const WEBHOOK_EVENT_TYPES = [
+  "appointment.booked",
+  "appointment.cancelled",
+  "queue_token.issued",
+] as const;
+
+export const integrations = {
+  googleCalendarStatus: () => api.get<CalendarStatus>("/integrations/google-calendar"),
+
+  googleCalendarConnectUrl: () =>
+    api.get<{ url: string }>("/integrations/google-calendar/connect-url"),
+
+  disconnectGoogleCalendar: () =>
+    api.post<void>("/integrations/google-calendar/disconnect"),
+
+  listWebhooks: () => api.get<OutboundWebhookRow[]>("/integrations/webhooks"),
+
+  createWebhook: (data: { target_url: string; event_types: string[] }) =>
+    api.post<OutboundWebhookRow>("/integrations/webhooks", data),
+
+  updateWebhook: (
+    id: string,
+    data: Partial<{ target_url: string; event_types: string[]; active: boolean }>,
+  ) => api.patch<OutboundWebhookRow>(`/integrations/webhooks/${id}`, data),
+
+  deleteWebhook: (id: string) => api.delete<void>(`/integrations/webhooks/${id}`),
+};
+

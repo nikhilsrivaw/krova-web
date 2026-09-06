@@ -19,6 +19,9 @@ import {
   Activity,
   Megaphone,
   Instagram,
+  Calendar,
+  Webhook,
+  Trash2,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -28,12 +31,16 @@ import {
   approvals,
   channels,
   waAccount,
+  integrations,
+  WEBHOOK_EVENT_TYPES,
   type UserProfile,
   type AutonomyLevel,
   type ChannelConnection,
   type WhatsAppProfile,
   type WhatsAppHealth,
   type WhatsAppReadiness,
+  type CalendarStatus,
+  type OutboundWebhookRow,
 } from "@/lib/api";
 
 const VERTICALS = [
@@ -91,6 +98,13 @@ export default function SettingsPage() {
   const emailConnection = channelsList.find((c) => c.channel === "email") || null;
   const igConnection = channelsList.find((c) => c.channel === "instagram") || null;
 
+  const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
+  const [webhooksList, setWebhooksList] = useState<OutboundWebhookRow[]>([]);
+  const [newWebhookUrl, setNewWebhookUrl] = useState("");
+  const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>([]);
+  const [isCreatingWebhook, setIsCreatingWebhook] = useState(false);
+  const [createdWebhookSecret, setCreatedWebhookSecret] = useState<string | null>(null);
+
   // Feedback after the Instagram Business Login redirect lands back here -
   // read directly from the URL rather than a Next.js hook, since this page
   // is fully client-rendered and the round trip is a plain browser redirect.
@@ -105,6 +119,83 @@ export default function SettingsPage() {
     if (messages[result]) alert(messages[result]);
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
+
+  // Same round-trip pattern as Instagram's own redirect handling above, for
+  // the Google Calendar OAuth callback.
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("calendar");
+    if (!result) return;
+    const messages: Record<string, string> = {
+      connected: "Google Calendar connected.",
+      error: "Could not connect Google Calendar. Please try again.",
+      expired: "That connection attempt expired. Please try again.",
+    };
+    if (messages[result]) alert(messages[result]);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([integrations.googleCalendarStatus(), integrations.listWebhooks()]).then(
+      ([calRes, whRes]) => {
+        if (!mounted) return;
+        if (calRes.status === "fulfilled") setCalendarStatus(calRes.value);
+        if (whRes.status === "fulfilled") setWebhooksList(whRes.value);
+      },
+    );
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleConnectGoogleCalendar = async () => {
+    try {
+      const res = await integrations.googleCalendarConnectUrl();
+      window.location.href = res.url;
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Google Calendar isn't configured for this account yet.");
+    }
+  };
+
+  const handleDisconnectGoogleCalendar = async () => {
+    await integrations.disconnectGoogleCalendar();
+    setCalendarStatus({ connected: false, status: null, connected_at: null });
+  };
+
+  const toggleNewWebhookEvent = (event: string) => {
+    setNewWebhookEvents((prev) =>
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event],
+    );
+  };
+
+  const handleCreateWebhook = async () => {
+    if (!newWebhookUrl.trim() || newWebhookEvents.length === 0) return;
+    setIsCreatingWebhook(true);
+    try {
+      const created = await integrations.createWebhook({
+        target_url: newWebhookUrl.trim(),
+        event_types: newWebhookEvents,
+      });
+      setWebhooksList((prev) => [...prev, created]);
+      setCreatedWebhookSecret(created.secret);
+      setNewWebhookUrl("");
+      setNewWebhookEvents([]);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not create webhook.");
+    } finally {
+      setIsCreatingWebhook(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    await integrations.deleteWebhook(id);
+    setWebhooksList((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  const handleToggleWebhookActive = async (webhook: OutboundWebhookRow) => {
+    const updated = await integrations.updateWebhook(webhook.id, { active: !webhook.active });
+    setWebhooksList((prev) => prev.map((w) => (w.id === webhook.id ? updated : w)));
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -671,6 +762,147 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
+          </div>
+        </GlassCard>
+
+        {/* SECTION 2z: OUTBOUND INTEGRATIONS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Integrations</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Push bookings out to tools you already use - your own calendar, and any endpoint (Zapier, your CRM, a spreadsheet) that wants to know when something is booked.
+          </p>
+
+          <div className="space-y-3">
+            {/* Google Calendar */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Google Calendar</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {calendarStatus?.connected
+                      ? "Bookings appear on your calendar automatically."
+                      : "Every appointment and queue token shows up on your own calendar."}
+                  </p>
+                </div>
+              </div>
+              {calendarStatus?.connected ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant="emerald" dot>Connected</Badge>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogleCalendar}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectGoogleCalendar}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  Connect Google Calendar
+                </button>
+              )}
+            </div>
+
+            {/* Webhooks */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                  <Webhook className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Webhooks</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    Send booking events to your own endpoint - a Zapier catch-hook, your CRM, anything.
+                  </p>
+                </div>
+              </div>
+
+              {webhooksList.map((w) => (
+                <div
+                  key={w.id}
+                  className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-white font-mono truncate">{w.target_url}</p>
+                    <p className="text-[10px] text-os-text-dim font-mono">
+                      {w.event_types.join(", ")}
+                      {w.last_delivery_status && ` · last: ${w.last_delivery_status}`}
+                      {w.failure_count > 0 && ` · ${w.failure_count} failing`}
+                    </p>
+                  </div>
+                  <Badge variant={w.active ? "emerald" : "amber"} dot>
+                    {w.active ? "Active" : "Paused"}
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleWebhookActive(w)}
+                    className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-[11px] font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    {w.active ? "Pause" : "Resume"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteWebhook(w.id)}
+                    className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {createdWebhookSecret && (
+                <div className="p-3 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/[0.2] space-y-1">
+                  <p className="text-[11px] text-emerald-400 font-mono font-semibold">
+                    Webhook created - copy this signing secret now, it won&apos;t be shown again:
+                  </p>
+                  <p className="text-xs text-white font-mono break-all">{createdWebhookSecret}</p>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-1">
+                <input
+                  type="text"
+                  value={newWebhookUrl}
+                  onChange={(e) => setNewWebhookUrl(e.target.value)}
+                  placeholder="https://hooks.zapier.com/..."
+                  className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {WEBHOOK_EVENT_TYPES.map((event) => (
+                    <button
+                      key={event}
+                      type="button"
+                      onClick={() => toggleNewWebhookEvent(event)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-all cursor-pointer ${
+                        newWebhookEvents.includes(event)
+                          ? "bg-os-accent/20 border-os-accent/40 text-os-accent"
+                          : "bg-white/[0.03] border-white/[0.08] text-os-text-dim"
+                      }`}
+                    >
+                      {event}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleCreateWebhook}
+                    disabled={isCreatingWebhook || !newWebhookUrl.trim() || newWebhookEvents.length === 0}
+                    className="ml-auto px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                  >
+                    {isCreatingWebhook ? "Adding…" : "Add webhook"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </GlassCard>
 
