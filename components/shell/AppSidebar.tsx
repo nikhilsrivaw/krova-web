@@ -28,6 +28,7 @@ import {
   Workflow,
   Clock,
   FileCheck2,
+  Siren,
 } from "lucide-react";
 import { approvals, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -151,8 +152,15 @@ export function AppSidebar({
       href: "/signals",
       icon: Radar,
       accent: "text-brass-bright",
-      requiresCapability: ["product_feedback", "care_recall"],
+      requiresCapability: ["product_feedback", "care_recall", "order_sync"],
       shortcut: "G I",
+    },
+    {
+      label: "Escalations",
+      href: "/escalations",
+      icon: Siren,
+      accent: "text-brass-bright",
+      shortcut: "G E",
     },
     {
       label: "Queue",

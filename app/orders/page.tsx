@@ -13,6 +13,7 @@ import {
   type Order,
   type OrderStatus,
   type StoreConnection,
+  type ShippingConnection,
   type CustomerSummary,
 } from "@/lib/api";
 
@@ -55,6 +56,12 @@ export default function OrdersPage() {
   const [webhookSecret, setWebhookSecret] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
 
+  const [shippingConnections, setShippingConnections] = useState<ShippingConnection[]>([]);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  const [shiprocketEmail, setShiprocketEmail] = useState("");
+  const [shiprocketPassword, setShiprocketPassword] = useState("");
+  const [isConnectingShipping, setIsConnectingShipping] = useState(false);
+
   const customerName = useMemo(() => {
     const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed customer"]));
     return (id: string | null) => (id ? map.get(id) || id.slice(0, 8) : "Unresolved");
@@ -63,11 +70,17 @@ export default function OrdersPage() {
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const results = await Promise.allSettled([ordersApi.list(), ordersApi.listConnections(), ledger.customers()]);
-    const [ordersRes, connRes, customersRes] = results;
+    const results = await Promise.allSettled([
+      ordersApi.list(),
+      ordersApi.listConnections(),
+      ledger.customers(),
+      ordersApi.listShippingConnections(),
+    ]);
+    const [ordersRes, connRes, customersRes, shippingRes] = results;
     if (ordersRes.status === "fulfilled") setAllOrders(ordersRes.value);
     if (connRes.status === "fulfilled") setConnections(connRes.value);
     if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
+    if (shippingRes.status === "fulfilled") setShippingConnections(shippingRes.value);
 
     const failed = results.find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
@@ -130,19 +143,56 @@ export default function OrdersPage() {
     }
   };
 
+  const handleConnectShipping = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsConnectingShipping(true);
+    setActionError(null);
+    try {
+      const created = await ordersApi.connectShipping({ email: shiprocketEmail, password: shiprocketPassword });
+      setShippingConnections((prev) => [...prev, created]);
+      setIsShippingModalOpen(false);
+      setShiprocketEmail("");
+      setShiprocketPassword("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not connect Shiprocket - check the email and password.");
+    } finally {
+      setIsConnectingShipping(false);
+    }
+  };
+
+  const handleDisconnectShipping = async (id: string) => {
+    setActionError(null);
+    try {
+      await ordersApi.disconnectShipping(id);
+      setShippingConnections((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not disconnect Shiprocket.");
+    }
+  };
+
   return (
     <AppLayout
       title="Orders"
       subtitle="Orders synced from your connected store - the one source of truth behind every 'where is my order' reply."
       actions={
-        <button
-          type="button"
-          onClick={openConnectModal}
-          className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Connect Store
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsShippingModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold border border-white/[0.1] flex items-center gap-1.5 cursor-pointer"
+          >
+            <Truck className="w-3.5 h-3.5" />
+            Connect Shiprocket
+          </button>
+          <button
+            type="button"
+            onClick={openConnectModal}
+            className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Connect Store
+          </button>
+        </div>
       }
     >
       <div className="space-y-6 max-w-6xl mx-auto">
@@ -164,7 +214,7 @@ export default function OrdersPage() {
               <div>
                 <p className="text-xs font-bold text-white">No store connected yet</p>
                 <p className="text-xs text-os-text-dim">
-                  Connect Shopify to start syncing orders in. In your Shopify Admin, add a webhook (Settings → Notifications → Webhooks) pointed at your KROVA webhook URL for the <code className="font-mono">orders/create</code>, <code className="font-mono">orders/updated</code>, and <code className="font-mono">orders/cancelled</code> topics, then paste the secret it gives you here.
+                  Connect Shopify to start syncing orders in. In your Shopify Admin, add a webhook (Settings → Notifications → Webhooks) pointed at your KROVA webhook URL for the <code className="font-mono">orders/create</code>, <code className="font-mono">orders/updated</code>, and <code className="font-mono">orders/cancelled</code> topics - and, for abandoned-cart recovery, <code className="font-mono">checkouts/create</code> and <code className="font-mono">checkouts/update</code> pointed at the checkouts webhook URL - then paste the secret it gives you here.
                 </p>
               </div>
             </div>
@@ -178,6 +228,25 @@ export default function OrdersPage() {
                   <p className="text-xs text-os-text-dim font-mono">{c.store_identifier}</p>
                 </div>
                 <button type="button" onClick={() => handleDisconnect(c.id)} className="text-os-text-dim hover:text-thread-bright">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </GlassCard>
+            ))}
+          </div>
+        )}
+
+        {shippingConnections.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {shippingConnections.map((c) => (
+              <GlassCard key={c.id} className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Truck className="w-4 h-4 text-os-text-dim" />
+                  <div>
+                    <p className="text-xs font-bold text-white">Shiprocket</p>
+                    <p className="text-xs text-os-text-dim font-mono">{c.email}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => handleDisconnectShipping(c.id)} className="text-os-text-dim hover:text-thread-bright">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </GlassCard>
@@ -224,6 +293,7 @@ export default function OrdersPage() {
                   <th className="text-left px-4 py-2.5">Tracking</th>
                   <th className="text-left px-4 py-2.5">Placed</th>
                   <th className="text-left px-4 py-2.5">Source</th>
+                  <th className="text-left px-4 py-2.5">COD</th>
                   <th className="text-left px-4 py-2.5">Status</th>
                 </tr>
               </thead>
@@ -237,6 +307,7 @@ export default function OrdersPage() {
                       {o.tracking_number ? (
                         <span className="flex items-center gap-1">
                           <Truck className="w-3 h-3" /> {o.tracking_number} {o.carrier && `(${o.carrier})`}
+                          {o.ndr_at && <span className="text-amber-400 font-semibold">· missed delivery</span>}
                         </span>
                       ) : (
                         "—"
@@ -246,6 +317,17 @@ export default function OrdersPage() {
                       {new Date(o.placed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                     </td>
                     <td className="px-4 py-3 text-os-text-dim capitalize">{o.source_platform}</td>
+                    <td className="px-4 py-3">
+                      {!o.is_cod ? (
+                        <span className="text-os-text-dim">—</span>
+                      ) : o.cod_confirmed_at ? (
+                        <span className="text-emerald-400 font-semibold text-[11px]">Confirmed</span>
+                      ) : o.cod_declined_at ? (
+                        <span className="text-rose-400 font-semibold text-[11px]">Declined</span>
+                      ) : (
+                        <span className="text-amber-400 font-semibold text-[11px]">Awaiting reply</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={o.status}
@@ -304,6 +386,32 @@ export default function OrdersPage() {
               </button>
               <button type="submit" disabled={isConnecting} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer">
                 {isConnecting ? "Connecting..." : "Connect"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          isOpen={isShippingModalOpen}
+          onClose={() => setIsShippingModalOpen(false)}
+          title="Connect Shiprocket"
+          subtitle="Your Shiprocket account credentials - used to check delivery status and catch failed delivery attempts before they become returns. Verified with a real login before saving, and the password is encrypted at rest."
+        >
+          <form onSubmit={handleConnectShipping} className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Shiprocket email</label>
+              <input type="email" required value={shiprocketEmail} onChange={(e) => setShiprocketEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none font-mono" />
+            </div>
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Shiprocket password</label>
+              <input type="password" required value={shiprocketPassword} onChange={(e) => setShiprocketPassword(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none font-mono" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setIsShippingModalOpen(false)} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
+                Cancel
+              </button>
+              <button type="submit" disabled={isConnectingShipping} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer">
+                {isConnectingShipping ? "Connecting..." : "Connect"}
               </button>
             </div>
           </form>

@@ -192,6 +192,32 @@ export const ledger = {
   },
 };
 
+// ── Data export (a business's own customers/conversations, out) ────────────
+
+export const dataExport = {
+  customersCsv: () => api.getBlob("/export/customers"),
+  conversationsCsv: (since?: string) =>
+    api.getBlob(`/export/conversations${since ? `?since=${encodeURIComponent(since)}` : ""}`),
+};
+
+// ── Escalations ──────────────────────────────────────────────────────────
+
+export type EscalationRow = {
+  id: string;
+  customer_id: string | null;
+  channel: string;
+  reason: string;
+  created_at: string;
+  acknowledged_at: string | null;
+  escalated_further_at: string | null;
+};
+
+export const escalations = {
+  list: (acknowledged = false) =>
+    api.get<EscalationRow[]>(`/escalations?acknowledged=${acknowledged}`),
+  acknowledge: (id: string) => api.post<EscalationRow>(`/escalations/${id}/acknowledge`),
+};
+
 export type ContactImportRowResult = {
   row_number: number;
   phone: string;
@@ -1187,6 +1213,7 @@ export type UserProfile = {
   // previously "owner" | "manager" | "team_member", values the backend has
   // never actually issued.
   role: "owner" | "admin" | "agent" | null;
+  google_review_url: string | null;
 };
 
 export const account = {
@@ -1196,6 +1223,7 @@ export const account = {
     full_name?: string;
     business_name?: string;
     vertical?: string;
+    google_review_url?: string;
   }) => api.post<UserProfile>("/auth/me", data),
 };
 
@@ -1461,7 +1489,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {
@@ -1646,7 +1674,18 @@ export type Order = {
   total_paise: number | null;
   tracking_number: string | null;
   carrier: string | null;
+  is_cod: boolean;
+  cod_confirmed_at: string | null;
+  cod_declined_at: string | null;
+  ndr_at: string | null;
   placed_at: string;
+};
+
+export type ShippingConnection = {
+  id: string;
+  platform: string;
+  email: string;
+  active: boolean;
 };
 
 export const orders = {
@@ -1670,6 +1709,13 @@ export const orders = {
 
   update: (id: string, data: Partial<{ status: OrderStatus; tracking_number: string; carrier: string }>) =>
     api.patch<Order>(`/orders/${id}`, data),
+
+  listShippingConnections: () => api.get<ShippingConnection[]>("/orders/shipping-connections"),
+
+  connectShipping: (data: { email: string; password: string }) =>
+    api.post<ShippingConnection>("/orders/shipping-connections", data),
+
+  disconnectShipping: (id: string) => api.delete<void>(`/orders/shipping-connections/${id}`),
 };
 
 // ── Property Listings (Real Estate) ─────────────────────────────────────────
@@ -1853,6 +1899,7 @@ export type OutboundWebhookRow = {
   target_url: string;
   event_types: string[];
   active: boolean;
+  format: "raw" | "slack" | "teams";
   secret: string | null; // only present in the create response
   last_delivery_at: string | null;
   last_delivery_status: string | null;
@@ -1863,7 +1910,19 @@ export const WEBHOOK_EVENT_TYPES = [
   "appointment.booked",
   "appointment.cancelled",
   "queue_token.issued",
+  "escalation.raised",
 ] as const;
+
+export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;
+
+export type ApiKeyRow = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  active: boolean;
+  last_used_at: string | null;
+  raw_key: string | null; // only present in the create response
+};
 
 export const integrations = {
   googleCalendarStatus: () => api.get<CalendarStatus>("/integrations/google-calendar"),
@@ -1876,14 +1935,20 @@ export const integrations = {
 
   listWebhooks: () => api.get<OutboundWebhookRow[]>("/integrations/webhooks"),
 
-  createWebhook: (data: { target_url: string; event_types: string[] }) =>
+  createWebhook: (data: { target_url: string; event_types: string[]; format?: string }) =>
     api.post<OutboundWebhookRow>("/integrations/webhooks", data),
 
   updateWebhook: (
     id: string,
-    data: Partial<{ target_url: string; event_types: string[]; active: boolean }>,
+    data: Partial<{ target_url: string; event_types: string[]; active: boolean; format: string }>,
   ) => api.patch<OutboundWebhookRow>(`/integrations/webhooks/${id}`, data),
 
   deleteWebhook: (id: string) => api.delete<void>(`/integrations/webhooks/${id}`),
+
+  listApiKeys: () => api.get<ApiKeyRow[]>("/integrations/api-keys"),
+
+  createApiKey: (name: string) => api.post<ApiKeyRow>("/integrations/api-keys", { name }),
+
+  deleteApiKey: (id: string) => api.delete<void>(`/integrations/api-keys/${id}`),
 };
 

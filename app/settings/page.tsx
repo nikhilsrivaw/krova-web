@@ -22,6 +22,9 @@ import {
   Calendar,
   Webhook,
   Trash2,
+  KeyRound,
+  Download,
+  Star,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -32,7 +35,9 @@ import {
   channels,
   waAccount,
   integrations,
+  dataExport,
   WEBHOOK_EVENT_TYPES,
+  WEBHOOK_FORMATS,
   type UserProfile,
   type AutonomyLevel,
   type ChannelConnection,
@@ -41,6 +46,7 @@ import {
   type WhatsAppReadiness,
   type CalendarStatus,
   type OutboundWebhookRow,
+  type ApiKeyRow,
 } from "@/lib/api";
 
 const VERTICALS = [
@@ -58,10 +64,13 @@ export default function SettingsPage() {
   const [vertical, setVertical] = useState<string>("clinic");
   const [businessName, setBusinessName] = useState("Apex Medical Clinic");
   const [fullName, setFullName] = useState("Dr. Rajesh Sharma");
+  const [googleReviewUrl, setGoogleReviewUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isExportingCustomers, setIsExportingCustomers] = useState(false);
+  const [isExportingConversations, setIsExportingConversations] = useState(false);
 
   // WhatsApp Business Account - profile, health, readiness
   const [waProfile, setWaProfile] = useState<WhatsAppProfile | null>(null);
@@ -102,8 +111,14 @@ export default function SettingsPage() {
   const [webhooksList, setWebhooksList] = useState<OutboundWebhookRow[]>([]);
   const [newWebhookUrl, setNewWebhookUrl] = useState("");
   const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>([]);
+  const [newWebhookFormat, setNewWebhookFormat] = useState<string>("raw");
   const [isCreatingWebhook, setIsCreatingWebhook] = useState(false);
   const [createdWebhookSecret, setCreatedWebhookSecret] = useState<string | null>(null);
+
+  const [apiKeysList, setApiKeysList] = useState<ApiKeyRow[]>([]);
+  const [newApiKeyName, setNewApiKeyName] = useState("");
+  const [isCreatingApiKey, setIsCreatingApiKey] = useState(false);
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
 
   // Feedback after the Instagram Business Login redirect lands back here -
   // read directly from the URL rather than a Next.js hook, since this page
@@ -136,13 +151,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([integrations.googleCalendarStatus(), integrations.listWebhooks()]).then(
-      ([calRes, whRes]) => {
-        if (!mounted) return;
-        if (calRes.status === "fulfilled") setCalendarStatus(calRes.value);
-        if (whRes.status === "fulfilled") setWebhooksList(whRes.value);
-      },
-    );
+    Promise.allSettled([
+      integrations.googleCalendarStatus(),
+      integrations.listWebhooks(),
+      integrations.listApiKeys(),
+    ]).then(([calRes, whRes, keyRes]) => {
+      if (!mounted) return;
+      if (calRes.status === "fulfilled") setCalendarStatus(calRes.value);
+      if (whRes.status === "fulfilled") setWebhooksList(whRes.value);
+      if (keyRes.status === "fulfilled") setApiKeysList(keyRes.value);
+    });
     return () => {
       mounted = false;
     };
@@ -175,6 +193,7 @@ export default function SettingsPage() {
       const created = await integrations.createWebhook({
         target_url: newWebhookUrl.trim(),
         event_types: newWebhookEvents,
+        format: newWebhookFormat,
       });
       setWebhooksList((prev) => [...prev, created]);
       setCreatedWebhookSecret(created.secret);
@@ -197,6 +216,60 @@ export default function SettingsPage() {
     setWebhooksList((prev) => prev.map((w) => (w.id === webhook.id ? updated : w)));
   };
 
+  const handleCreateApiKey = async () => {
+    if (!newApiKeyName.trim()) return;
+    setIsCreatingApiKey(true);
+    try {
+      const created = await integrations.createApiKey(newApiKeyName.trim());
+      setApiKeysList((prev) => [...prev, created]);
+      setCreatedApiKey(created.raw_key);
+      setNewApiKeyName("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not create API key.");
+    } finally {
+      setIsCreatingApiKey(false);
+    }
+  };
+
+  const handleDeleteApiKey = async (id: string) => {
+    await integrations.deleteApiKey(id);
+    setApiKeysList((prev) => prev.filter((k) => k.id !== id));
+  };
+
+  const handleExportCustomers = async () => {
+    setIsExportingCustomers(true);
+    try {
+      const blob = await dataExport.customersCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "krova_customers.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not export customers.");
+    } finally {
+      setIsExportingCustomers(false);
+    }
+  };
+
+  const handleExportConversations = async () => {
+    setIsExportingConversations(true);
+    try {
+      const blob = await dataExport.conversationsCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "krova_conversations.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not export conversations.");
+    } finally {
+      setIsExportingConversations(false);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     const loadSettings = async () => {
@@ -212,6 +285,7 @@ export default function SettingsPage() {
         setVertical(profRes.value.vertical || "clinic");
         setBusinessName(profRes.value.business_name || "");
         setFullName(profRes.value.full_name || "");
+        setGoogleReviewUrl(profRes.value.google_review_url || "");
       } else {
         setLoadError(
           profRes.reason instanceof Error
@@ -337,6 +411,7 @@ export default function SettingsPage() {
         business_name: businessName,
         full_name: fullName,
         vertical,
+        google_review_url: googleReviewUrl,
       });
       await approvals.setAutonomy(autonomy);
       setSaveSuccess(true);
@@ -493,6 +568,22 @@ export default function SettingsPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                  Google Review Link (optional):
+                </label>
+                <input
+                  type="text"
+                  value={googleReviewUrl}
+                  onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                  placeholder="https://g.page/r/.../review"
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono placeholder:text-os-text-dim/50 focus:border-brass focus:outline-none"
+                />
+                <p className="text-[10px] text-os-text-dim font-mono mt-1">
+                  Set this to automatically ask customers for a review after a completed visit. Leave blank to turn this off.
+                </p>
               </div>
             </div>
 
@@ -892,6 +983,23 @@ export default function SettingsPage() {
                       {event}
                     </button>
                   ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Format</span>
+                  {WEBHOOK_FORMATS.map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => setNewWebhookFormat(fmt)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-all cursor-pointer capitalize ${
+                        newWebhookFormat === fmt
+                          ? "bg-os-accent/20 border-os-accent/40 text-os-accent"
+                          : "bg-white/[0.03] border-white/[0.08] text-os-text-dim"
+                      }`}
+                    >
+                      {fmt === "raw" ? "Zapier / raw" : fmt}
+                    </button>
+                  ))}
                   <button
                     type="button"
                     onClick={handleCreateWebhook}
@@ -901,6 +1009,105 @@ export default function SettingsPage() {
                     {isCreatingWebhook ? "Adding…" : "Add webhook"}
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* API Keys */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">API Keys</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    Let your own systems call Krova directly - ask a question, check availability, create a booking.
+                  </p>
+                </div>
+              </div>
+
+              {apiKeysList.map((k) => (
+                <div
+                  key={k.id}
+                  className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-white font-mono truncate">{k.name}</p>
+                    <p className="text-[10px] text-os-text-dim font-mono">
+                      {k.key_prefix}… {k.last_used_at ? `· last used ${new Date(k.last_used_at).toLocaleDateString()}` : "· never used"}
+                    </p>
+                  </div>
+                  <Badge variant={k.active ? "emerald" : "amber"} dot>
+                    {k.active ? "Active" : "Revoked"}
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteApiKey(k.id)}
+                    className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {createdApiKey && (
+                <div className="p-3 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/[0.2] space-y-1">
+                  <p className="text-[11px] text-emerald-400 font-mono font-semibold">
+                    API key created - copy it now, it won&apos;t be shown again:
+                  </p>
+                  <p className="text-xs text-white font-mono break-all">{createdApiKey}</p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  value={newApiKeyName}
+                  onChange={(e) => setNewApiKeyName(e.target.value)}
+                  placeholder="e.g. Internal dashboard"
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateApiKey}
+                  disabled={isCreatingApiKey || !newApiKeyName.trim()}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  {isCreatingApiKey ? "Creating…" : "Create key"}
+                </button>
+              </div>
+            </div>
+
+            {/* Data export */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Download your data</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    Your customers and conversation history, as CSV - no lock-in.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={handleExportCustomers}
+                  disabled={isExportingCustomers}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  {isExportingCustomers ? "Exporting…" : "Customers.csv"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportConversations}
+                  disabled={isExportingConversations}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  {isExportingConversations ? "Exporting…" : "Conversations.csv"}
+                </button>
               </div>
             </div>
           </div>

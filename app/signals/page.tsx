@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -17,6 +17,9 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   account_health: { label: "Account Health", icon: Activity, badge: "purple" },
   overdue_followup: { label: "Overdue Follow-up", icon: Clock, badge: "amber" },
   report_not_collected: { label: "Not Yet Collected", icon: FileWarning, badge: "amber" },
+  intent_leakage: { label: "Intent Leakage", icon: Radar, badge: "indigo" },
+  overdue_refund: { label: "Refund/Replacement Owed", icon: ReceiptIndianRupee, badge: "amber" },
+  rto_risk: { label: "Delivery Risk", icon: TriangleAlert, badge: "rose" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
