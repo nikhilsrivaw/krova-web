@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -20,6 +20,9 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   intent_leakage: { label: "Intent Leakage", icon: Radar, badge: "indigo" },
   overdue_refund: { label: "Refund/Replacement Owed", icon: ReceiptIndianRupee, badge: "amber" },
   rto_risk: { label: "Delivery Risk", icon: TriangleAlert, badge: "rose" },
+  demo_request: { label: "Demo Request", icon: Video, badge: "indigo" },
+  pricing_question: { label: "Pricing Question", icon: Tag, badge: "purple" },
+  competitor_mention: { label: "Competitor Mentioned", icon: Swords, badge: "rose" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
@@ -36,6 +39,7 @@ export default function SignalsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [filingId, setFilingId] = useState<string | null>(null);
 
   const customerName = useMemo(() => {
     const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed user"]));
@@ -72,6 +76,21 @@ export default function SignalsPage() {
       setAllSignals((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not dismiss this signal.");
+    }
+  };
+
+  const handleFileGithubIssue = async (id: string) => {
+    setActionError(null);
+    setFilingId(id);
+    try {
+      await signalsApi.fileGithubIssue(id);
+      // Filing dismisses the signal server-side too - a linked Commitment
+      // now tracks it through to close, see the Commitment Ledger.
+      setAllSignals((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not file this as a GitHub issue - check your GitHub connection in Settings.");
+    } finally {
+      setFilingId(null);
     }
   };
 
@@ -177,6 +196,18 @@ export default function SignalsPage() {
                       {customerName(s.customer_id)} · {new Date(s.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                     </p>
                   </div>
+                  {s.kind === "bug" && (
+                    <button
+                      type="button"
+                      onClick={() => handleFileGithubIssue(s.id)}
+                      disabled={filingId === s.id}
+                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-os-text-dim hover:text-white hover:bg-white/[0.06] border border-white/[0.08] transition-colors text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="File as GitHub issue"
+                    >
+                      <Github className="w-3.5 h-3.5" />
+                      {filingId === s.id ? "Filing..." : "File issue"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleDismiss(s.id)}

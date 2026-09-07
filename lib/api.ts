@@ -1178,6 +1178,24 @@ export const analytics = {
   channels: () => api.get<ChannelActivity[]>("/analytics/channels"),
   agent: () => api.get<AgentPerformance>("/analytics/agent"),
   team: () => api.get<TeamPerformance>("/analytics/team"),
+  trustReport: (days = 30) => api.get<TrustReport>(`/analytics/trust-report?days=${days}`),
+};
+
+// software-startup vertical - "proof of performance," not a marketing claim.
+export type TrustSample = {
+  body: string | null;
+  confidence: number;
+  cited_message_count: number;
+  channel: string;
+  created_at: string;
+};
+
+export type TrustReport = {
+  total_replies: number;
+  average_confidence: number | null;
+  escalated: number;
+  escalation_rate: number | null;
+  samples: TrustSample[];
 };
 
 // ── Account & Health ──────────────────────────────────────────────────────────
@@ -1489,7 +1507,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {
@@ -1514,6 +1532,9 @@ export const signals = {
   },
 
   dismiss: (id: string) => api.post<Signal>(`/signals/${id}/dismiss`),
+
+  fileGithubIssue: (id: string) =>
+    api.post<{ signal: Signal; github_issue_url: string; commitment_id: string }>(`/signals/${id}/file-github-issue`),
 };
 
 // ── OPD Queue (Clinics) ───────────────────────────────────────────────────────
@@ -1911,6 +1932,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "appointment.cancelled",
   "queue_token.issued",
   "escalation.raised",
+  "competitor.mentioned",
 ] as const;
 
 export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;
@@ -1950,5 +1972,51 @@ export const integrations = {
   createApiKey: (name: string) => api.post<ApiKeyRow>("/integrations/api-keys", { name }),
 
   deleteApiKey: (id: string) => api.delete<void>(`/integrations/api-keys/${id}`),
+
+  // Software-startup vertical: the closed bug-lifecycle loop.
+  githubStatus: () => api.get<GitHubConnection | null>("/integrations/github"),
+
+  connectGithub: (data: { repo_owner: string; repo_name: string; access_token: string; webhook_secret: string }) =>
+    api.post<GitHubConnection>("/integrations/github", data),
+
+  disconnectGithub: () => api.delete<void>("/integrations/github"),
+
+  emailConnectionStatus: () => api.get<EmailConnection | null>("/integrations/email-connection"),
+
+  connectEmail: (from_email: string) =>
+    api.post<EmailConnection>("/integrations/email-connection", { from_email }),
+
+  disconnectEmail: () => api.delete<void>("/integrations/email-connection"),
+
+  // Software-startup vertical: billing dunning.
+  stripeStatus: () => api.get<StripeConnectionInfo | null>("/integrations/stripe"),
+
+  connectStripe: (webhook_secret?: string) =>
+    api.post<StripeConnectionInfo>("/integrations/stripe", { webhook_secret: webhook_secret || null }),
+
+  disconnectStripe: () => api.delete<void>("/integrations/stripe"),
+};
+
+export type StripeConnectionInfo = {
+  id: string;
+  webhook_url: string;
+  status: string;
+  connected_at: string | null;
+  has_secret: boolean;
+};
+
+export type GitHubConnection = {
+  id: string;
+  repo_owner: string;
+  repo_name: string;
+  status: string;
+  connected_at: string | null;
+};
+
+export type EmailConnection = {
+  id: string;
+  from_email: string;
+  verified: boolean;
+  connected_at: string | null;
 };
 

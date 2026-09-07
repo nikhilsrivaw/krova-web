@@ -25,6 +25,7 @@ import {
   KeyRound,
   Download,
   Star,
+  Github,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -47,6 +48,9 @@ import {
   type CalendarStatus,
   type OutboundWebhookRow,
   type ApiKeyRow,
+  type GitHubConnection,
+  type EmailConnection,
+  type StripeConnectionInfo,
 } from "@/lib/api";
 
 const VERTICALS = [
@@ -120,6 +124,24 @@ export default function SettingsPage() {
   const [isCreatingApiKey, setIsCreatingApiKey] = useState(false);
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
 
+  // Software-startup vertical: the closed bug-lifecycle loop.
+  const [githubConnection, setGithubConnection] = useState<GitHubConnection | null>(null);
+  const [githubRepoOwner, setGithubRepoOwner] = useState("");
+  const [githubRepoName, setGithubRepoName] = useState("");
+  const [githubToken, setGithubToken] = useState("");
+  const [githubWebhookSecret, setGithubWebhookSecret] = useState("");
+  const [isConnectingGithub, setIsConnectingGithub] = useState(false);
+
+  // Postmark sender signature - distinct from `emailConnection` above,
+  // which is the read-only Gmail channel; this is the outbound send path.
+  const [emailSendConnection, setEmailSendConnection] = useState<EmailConnection | null>(null);
+  const [sendFromEmail, setSendFromEmail] = useState("");
+  const [isConnectingEmailSend, setIsConnectingEmailSend] = useState(false);
+
+  const [stripeConnection, setStripeConnection] = useState<StripeConnectionInfo | null>(null);
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
+  const [isConnectingStripe, setIsConnectingStripe] = useState(false);
+
   // Feedback after the Instagram Business Login redirect lands back here -
   // read directly from the URL rather than a Next.js hook, since this page
   // is fully client-rendered and the round trip is a plain browser redirect.
@@ -155,11 +177,17 @@ export default function SettingsPage() {
       integrations.googleCalendarStatus(),
       integrations.listWebhooks(),
       integrations.listApiKeys(),
-    ]).then(([calRes, whRes, keyRes]) => {
+      integrations.githubStatus(),
+      integrations.emailConnectionStatus(),
+      integrations.stripeStatus(),
+    ]).then(([calRes, whRes, keyRes, ghRes, emailRes, stripeRes]) => {
       if (!mounted) return;
       if (calRes.status === "fulfilled") setCalendarStatus(calRes.value);
       if (whRes.status === "fulfilled") setWebhooksList(whRes.value);
       if (keyRes.status === "fulfilled") setApiKeysList(keyRes.value);
+      if (ghRes.status === "fulfilled") setGithubConnection(ghRes.value);
+      if (emailRes.status === "fulfilled") setEmailSendConnection(emailRes.value);
+      if (stripeRes.status === "fulfilled") setStripeConnection(stripeRes.value);
     });
     return () => {
       mounted = false;
@@ -172,6 +200,85 @@ export default function SettingsPage() {
       window.location.href = res.url;
     } catch (err) {
       alert(err instanceof Error ? err.message : "Google Calendar isn't configured for this account yet.");
+    }
+  };
+
+  const handleConnectGithub = async () => {
+    if (!githubRepoOwner.trim() || !githubRepoName.trim() || !githubToken.trim() || !githubWebhookSecret.trim()) return;
+    setIsConnectingGithub(true);
+    try {
+      const connected = await integrations.connectGithub({
+        repo_owner: githubRepoOwner.trim(),
+        repo_name: githubRepoName.trim(),
+        access_token: githubToken.trim(),
+        webhook_secret: githubWebhookSecret.trim(),
+      });
+      setGithubConnection(connected);
+      setGithubRepoOwner("");
+      setGithubRepoName("");
+      setGithubToken("");
+      setGithubWebhookSecret("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not connect this repo - check the token has issue access.");
+    } finally {
+      setIsConnectingGithub(false);
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    try {
+      await integrations.disconnectGithub();
+      setGithubConnection(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not disconnect GitHub.");
+    }
+  };
+
+  const handleConnectEmailSend = async () => {
+    if (!sendFromEmail.trim()) return;
+    setIsConnectingEmailSend(true);
+    try {
+      const connected = await integrations.connectEmail(sendFromEmail.trim());
+      setEmailSendConnection(connected);
+      setSendFromEmail("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not register this address.");
+    } finally {
+      setIsConnectingEmailSend(false);
+    }
+  };
+
+  const handleDisconnectEmailSend = async () => {
+    try {
+      await integrations.disconnectEmail();
+      setEmailSendConnection(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not disconnect this address.");
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    // No trim-check here on purpose: the first call (issuing the URL)
+    // deliberately has no secret yet - see StripeConnectionIn's own
+    // docstring for why that's the expected order, not a guard to add.
+    setIsConnectingStripe(true);
+    try {
+      const connected = await integrations.connectStripe(stripeWebhookSecret.trim() || undefined);
+      setStripeConnection(connected);
+      setStripeWebhookSecret("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not save this webhook secret.");
+    } finally {
+      setIsConnectingStripe(false);
+    }
+  };
+
+  const handleDisconnectStripe = async () => {
+    try {
+      await integrations.disconnectStripe();
+      setStripeConnection(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not disconnect Stripe.");
     }
   };
 
@@ -900,6 +1007,174 @@ export default function SettingsPage() {
                   className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
                 >
                   Connect Google Calendar
+                </button>
+              )}
+            </div>
+
+            {/* GitHub - software-startup vertical's closed bug-lifecycle loop */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-300">
+                  <Github className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">GitHub</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {githubConnection
+                      ? `A bug report can be filed straight to ${githubConnection.repo_owner}/${githubConnection.repo_name} - the customer is told automatically once you close the issue.`
+                      : "File an escalated bug straight to your repo, and tell the customer automatically once you close the issue."}
+                  </p>
+                </div>
+              </div>
+              {githubConnection ? (
+                <div className="flex items-center justify-between">
+                  <Badge variant="emerald" dot>{githubConnection.repo_owner}/{githubConnection.repo_name}</Badge>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGithub}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text" value={githubRepoOwner} onChange={(e) => setGithubRepoOwner(e.target.value)}
+                      placeholder="repo owner (e.g. acme)"
+                      className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    />
+                    <input
+                      type="text" value={githubRepoName} onChange={(e) => setGithubRepoName(e.target.value)}
+                      placeholder="repo name (e.g. app)"
+                      className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    />
+                  </div>
+                  <input
+                    type="password" value={githubToken} onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder="fine-grained personal access token (Issues: write)"
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                  <input
+                    type="password" value={githubWebhookSecret} onChange={(e) => setGithubWebhookSecret(e.target.value)}
+                    placeholder="webhook secret you set in the repo's Settings > Webhooks"
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleConnectGithub}
+                    disabled={isConnectingGithub || !githubRepoOwner.trim() || !githubRepoName.trim() || !githubToken.trim() || !githubWebhookSecret.trim()}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isConnectingGithub ? "Connecting..." : "Connect repo"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Outbound email (Postmark sender signature) - software-startup vertical */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Outbound email address</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    What a proactive email (like &quot;your bug is fixed&quot;) sends from. A confirmation link goes to this address - it can&apos;t send until you click it.
+                  </p>
+                </div>
+              </div>
+              {emailSendConnection ? (
+                <div className="flex items-center justify-between">
+                  <Badge variant={emailSendConnection.verified ? "emerald" : "amber"} dot>
+                    {emailSendConnection.from_email} - {emailSendConnection.verified ? "Verified" : "Check your inbox to confirm"}
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectEmailSend}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email" value={sendFromEmail} onChange={(e) => setSendFromEmail(e.target.value)}
+                    placeholder="support@yourstartup.com"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleConnectEmailSend}
+                    disabled={isConnectingEmailSend || !sendFromEmail.trim()}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {isConnectingEmailSend ? "Sending..." : "Send confirmation"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Stripe billing dunning - software-startup vertical */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Stripe billing dunning</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    A failed payment gets tracked on your ledger and one reminder sent - Stripe&apos;s own Smart Retries still handle actually recovering it.
+                  </p>
+                </div>
+              </div>
+              {stripeConnection ? (
+                <>
+                  <div className="p-2.5 rounded-lg bg-black/30 border border-white/[0.06]">
+                    <p className="text-[10px] text-os-text-dim font-mono mb-1">
+                      Paste this as your webhook endpoint URL in the Stripe Dashboard:
+                    </p>
+                    <p className="text-[11px] text-white font-mono break-all select-all">{stripeConnection.webhook_url}</p>
+                  </div>
+                  {stripeConnection.has_secret ? (
+                    <div className="flex items-center justify-between">
+                      <Badge variant="emerald" dot>Signing secret saved</Badge>
+                      <button
+                        type="button"
+                        onClick={handleDisconnectStripe}
+                        className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password" value={stripeWebhookSecret} onChange={(e) => setStripeWebhookSecret(e.target.value)}
+                        placeholder="whsec_... (from that endpoint's own page in Stripe)"
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleConnectStripe}
+                        disabled={isConnectingStripe || !stripeWebhookSecret.trim()}
+                        className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {isConnectingStripe ? "Saving..." : "Save secret"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectStripe}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                >
+                  Generate my webhook URL
                 </button>
               )}
             </div>

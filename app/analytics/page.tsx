@@ -29,6 +29,7 @@ import {
   type ChannelActivity,
   type AgentPerformance,
   type TeamPerformance,
+  type TrustReport,
 } from "@/lib/api";
 
 export default function AnalyticsPage() {
@@ -37,6 +38,7 @@ export default function AnalyticsPage() {
   const [channelsData, setChannelsData] = useState<ChannelActivity[]>([]);
   const [agentPerf, setAgentPerf] = useState<AgentPerformance | null>(null);
   const [teamPerf, setTeamPerf] = useState<TeamPerformance | null>(null);
+  const [trustReport, setTrustReport] = useState<TrustReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -44,12 +46,13 @@ export default function AnalyticsPage() {
   useEffect(() => {
     let mounted = true;
     const loadAnalytics = async () => {
-      const [recRes, keptRes, chRes, agRes, teamRes] = await Promise.allSettled([
+      const [recRes, keptRes, chRes, agRes, teamRes, trustRes] = await Promise.allSettled([
         analytics.receivables(),
         analytics.kept(),
         analytics.channels(),
         analytics.agent(),
         analytics.team(),
+        analytics.trustReport(),
       ]);
       if (!mounted) return;
 
@@ -58,6 +61,7 @@ export default function AnalyticsPage() {
       if (chRes.status === "fulfilled") setChannelsData(chRes.value);
       if (agRes.status === "fulfilled") setAgentPerf(agRes.value);
       if (teamRes.status === "fulfilled") setTeamPerf(teamRes.value);
+      if (trustRes.status === "fulfilled") setTrustReport(trustRes.value);
 
       const failed = [recRes, keptRes, chRes, agRes].find((r) => r.status === "rejected");
       if (failed && failed.status === "rejected") {
@@ -149,6 +153,57 @@ export default function AnalyticsPage() {
             </p>
           )}
         </div>
+
+        {/* SECTION 1a: TRUST REPORT - "PROOF OF PERFORMANCE," NOT A CLAIM. Every
+            number here reads off real MessageDraft rows - nothing computed
+            specially for this view. */}
+        {trustReport && trustReport.total_replies > 0 && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Trust Report</h3>
+                <p className="text-xs text-os-text-dim">
+                  Every AI reply shows its confidence and the real messages it was grounded on - something you can show a skeptical user, not a marketing claim.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-xs font-mono">
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Replies (30d)</span>
+                <span className="text-lg font-bold text-white">{trustReport.total_replies}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Avg. Confidence</span>
+                <span className="text-lg font-bold text-emerald-400">
+                  {trustReport.average_confidence != null ? `${Math.round(trustReport.average_confidence * 100)}%` : "—"}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Escalated Instead</span>
+                <span className="text-lg font-bold text-brass-bright">
+                  {trustReport.escalation_rate != null ? `${Math.round(trustReport.escalation_rate * 100)}%` : "—"}
+                </span>
+              </div>
+            </div>
+
+            {trustReport.samples.length > 0 && (
+              <div className="space-y-1.5">
+                {trustReport.samples.slice(0, 5).map((s, i) => (
+                  <div key={i} className="p-2.5 rounded-lg bg-black/20 border border-white/[0.05] flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-white/80 truncate flex-1">{s.body || "(no text)"}</p>
+                    <span className="text-[10px] font-mono text-os-text-dim shrink-0">
+                      {Math.round(s.confidence * 100)}% · cites {s.cited_message_count} msg{s.cited_message_count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        )}
 
         {/* SECTION 1b: TEAM PERFORMANCE - THE HUMANS, NOT THE AI */}
         {teamPerf && teamPerf.members.length > 0 && (

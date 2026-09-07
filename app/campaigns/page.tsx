@@ -226,6 +226,23 @@ export default function CampaignsPage() {
                 </p>
               </div>
 
+              {/* Something's down right now - proactive outreach within 5
+                  minutes of an incident keeps 3-4x more customers than
+                  letting them discover it themselves. One click into what's
+                  already built below - no new backend, just skips straight
+                  to "everyone." */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCampaignName(`Incident update - ${new Date().toLocaleDateString("en-IN")}`);
+                  setSelectedAudience("all_customers");
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-500/[0.06] hover:bg-red-500/[0.12] border border-red-500/20 text-red-400 text-xs font-semibold transition-all cursor-pointer"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Something&apos;s down - send an incident update to everyone
+              </button>
+
               {/* Step 1: Campaign Name */}
               <div>
                 <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
