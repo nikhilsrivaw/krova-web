@@ -871,18 +871,22 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
-              {igConnection ? (
-                <Badge variant={igConnection.status === "active" ? "emerald" : "amber"} dot>
-                  {igConnection.status === "active" ? "Connected" : igConnection.status}
-                </Badge>
+              {igConnection && igConnection.status === "active" ? (
+                <Badge variant="emerald" dot>Connected</Badge>
               ) : (
                 <div className="flex items-center gap-2">
+                  {igConnection && (
+                    // A row exists but isn't active (disconnected, expired,
+                    // etc.) - shown so reconnecting isn't a mystery when a
+                    // status badge silently vanishes and buttons appear.
+                    <Badge variant="amber" dot>{igConnection.status}</Badge>
+                  )}
                   <button
                     type="button"
                     onClick={handleConnectInstagram}
                     className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
                   >
-                    Connect Instagram
+                    {igConnection ? "Reconnect Instagram" : "Connect Instagram"}
                   </button>
                   <button
                     type="button"
@@ -890,7 +894,7 @@ export default function SettingsPage() {
                     className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
                     title="Temporary - testing the original Instagram Login path"
                   >
-                    Connect Instagram (legacy)
+                    {igConnection ? "Reconnect" : "Connect"} Instagram (legacy)
                   </button>
                 </div>
               )}
