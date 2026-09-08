@@ -896,7 +896,20 @@ export default function SettingsPage() {
                 </div>
               </div>
               {igConnection && igConnection.status === "active" ? (
-                <Badge variant="emerald" dot>Connected</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="emerald" dot>Connected</Badge>
+                  {/* Reachable while connected on purpose: re-running the
+                      Meta login is how a business switches which Instagram
+                      account is linked, and how anyone demonstrates the
+                      grant flow without first tearing the connection down. */}
+                  <button
+                    type="button"
+                    onClick={handleConnectInstagram}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Reconnect
+                  </button>
+                </div>
               ) : (
                 <div className="flex items-center gap-2">
                   {igConnection && (
