@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Settings,
   Shield,
@@ -51,6 +51,7 @@ import {
   type GitHubConnection,
   type EmailConnection,
   type StripeConnectionInfo,
+  type InstagramConversation,
 } from "@/lib/api";
 
 const VERTICALS = [
@@ -582,14 +583,37 @@ export default function SettingsPage() {
   const [igSendBody, setIgSendBody] = useState("");
   const [igSending, setIgSending] = useState(false);
   const [igSendResult, setIgSendResult] = useState<string | null>(null);
+  const [igConversations, setIgConversations] = useState<InstagramConversation[]>([]);
+  const [igLoadingConversations, setIgLoadingConversations] = useState(false);
+  const [igConversationsError, setIgConversationsError] = useState<string | null>(null);
 
-  const handleSendInstagramTest = async () => {
+  const loadIgConversations = useCallback(async () => {
+    setIgLoadingConversations(true);
+    setIgConversationsError(null);
+    try {
+      const rows = await channels.instagramConversations();
+      setIgConversations(rows ?? []);
+    } catch (err) {
+      setIgConversationsError(
+        err instanceof Error ? err.message : "Could not load conversations."
+      );
+    } finally {
+      setIgLoadingConversations(false);
+    }
+  }, []);
+
+  const handleSendInstagram = async () => {
     if (!igSendTo.trim() || !igSendBody.trim()) return;
     setIgSending(true);
     setIgSendResult(null);
     try {
       const res = await channels.sendInstagramText(igSendTo.trim(), igSendBody.trim());
-      setIgSendResult(res?.sent ? `Sent - message id ${res.message_id}` : "Send did not confirm");
+      if (res?.sent) {
+        setIgSendResult(`Sent — message id ${res.message_id}`);
+        setIgSendBody("");
+      } else {
+        setIgSendResult("Send did not confirm");
+      }
     } catch (err) {
       setIgSendResult(err instanceof Error ? err.message : "Could not send message.");
     } finally {
@@ -929,36 +953,95 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-            {igConnection && (
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                <p className="text-[11px] text-os-text-dim font-mono">
-                  Test send (temporary - App Review screencast, no inbox UI yet).
-                  Recipient is an Instagram-scoped id (IGSID), not a username.
-                </p>
-                <div className="flex items-center gap-2">
+            {igConnection && igConnection.status === "active" && (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Send an Instagram message
+                    </p>
+                    <p className="text-[11px] text-os-text-dim">
+                      Choose a person who has messaged{" "}
+                      {igConnection.handle || "this account"}, write a reply, and send it
+                      from here. It arrives in their Instagram inbox.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loadIgConversations}
+                    disabled={igLoadingConversations}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                  >
+                    {igLoadingConversations ? "Loading…" : "Load conversations"}
+                  </button>
+                </div>
+
+                {igConversationsError && (
+                  <p className="text-[11px] text-red-400 font-mono">
+                    {igConversationsError}
+                  </p>
+                )}
+
+                {igConversations.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
+                      Recipient
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {igConversations.flatMap((conversation) =>
+                        conversation.participants.map((person) => {
+                          const selected = igSendTo === person.id;
+                          return (
+                            <button
+                              key={`${conversation.id}-${person.id}`}
+                              type="button"
+                              onClick={() => setIgSendTo(person.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+                                selected
+                                  ? "bg-pink-500/[0.15] border-pink-500/[0.4] text-white"
+                                  : "bg-white/[0.04] border-white/[0.08] text-os-text-dim hover:text-white hover:bg-white/[0.07]"
+                              }`}
+                            >
+                              @{person.username || person.id}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
+                    Recipient ID
+                  </label>
                   <input
                     type="text"
                     value={igSendTo}
                     onChange={(e) => setIgSendTo(e.target.value)}
-                    placeholder="Recipient IGSID"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    placeholder="Pick someone above, or paste an Instagram-scoped ID"
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
                   />
+                </div>
+
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={igSendBody}
                     onChange={(e) => setIgSendBody(e.target.value)}
-                    placeholder="Message text"
-                    className="flex-[2] px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    placeholder="Write your message…"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
                   />
                   <button
                     type="button"
-                    onClick={handleSendInstagramTest}
+                    onClick={handleSendInstagram}
                     disabled={igSending || !igSendTo.trim() || !igSendBody.trim()}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
                   >
-                    {igSending ? "Sending…" : "Send"}
+                    {igSending ? "Sending…" : "Send message"}
                   </button>
                 </div>
+
                 {igSendResult && (
                   <p className="text-[11px] text-os-text-dim font-mono">{igSendResult}</p>
                 )}

@@ -598,6 +598,13 @@ export const channels = {
   sendInstagramText: (to: string, body: string) =>
     api.post<SendResult>("/messages/instagram/text", { to, body }),
 
+  /**
+   * Read live from Meta, not from our own messages table: the IGSID a
+   * participant carries here is the only id the Send API accepts.
+   */
+  instagramConversations: () =>
+    api.get<InstagramConversation[]>("/messages/instagram/conversations"),
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
@@ -645,6 +652,17 @@ export type SendResult = {
   channel: string;
   used_template: boolean;
   window_open: boolean;
+};
+
+export type InstagramParticipant = {
+  /** The IGSID - what the Send API addresses, not the account id Meta shows in its dashboard. */
+  id: string;
+  username: string | null;
+};
+
+export type InstagramConversation = {
+  id: string;
+  participants: InstagramParticipant[];
 };
 
 export const templates = {
