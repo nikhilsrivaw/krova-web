@@ -559,21 +559,11 @@ export default function SettingsPage() {
     }
   };
 
-  // Temporary - retesting the original "Instagram API with Instagram
-  // Login" path's webhook delivery, separate from the Facebook Login
-  // route above. Remove once that investigation concludes.
-  const handleConnectInstagramLegacy = async () => {
-    try {
-      const res = await channels.instagramConnectUrl();
-      if (res?.url) {
-        window.location.href = res.url;
-      } else {
-        alert("Instagram (legacy) isn't configured for this account yet.");
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not connect Instagram (legacy).");
-    }
-  };
+  // The "Instagram API with Instagram Login" route has no entry point here
+  // for now. It connects against a separate Meta app whose messaging
+  // permission is not granted, so a connection made through it cannot send
+  // - offering it alongside the working route only invites picking the one
+  // that fails. The backend endpoint (channels.instagramConnectUrl) stays.
 
   // Temporary - manual Instagram send test for the App Review screencast,
   // since no general Instagram inbox/composer UI exists yet and the recipient
@@ -924,14 +914,6 @@ export default function SettingsPage() {
                     className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
                   >
                     {igConnection ? "Reconnect Instagram" : "Connect Instagram"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConnectInstagramLegacy}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                    title="Temporary - testing the original Instagram Login path"
-                  >
-                    {igConnection ? "Reconnect" : "Connect"} Instagram (legacy)
                   </button>
                 </div>
               )}
