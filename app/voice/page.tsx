@@ -104,6 +104,7 @@ export default function VoicePage() {
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
   const [staffNumberDraft, setStaffNumberDraft] = useState("");
   const [copilotModeDraft, setCopilotModeDraft] = useState(false);
+  const [ownerNumberDraft, setOwnerNumberDraft] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -134,6 +135,7 @@ export default function VoicePage() {
       setSpeakerDraft(agentRes.value.speaker);
       setStaffNumberDraft(agentRes.value.staff_phone_number || "");
       setCopilotModeDraft(agentRes.value.copilot_mode);
+      setOwnerNumberDraft(agentRes.value.owner_phone || "");
     }
     // agentRes rejecting (409, no voice number yet) is expected and left
     // as agentSettings === null - the tab shows its own explanatory state
@@ -205,6 +207,7 @@ export default function VoicePage() {
         speaker: speakerDraft,
         staff_phone_number: staffNumberDraft,
         copilot_mode: copilotModeDraft,
+        owner_phone: ownerNumberDraft,
       });
       setAgentSettings(updated);
       setSettingsSaved(true);
@@ -828,6 +831,25 @@ export default function VoicePage() {
                           Callers can also press 0 anytime to reach this number directly.
                         </p>
                       )}
+                    </div>
+
+                    {/* Owner phone number - your own voice interface into your ledger */}
+                    <div className="pt-2 border-t border-white/[0.06]">
+                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                        Owner Phone Number
+                      </label>
+                      <p className="text-[11px] text-os-text-dim mb-2">
+                        Your own number. Calling your voice line from it gets you a different
+                        agent - one that answers questions about your own ledger (who owes you,
+                        what's overdue) instead of the customer-facing one. Leave blank to disable.
+                      </p>
+                      <input
+                        type="tel"
+                        value={ownerNumberDraft}
+                        onChange={(e) => setOwnerNumberDraft(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                      />
                     </div>
 
                     {/* Live copilot mode */}

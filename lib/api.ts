@@ -828,6 +828,8 @@ export const voice = {
     staff_phone_number?: string;
     /** Requires staff_phone_number to already be set (in this call or previously) - the backend rejects otherwise. */
     copilot_mode?: boolean;
+    /** Send "" to clear. Calls from this number get the owner voice interface instead of the customer-facing agent. */
+    owner_phone?: string;
   }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
 
   previewVoice: (speaker: string, language: string) =>
@@ -851,6 +853,8 @@ export type AgentSettings = {
   staff_phone_number: string | null;
   /** Human answers directly, AI only listens and suggests - see /voice/live-assist. */
   copilot_mode: boolean;
+  /** Calls from this number get the owner voice interface (their own ledger position) instead of the customer-facing agent. */
+  owner_phone: string | null;
 };
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────
