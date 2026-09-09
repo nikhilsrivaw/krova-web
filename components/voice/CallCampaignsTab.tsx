@@ -8,10 +8,12 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   callCampaigns,
+  callScripts,
   type AudienceSegment,
   type AudienceKey,
   type CallCampaignPreview,
   type CallCampaign,
+  type CallScript,
 } from "@/lib/api";
 
 const STATUS_VARIANT: Record<CallCampaign["status"], "emerald" | "amber" | "rose" | "cyan"> = {
@@ -33,6 +35,8 @@ export function CallCampaignsTab() {
   const [tag, setTag] = useState("");
   const [gonequietDays, setGoneQuietDays] = useState("30");
   const [objective, setObjective] = useState("");
+  const [scripts, setScripts] = useState<CallScript[]>([]);
+  const [callScriptId, setCallScriptId] = useState<string | null>(null);
 
   const [previewData, setPreviewData] = useState<CallCampaignPreview | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -44,9 +48,14 @@ export function CallCampaignsTab() {
 
   const loadData = async () => {
     try {
-      const [a, c] = await Promise.all([callCampaigns.audiences(), callCampaigns.list()]);
+      const [a, c, s] = await Promise.all([
+        callCampaigns.audiences(),
+        callCampaigns.list(),
+        callScripts.list(),
+      ]);
       setAudiences(a);
       setPastCampaigns(c);
+      setScripts(s);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Could not load call campaigns.");
     }
@@ -110,12 +119,14 @@ export function CallCampaignsTab() {
         audience,
         audience_params: audienceParams(),
         objective: objective.trim(),
+        call_script_id: callScriptId ?? undefined,
       });
       await callCampaigns.send(created.id);
       setIsConfirmOpen(false);
       setName("");
       setAudience(null);
       setObjective("");
+      setCallScriptId(null);
       setPreviewData(null);
       await loadData();
     } catch (err) {
@@ -229,6 +240,32 @@ export function CallCampaignsTab() {
               customer - never invents a figure or date that isn't real.
             </p>
           </div>
+
+          {scripts.length > 0 && (
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                Run a fixed script instead? (optional)
+              </label>
+              <select
+                value={callScriptId ?? ""}
+                onChange={(e) => setCallScriptId(e.target.value || null)}
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+              >
+                <option value="">No - improvise from the objective above</option>
+                {scripts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.questions.length} question{s.questions.length === 1 ? "" : "s"})
+                  </option>
+                ))}
+              </select>
+              {callScriptId && (
+                <p className="text-[11px] text-os-text-dim mt-1.5">
+                  The agent will work through this script&apos;s questions instead of improvising -
+                  manage scripts in the Scripts tab.
+                </p>
+              )}
+            </div>
+          )}
 
           {previewError && <p className="text-xs text-red-400">{previewError}</p>}
 

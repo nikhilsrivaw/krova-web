@@ -1070,6 +1070,8 @@ export type CallCampaignRequest = {
   audience: AudienceKey;
   audience_params?: Record<string, unknown>;
   objective: string;
+  /** Set to run a fixed CallScript instead of an improvised call. */
+  call_script_id?: string;
 };
 
 export type CallRecipientPreview = {
@@ -1093,6 +1095,7 @@ export type CallCampaign = {
   audience: string;
   audience_label: string;
   objective: string;
+  call_script_id: string | null;
   status: "draft" | "sending" | "sent" | "paused" | "cancelled" | "failed";
   recipients: number;
   /** Calls actually placed (jobs enqueued), not calls that were answered. */
@@ -1114,6 +1117,41 @@ export const callCampaigns = {
   send: (id: string) => api.post<CallCampaign>(`/call-campaigns/${id}/send`),
 
   list: () => api.get<CallCampaign[]>("/call-campaigns"),
+};
+
+// ── Call scripts (lead qualification / survey calling) ──────────────────────
+
+export type CallScriptPurpose = "lead_qualification" | "survey";
+
+export type CallScript = {
+  id: string;
+  name: string;
+  purpose: CallScriptPurpose;
+  questions: string[];
+};
+
+export type CallScriptResponseRow = {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  answers: Record<string, string>;
+  score: number | null;
+  summary: string | null;
+  created_at: string;
+};
+
+export const callScripts = {
+  list: () => api.get<CallScript[]>("/call-scripts"),
+
+  create: (data: { name: string; purpose: CallScriptPurpose; questions: string[] }) =>
+    api.post<CallScript>("/call-scripts", data),
+
+  update: (id: string, data: { name: string; purpose: CallScriptPurpose; questions: string[] }) =>
+    api.patch<CallScript>(`/call-scripts/${id}`, data),
+
+  remove: (id: string) => api.delete<void>(`/call-scripts/${id}`),
+
+  responses: (id: string) => api.get<CallScriptResponseRow[]>(`/call-scripts/${id}/responses`),
 };
 
 // ── 140/160-series number requests ────────────────────────────────────────
