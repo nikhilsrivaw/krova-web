@@ -105,6 +105,7 @@ export default function VoicePage() {
   const [staffNumberDraft, setStaffNumberDraft] = useState("");
   const [copilotModeDraft, setCopilotModeDraft] = useState(false);
   const [ownerNumberDraft, setOwnerNumberDraft] = useState("");
+  const [publicTrustPageDraft, setPublicTrustPageDraft] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -136,6 +137,7 @@ export default function VoicePage() {
       setStaffNumberDraft(agentRes.value.staff_phone_number || "");
       setCopilotModeDraft(agentRes.value.copilot_mode);
       setOwnerNumberDraft(agentRes.value.owner_phone || "");
+      setPublicTrustPageDraft(agentRes.value.public_trust_page_enabled);
     }
     // agentRes rejecting (409, no voice number yet) is expected and left
     // as agentSettings === null - the tab shows its own explanatory state
@@ -208,6 +210,7 @@ export default function VoicePage() {
         staff_phone_number: staffNumberDraft,
         copilot_mode: copilotModeDraft,
         owner_phone: ownerNumberDraft,
+        public_trust_page_enabled: publicTrustPageDraft,
       });
       setAgentSettings(updated);
       setSettingsSaved(true);
@@ -850,6 +853,31 @@ export default function VoicePage() {
                         placeholder="+91 98765 43210"
                         className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                       />
+                    </div>
+
+                    {/* Public voice trust page */}
+                    <div className="pt-2 border-t border-white/[0.06] flex items-start justify-between gap-4">
+                      <div>
+                        <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                          Public Trust Page
+                        </label>
+                        <p className="text-[11px] text-os-text-dim">
+                          A public, no-login page of your real call-answering numbers - calls
+                          handled, average time to answer, resolution rate. Off by default; share
+                          the link once enabled.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPublicTrustPageDraft((v) => !v)}
+                        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          publicTrustPageDraft
+                            ? "border-cyan-500/50 bg-cyan-500/10 text-white"
+                            : "border-white/[0.08] bg-white/[0.02] text-os-text-dim hover:text-white"
+                        }`}
+                      >
+                        {publicTrustPageDraft ? "On" : "Off"}
+                      </button>
                     </div>
 
                     {/* Live copilot mode */}

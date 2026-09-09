@@ -830,6 +830,8 @@ export const voice = {
     copilot_mode?: boolean;
     /** Send "" to clear. Calls from this number get the owner voice interface instead of the customer-facing agent. */
     owner_phone?: string;
+    /** Publish a public, no-login page of real call-answering stats at /trust/voice/{business_id}. Off by default. */
+    public_trust_page_enabled?: boolean;
   }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
 
   previewVoice: (speaker: string, language: string) =>
@@ -855,6 +857,18 @@ export type AgentSettings = {
   copilot_mode: boolean;
   /** Calls from this number get the owner voice interface (their own ledger position) instead of the customer-facing agent. */
   owner_phone: string | null;
+  /** Whether /trust/voice/{business_id} is publicly viewable. Off by default. */
+  public_trust_page_enabled: boolean;
+};
+
+export type VoiceTrust = {
+  business_name: string;
+  window_days: number;
+  total_calls: number;
+  /** Null means no call in the window has a real ring-time captured yet - not "answered instantly". */
+  avg_ring_to_answer_seconds: number | null;
+  escalation_rate: number | null;
+  avg_duration_seconds: number | null;
 };
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────
