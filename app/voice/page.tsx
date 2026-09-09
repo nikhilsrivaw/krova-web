@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { CallCampaignsTab } from "@/components/voice/CallCampaignsTab";
+import { PostCallRulesTab } from "@/components/voice/PostCallRulesTab";
 import { NumberRequestForm } from "@/components/voice/NumberRequestForm";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -75,7 +76,7 @@ const SENTIMENT_VARIANT: Record<NonNullable<CallLog["sentiment"]>, "emerald" | "
 };
 
 export default function VoicePage() {
-  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "call-campaigns">("compliance");
+  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "call-campaigns" | "automations">("compliance");
   const [subaccount, setSubaccount] = useState<Subaccount | null>(null);
   const [requirement, setRequirement] = useState<ComplianceRequirement | null>(null);
   const [hasEndUser, setHasEndUser] = useState(false);
@@ -281,6 +282,7 @@ export default function VoicePage() {
             { key: "logs", label: `Call Logs (${callLogs.length})` },
             { key: "settings", label: "Agent Speech & Greeting" },
             { key: "call-campaigns", label: "Call Campaigns" },
+            { key: "automations", label: "Automations" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -948,6 +950,8 @@ export default function VoicePage() {
 
             {/* TAB 5: OUTBOUND CALL CAMPAIGNS */}
             {activeTab === "call-campaigns" && <CallCampaignsTab />}
+
+            {activeTab === "automations" && <PostCallRulesTab />}
           </>
         )}
 

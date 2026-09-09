@@ -871,6 +871,43 @@ export type VoiceTrust = {
   avg_duration_seconds: number | null;
 };
 
+// ── Post-call action rules (the voice-to-action bridge) ─────────────────────
+
+export type PostCallTrigger = "call.completed" | "call.voicemail" | "call.no_answer";
+export type PostCallAction = "whatsapp_followup" | "create_escalation_task";
+
+export type PostCallRule = {
+  id: string;
+  trigger_type: PostCallTrigger;
+  action_type: PostCallAction;
+  /** whatsapp_followup: {message: string}. create_escalation_task: {reason: string}. */
+  action_config: Record<string, string>;
+  is_active: boolean;
+};
+
+export const postCallRules = {
+  list: () => api.get<PostCallRule[]>("/post-call-rules"),
+
+  create: (data: {
+    trigger_type: PostCallTrigger;
+    action_type: PostCallAction;
+    action_config: Record<string, string>;
+    is_active?: boolean;
+  }) => api.post<PostCallRule>("/post-call-rules", data),
+
+  update: (
+    id: string,
+    data: {
+      trigger_type: PostCallTrigger;
+      action_type: PostCallAction;
+      action_config: Record<string, string>;
+      is_active: boolean;
+    },
+  ) => api.patch<PostCallRule>(`/post-call-rules/${id}`, data),
+
+  remove: (id: string) => api.delete<void>(`/post-call-rules/${id}`),
+};
+
 // ── Knowledge Base ────────────────────────────────────────────────────────────
 
 export type KnowledgeKind = "price_list" | "faq" | "policy" | "hours" | "service" | "other";
