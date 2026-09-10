@@ -1089,6 +1089,34 @@ export type Campaign = {
   completed_at: string | null;
 };
 
+// A drip sequence is the campaign's own template (step 0, sent immediately)
+// plus zero or more of these - each one a follow-up that fires after a
+// delay, only while the recipient still matches the campaign's own
+// audience and (for a "no_reply" step) hasn't written back. See
+// shared/campaigns/sequencer.py.
+export type CampaignStepRequest = {
+  delay_days: number;
+  condition: "always" | "no_reply";
+  stop_on_reply?: boolean;
+  template_name: string;
+  template_language?: string;
+  variable_mapping?: string[];
+  carousel_cards?: CampaignCardRequest[];
+};
+
+export type CampaignStep = {
+  id: string;
+  step_order: number;
+  delay_days: number;
+  condition: "always" | "no_reply";
+  stop_on_reply: boolean;
+  template_name: string;
+  template_language: string;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+};
+
 export const campaigns = {
   audiences: () => api.get<AudienceSegment[]>("/campaigns/audiences"),
 
@@ -1100,6 +1128,14 @@ export const campaigns = {
   send: (id: string) => api.post<Campaign>(`/campaigns/${id}/send`),
 
   list: () => api.get<Campaign[]>("/campaigns"),
+
+  addStep: (campaignId: string, data: CampaignStepRequest) =>
+    api.post<CampaignStep>(`/campaigns/${campaignId}/steps`, data),
+
+  listSteps: (campaignId: string) => api.get<CampaignStep[]>(`/campaigns/${campaignId}/steps`),
+
+  deleteStep: (campaignId: string, stepId: string) =>
+    api.delete<void>(`/campaigns/${campaignId}/steps/${stepId}`),
 };
 
 // ── Outbound call campaigns ───────────────────────────────────────────────

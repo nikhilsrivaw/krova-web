@@ -7,6 +7,9 @@ import {
   MessageSquare,
   AlertTriangle,
   CheckCircle2,
+  Plus,
+  X,
+  Clock3,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -21,6 +24,8 @@ import {
   type AudienceKey,
   type CampaignPreview,
   type Campaign,
+  type CampaignStep,
+  type CampaignStepRequest,
   type Template,
 } from "@/lib/api";
 
@@ -63,7 +68,22 @@ export default function CampaignsPage() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  // Follow-up steps - a drip sequence is the campaign's own template (sent
+  // immediately, unchanged from before) plus zero or more of these, each
+  // added to the campaign right after it's created and before it's sent.
+  const [draftSteps, setDraftSteps] = useState<CampaignStepRequest[]>([]);
+  const [newStepTemplate, setNewStepTemplate] = useState<string>("");
+  const [newStepDelay, setNewStepDelay] = useState<number>(3);
+  const [newStepCondition, setNewStepCondition] = useState<"always" | "no_reply">("no_reply");
+  const [newStepStopOnReply, setNewStepStopOnReply] = useState(true);
+
+  // Follow-ups on past campaigns - loaded on demand per card, not on every
+  // page load.
+  const [stepsByCampaign, setStepsByCampaign] = useState<Record<string, CampaignStep[]>>({});
+  const [loadingStepsFor, setLoadingStepsFor] = useState<string | null>(null);
+
   const selectedTemplate = templateList.find((t) => t.name === selectedTemplateName) || null;
+  const sendableTemplates = templateList.filter((t) => t.sendable);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -180,6 +200,48 @@ export default function CampaignsPage() {
     JSON.stringify(variableMapping), JSON.stringify(cardMapping),
   ]);
 
+  const addDraftStep = () => {
+    if (!newStepTemplate) return;
+    setDraftSteps((prev) => [
+      ...prev,
+      {
+        delay_days: newStepDelay,
+        condition: newStepCondition,
+        stop_on_reply: newStepStopOnReply,
+        template_name: newStepTemplate,
+        template_language: templateList.find((t) => t.name === newStepTemplate)?.language || "en",
+      },
+    ]);
+    setNewStepTemplate("");
+    setNewStepDelay(3);
+    setNewStepCondition("no_reply");
+    setNewStepStopOnReply(true);
+  };
+
+  const removeDraftStep = (index: number) => {
+    setDraftSteps((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleCampaignSteps = async (campaignId: string) => {
+    if (stepsByCampaign[campaignId]) {
+      setStepsByCampaign((prev) => {
+        const next = { ...prev };
+        delete next[campaignId];
+        return next;
+      });
+      return;
+    }
+    setLoadingStepsFor(campaignId);
+    try {
+      const steps = await campaigns.listSteps(campaignId);
+      setStepsByCampaign((prev) => ({ ...prev, [campaignId]: steps }));
+    } catch {
+      // Best-effort - a business without steps on this campaign just sees nothing expand.
+    } finally {
+      setLoadingStepsFor(null);
+    }
+  };
+
   const handleLaunchCampaign = async () => {
     if (!selectedAudience || !selectedTemplate || !campaignName.trim()) return;
     if (selectedAudience === "by_tag" && !audienceTag) return;
@@ -195,7 +257,14 @@ export default function CampaignsPage() {
         variable_mapping: variableMapping,
         carousel_cards: carouselCardsPayload,
       });
+      // Attach follow-up steps before the first send goes out - step 0
+      // (above) is unaffected either way, but a step can only be added
+      // while the campaign is still draft.
+      for (const step of draftSteps) {
+        await campaigns.addStep(created.id, step);
+      }
       await campaigns.send(created.id);
+      setDraftSteps([]);
       setIsConfirmModalOpen(false);
       loadData();
     } catch (err) {
@@ -400,6 +469,95 @@ export default function CampaignsPage() {
                 </div>
               )}
 
+              {/* Step 5: Optional follow-up steps - a drip sequence */}
+              <div className="space-y-2.5">
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                  5. Follow-up steps (optional):
+                </label>
+                <p className="text-[11px] text-os-text-dim -mt-1">
+                  Each step re-checks the same audience before sending - someone who has since
+                  paid, opted out, or replied drops out automatically.
+                </p>
+
+                {draftSteps.length > 0 && (
+                  <div className="space-y-1.5">
+                    {draftSteps.map((step, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px]"
+                      >
+                        <span className="flex items-center gap-1.5 text-os-text-dim font-mono">
+                          <Clock3 className="w-3 h-3" />
+                          Step {i + 1}: {step.delay_days}d after{" "}
+                          {i === 0 ? "step 0" : `step ${i}`} if{" "}
+                          {step.condition === "no_reply" ? "no reply" : "always"} →{" "}
+                          <span className="text-white">{step.template_name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeDraftStep(i)}
+                          className="text-os-text-dim hover:text-red-400 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={newStepTemplate}
+                      onChange={(e) => setNewStepTemplate(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                    >
+                      <option value="">Choose a template...</option>
+                      {sendableTemplates.map((t) => (
+                        <option key={t.id} value={t.name}>{t.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={newStepDelay}
+                        onChange={(e) => setNewStepDelay(Math.max(1, Number(e.target.value) || 1))}
+                        className="w-16 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-brass focus:outline-none"
+                      />
+                      <span className="text-[11px] text-os-text-dim">days later</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <select
+                      value={newStepCondition}
+                      onChange={(e) => setNewStepCondition(e.target.value as "always" | "no_reply")}
+                      className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                    >
+                      <option value="no_reply">Only if no reply yet</option>
+                      <option value="always">Always send</option>
+                    </select>
+                    <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newStepStopOnReply}
+                        onChange={(e) => setNewStepStopOnReply(e.target.checked)}
+                      />
+                      Stop the sequence for anyone who replies
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addDraftStep}
+                      disabled={!newStepTemplate}
+                      className="px-3 py-1.5 rounded-lg bg-brass/15 hover:bg-brass/25 disabled:opacity-40 text-brass-bright text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Add step
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Live Preview */}
               {isLoadingPreview ? (
                 <Skeleton className="h-24 w-full" />
@@ -529,6 +687,44 @@ export default function CampaignsPage() {
                           <span className="font-bold text-thread-bright">{camp.failed_count}</span>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCampaignSteps(camp.id)}
+                        className="w-full text-left text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer pt-0.5"
+                      >
+                        <Clock3 className="w-3 h-3" />
+                        {loadingStepsFor === camp.id
+                          ? "Loading follow-ups..."
+                          : stepsByCampaign[camp.id]
+                          ? "Hide follow-ups"
+                          : "Show follow-up steps"}
+                      </button>
+
+                      {stepsByCampaign[camp.id] && (
+                        <div className="space-y-1.5 pt-0.5">
+                          {stepsByCampaign[camp.id].length === 0 ? (
+                            <p className="text-[11px] text-os-text-dim">No follow-up steps on this campaign.</p>
+                          ) : (
+                            stepsByCampaign[camp.id].map((step) => (
+                              <div
+                                key={step.id}
+                                className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] font-mono flex items-center justify-between gap-2"
+                              >
+                                <span className="text-os-text-dim truncate">
+                                  Step {step.step_order} · {step.delay_days}d ·{" "}
+                                  {step.condition === "no_reply" ? "no reply" : "always"} ·{" "}
+                                  <span className="text-white">{step.template_name}</span>
+                                </span>
+                                <span className="shrink-0 text-seal-bright">
+                                  {step.sent_count} sent
+                                  {step.skipped_count > 0 && ` · ${step.skipped_count} skipped`}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -555,6 +751,12 @@ export default function CampaignsPage() {
                 This will send <strong>{previewData?.will_reach ?? 0} real WhatsApp messages</strong> using the template{" "}
                 <code>{selectedTemplateName}</code>.
               </p>
+              {draftSteps.length > 0 && (
+                <p className="opacity-90">
+                  Plus <strong>{draftSteps.length} follow-up step{draftSteps.length > 1 ? "s" : ""}</strong> scheduled
+                  automatically - each only to whoever still matches this audience and hasn&apos;t replied, if set that way.
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
