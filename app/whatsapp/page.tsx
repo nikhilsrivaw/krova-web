@@ -45,6 +45,12 @@ import {
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
 import { CarouselTemplateModal } from "@/components/whatsapp/CarouselTemplateModal";
 
+const TIER_LABELS: Record<string, string> = {
+  TIER_250: "250/day",
+  TIER_1K: "1,000/day",
+  TIER_10K: "10,000/day",
+};
+
 export default function WhatsAppPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose">("overview");
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
@@ -528,6 +534,14 @@ export default function WhatsAppPage() {
                   <h4 className="text-lg font-bold text-white font-mono">
                     {connection.handle || "—"}
                   </h4>
+                  {connection.tier && (
+                    <p className="text-[11px] text-os-text-dim mt-1.5">
+                      Daily limit tier:{" "}
+                      <span className="text-white font-mono">
+                        {(TIER_LABELS as Record<string, string>)[connection.tier] || connection.tier}
+                      </span>
+                    </p>
+                  )}
                 </GlassCard>
 
                 <GlassCard className="p-5">
