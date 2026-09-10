@@ -295,6 +295,20 @@ export default function CustomersPage() {
     }
   };
 
+  // Never inferred from a conversation - only this explicit toggle (or a
+  // signup-form checkbox elsewhere) is honest consent. See Customer.
+  // marketing_opt_in's own comment in the backend for why.
+  const handleToggleMarketingOptIn = async () => {
+    if (!selectedCustomer) return;
+    const next = !selectedCustomer.marketing_opt_in;
+    patchSelected({ marketing_opt_in: next });
+    try {
+      await crm.setMarketingOptIn(selectedCustomer.id, next);
+    } catch {
+      patchSelected({ marketing_opt_in: !next });
+    }
+  };
+
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -808,6 +822,41 @@ export default function CustomersPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Marketing opt-in - WhatsApp policy + India's DPDPA require
+                  documented consent before a MARKETING-category send; only
+                  ever set here explicitly, never inferred from a chat. */}
+              <div>
+                <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
+                  Marketing Opt-In
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleToggleMarketingOptIn}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                    selectedCustomer?.marketing_opt_in
+                      ? "bg-seal/10 border-seal/30 text-seal-bright"
+                      : "bg-white/[0.02] border-white/[0.12] text-os-text-dim hover:text-white"
+                  }`}
+                >
+                  <span>
+                    {selectedCustomer?.marketing_opt_in
+                      ? "Opted in - can receive marketing templates"
+                      : "Not opted in - marketing sends will skip this person"}
+                  </span>
+                  <span
+                    className={`shrink-0 w-9 h-5 rounded-full relative transition-all ${
+                      selectedCustomer?.marketing_opt_in ? "bg-seal" : "bg-white/[0.15]"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                        selectedCustomer?.marketing_opt_in ? "left-[18px]" : "left-0.5"
+                      }`}
+                    />
+                  </span>
+                </button>
               </div>
 
               {/* Tags - confirmed, and suggested awaiting a yes or no */}

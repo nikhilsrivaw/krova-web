@@ -253,6 +253,8 @@ export type CustomerSummary = {
   /** Confirmed tag labels only - suggestions live in crm.tags(). */
   tags?: string[];
   deal_value_paise?: number | null;
+  /** WhatsApp policy / DPDPA consent - never inferred from a conversation, only set by an explicit action. */
+  marketing_opt_in?: boolean;
 };
 
 // ── CRM: tags, notes, pipeline stage ────────────────────────────────────────
@@ -311,6 +313,12 @@ export const crm = {
     api.patch<{ customer_id: string; deal_value_paise: number | null }>(
       `/crm/customers/${customerId}/deal-value`,
       { deal_value_paise: dealValuePaise },
+    ),
+
+  setMarketingOptIn: (customerId: string, optIn: boolean) =>
+    api.patch<{ customer_id: string; marketing_opt_in: boolean; marketing_opt_in_at: string | null }>(
+      `/crm/customers/${customerId}/marketing-opt-in`,
+      { opt_in: optIn },
     ),
 
   tags: (customerId: string, includeRejected = false) =>
@@ -2067,6 +2075,14 @@ export const WEBHOOK_EVENT_TYPES = [
   "queue_token.issued",
   "escalation.raised",
   "competitor.mentioned",
+  "message.received",
+  // Real backend event types from the voice roadmap work - always valid
+  // to subscribe to (services/api/routers/integrations.py derives its
+  // allowed set straight from the WebhookEventType enum), just never
+  // added to this list before.
+  "call.completed",
+  "call.voicemail",
+  "call.no_answer",
 ] as const;
 
 export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;

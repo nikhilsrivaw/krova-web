@@ -82,7 +82,16 @@ export default function CampaignsPage() {
     if (tplRes.status === "fulfilled") {
       const sendable = tplRes.value.filter((t) => t.sendable);
       setTemplateList(tplRes.value);
-      if (sendable.length > 0) setSelectedTemplateName(sendable[0].name);
+      // Arriving from "Use in Campaign" on the WhatsApp Hub (?template=name)
+      // - only honoured if it actually names a real, sendable template,
+      // never trusted blindly from the URL.
+      const requested = new URLSearchParams(window.location.search).get("template");
+      const requestedTemplate = requested && sendable.find((t) => t.name === requested);
+      if (requestedTemplate) {
+        setSelectedTemplateName(requestedTemplate.name);
+      } else if (sendable.length > 0) {
+        setSelectedTemplateName(sendable[0].name);
+      }
     }
     if (campRes.status === "fulfilled") setPastCampaigns(campRes.value);
     if (tagRes.status === "fulfilled") setAvailableTags(tagRes.value);
@@ -409,6 +418,24 @@ export default function CampaignsPage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Why anyone's skipped - the count above hides the reason
+                      otherwise, and "not opted in" vs "no phone number" need
+                      different fixes from the business. */}
+                  {previewData.skipped_reasons.length > 0 && (
+                    <div className="pt-1 space-y-1">
+                      {Object.entries(
+                        previewData.skipped_reasons.reduce<Record<string, number>>((acc, r) => {
+                          acc[r.reason] = (acc[r.reason] || 0) + 1;
+                          return acc;
+                        }, {}),
+                      ).map(([reason, count]) => (
+                        <p key={reason} className="text-[11px] text-amber-400/90 font-mono">
+                          {count} · {reason}
+                        </p>
+                      ))}
+                    </div>
+                  )}
 
                   <p className="text-[11px] text-os-text-dim">{previewData.cost_note}</p>
                   {previewData.daily_limit_note && (

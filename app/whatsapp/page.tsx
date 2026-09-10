@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import QRCode from "qrcode";
 import {
   MessageSquare,
@@ -747,13 +748,12 @@ export default function WhatsAppPage() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[11px] text-os-text-dim font-mono">
                     <span>Lang: {tpl.language}</span>
-                    <button
-                      type="button"
-                      onClick={() => alert(`Template ${tpl.name} details`)}
+                    <Link
+                      href={`/campaigns?template=${encodeURIComponent(tpl.name)}`}
                       className="text-brass hover:text-brass-bright font-semibold"
                     >
                       Use in Campaign →
-                    </button>
+                    </Link>
                   </div>
                 </GlassCard>
               ))}
