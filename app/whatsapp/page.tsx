@@ -90,6 +90,13 @@ export default function WhatsAppPage() {
   const [chatLinkCopied, setChatLinkCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
+  // WhatsApp Payments (India) - Meta-native, Krova only remembers the id
+  // a business's own Meta Business Suite already gave them.
+  const [paymentConfigId, setPaymentConfigId] = useState("");
+  const [paymentGateway, setPaymentGateway] = useState<"razorpay" | "payu" | "">("");
+  const [isSavingPaymentConfig, setIsSavingPaymentConfig] = useState(false);
+  const [paymentConfigSaved, setPaymentConfigSaved] = useState(false);
+
   // Canned Responses (Saved Replies)
   const [cannedResponseList, setCannedResponseList] = useState<CannedResponse[]>([]);
   const [selectedCannedId, setSelectedCannedId] = useState("");
@@ -131,6 +138,14 @@ export default function WhatsAppPage() {
     }
     if (crList.status === "fulfilled") {
       setCannedResponseList(crList.value);
+    }
+
+    try {
+      const pc = await channels.getPaymentConfig();
+      setPaymentConfigId(pc.payment_configuration_id || "");
+      setPaymentGateway(pc.payment_gateway || "");
+    } catch {
+      // No connection yet, or nothing configured - fields just stay empty.
     }
 
     const failed = [chList, tList].find((r) => r.status === "rejected");
@@ -359,6 +374,23 @@ export default function WhatsAppPage() {
     }
   };
 
+  const handleSavePaymentConfig = async () => {
+    setIsSavingPaymentConfig(true);
+    setPaymentConfigSaved(false);
+    setActionError(null);
+    try {
+      await channels.setPaymentConfig(
+        paymentConfigId.trim() || null,
+        (paymentGateway as "razorpay" | "payu") || null,
+      );
+      setPaymentConfigSaved(true);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not save the payment configuration.");
+    } finally {
+      setIsSavingPaymentConfig(false);
+    }
+  };
+
   const handleSyncTemplates = async () => {
     setIsSyncing(true);
     setActionError(null);
@@ -559,6 +591,82 @@ export default function WhatsAppPage() {
                   </h4>
                 </GlassCard>
               </div>
+            )}
+
+            {/* WhatsApp Payments (India) - Meta-native. The business sets
+                this up on their own Meta Business Suite; Krova only stores
+                the id it hands back, same "paste your own credential"
+                pattern the ad-tracking dataset id already uses. */}
+            {connection?.status === "active" && (
+              <GlassCard className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">WhatsApp Payments (India)</span>
+                    <Badge variant="amber" size="sm">Beta - verify with Meta before real use</Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-os-text-dim mb-4 max-w-xl">
+                  Log into your own Facebook Business Account → WhatsApp Account Settings → Payments,
+                  select India, and add a payment method backed by Razorpay or PayU. Meta hands back a
+                  Payment Configuration ID - paste it here so Krova can send payment-request messages
+                  against it.
+                </p>
+                <a
+                  href="https://business.facebook.com/latest/whatsapp_manager/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-brass hover:text-brass-bright font-semibold mb-4"
+                >
+                  Open WhatsApp Manager Payments settings <ExternalLink className="w-3 h-3" />
+                </a>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                      Payment Configuration ID
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentConfigId}
+                      onChange={(e) => {
+                        setPaymentConfigId(e.target.value);
+                        setPaymentConfigSaved(false);
+                      }}
+                      placeholder="From Meta's Payments setup screen"
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                      Gateway
+                    </label>
+                    <select
+                      value={paymentGateway}
+                      onChange={(e) => {
+                        setPaymentGateway(e.target.value as "razorpay" | "payu" | "");
+                        setPaymentConfigSaved(false);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    >
+                      <option value="">Select...</option>
+                      <option value="razorpay">Razorpay</option>
+                      <option value="payu">PayU</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleSavePaymentConfig}
+                    disabled={isSavingPaymentConfig}
+                    className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPaymentConfig ? "Saving..." : "Save"}
+                  </button>
+                  {paymentConfigSaved && (
+                    <span className="text-xs text-seal-bright">Saved.</span>
+                  )}
+                </div>
+              </GlassCard>
             )}
 
             {/* Click-to-Chat Link & QR Code */}

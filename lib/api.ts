@@ -675,6 +675,19 @@ export const channels = {
    * Click-to-WhatsApp ads. Pass null to stop sending them. */
   setAdTracking: (datasetId: string | null) =>
     api.post<{ dataset_id: string | null }>("/channels/whatsapp/ad-tracking", { dataset_id: datasetId }),
+
+  /** WhatsApp Payments (India) is Meta-native - a business sets this up
+   * directly on their own Meta Business Suite and pastes back the id Meta
+   * gives them. Krova only remembers it. */
+  getPaymentConfig: () =>
+    api.get<{ payment_configuration_id: string | null; payment_gateway: "razorpay" | "payu" | null }>(
+      "/channels/whatsapp/payment-config",
+    ),
+  setPaymentConfig: (paymentConfigurationId: string | null, gateway: "razorpay" | "payu" | null) =>
+    api.post<{ payment_configuration_id: string | null; payment_gateway: string | null }>(
+      "/channels/whatsapp/payment-config",
+      { payment_configuration_id: paymentConfigurationId, payment_gateway: gateway },
+    ),
 };
 
 export type SendResult = {
