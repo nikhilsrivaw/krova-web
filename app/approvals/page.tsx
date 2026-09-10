@@ -38,6 +38,28 @@ const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   instagram: MessageSquare,
 };
 
+/** This is the one screen an expiring draft's window actually gets acted
+ * on from - `expires_at`/`expired` were already on MessageDraft and shown
+ * on the dashboard's own preview list, but never here, the page where a
+ * person can actually still do something about it. */
+function expiryUrgency(draft: MessageDraft): { label: string; className: string } | null {
+  if (draft.expired) {
+    return { label: "Window closed - can't send", className: "bg-rose-500/20 text-rose-300 border-rose-500/40" };
+  }
+  if (!draft.expires_at) return null;
+  const msLeft = new Date(draft.expires_at).getTime() - Date.now();
+  if (msLeft <= 0) return null; // backend hasn't marked it expired yet, but it's over
+  const hoursLeft = msLeft / 3_600_000;
+  if (hoursLeft < 1) {
+    const mins = Math.round(msLeft / 60_000);
+    return { label: `Expires in ${mins}m`, className: "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse" };
+  }
+  if (hoursLeft < 3) {
+    return { label: `Expires in ${Math.round(hoursLeft)}h`, className: "bg-amber-500/20 text-amber-300 border-amber-500/40" };
+  }
+  return null;
+}
+
 export default function ApprovalsPage() {
   const [drafts, setDrafts] = useState<MessageDraft[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
@@ -106,6 +128,13 @@ export default function ApprovalsPage() {
       title="Approvals Queue"
       subtitle="Human-in-the-loop: Review AI-drafted responses before sending"
     >
+      {/* Same restrained glow-behind-glass treatment as Dashboard/Conversations,
+          for consistency across the app rather than a flat page background. */}
+      <div className="relative">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden -z-10">
+          <div className="absolute -top-20 right-[10%] w-[440px] h-[440px] rounded-full bg-brass/[0.06] blur-[130px]" />
+          <div className="absolute bottom-0 left-[8%] w-[380px] h-[380px] rounded-full bg-seal/[0.05] blur-[130px]" />
+        </div>
       <div className="space-y-6 max-w-5xl mx-auto">
         {/* Status Bar & Info Callout */}
         <div className="p-4 rounded-xl border border-brass/20 bg-brass/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -129,10 +158,10 @@ export default function ApprovalsPage() {
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono capitalize transition-all ${
+                className={`px-3 py-1 rounded-lg text-xs font-mono capitalize transition-all border ${
                   statusFilter === s
-                    ? "bg-white text-black font-bold shadow-md"
-                    : "bg-white/[0.04] text-os-text-dim hover:text-white hover:bg-white/[0.08]"
+                    ? "bg-black border-brass/50 text-brass-bright font-bold shadow-[0_0_0_1px_rgba(201,151,63,0.15)]"
+                    : "bg-white/[0.04] border-transparent text-os-text-dim hover:text-white hover:bg-white/[0.08]"
                 }`}
               >
                 {s}
@@ -183,10 +212,19 @@ export default function ApprovalsPage() {
                         <ChannelIcon className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-bold text-white">
                             {draft.customer_name || "Customer"}
                           </h4>
+                          {(() => {
+                            const urgency = expiryUrgency(draft);
+                            return urgency ? (
+                              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-1 ${urgency.className}`}>
+                                <Clock className="w-2.5 h-2.5" />
+                                {urgency.label}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                         <span className="text-[11px] text-os-text-dim">
                           Received {new Date(draft.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -280,28 +318,34 @@ export default function ApprovalsPage() {
                         Reject Draft
                       </button>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingDraft(draft);
-                            setEditedText(draft.body);
-                          }}
-                          className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] transition-all flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          Edit Before Send
-                        </button>
+                      {draft.expired ? (
+                        <p className="text-xs text-rose-300 italic">
+                          This reply's window has closed - it can no longer be sent.
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDraft(draft);
+                              setEditedText(draft.body);
+                            }}
+                            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Edit Before Send
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(draft.id)}
-                          className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-seal hover:bg-seal-dim shadow-lg shadow-seal/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Check className="w-4 h-4" />
-                          Approve & Send
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(draft.id)}
+                            className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-seal hover:bg-seal-dim shadow-lg shadow-seal/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Check className="w-4 h-4" />
+                            Approve & Send
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </GlassCard>
@@ -406,6 +450,7 @@ export default function ApprovalsPage() {
             </div>
           </div>
         </Modal>
+      </div>
       </div>
     </AppLayout>
   );
