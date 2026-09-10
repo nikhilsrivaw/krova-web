@@ -489,9 +489,20 @@ export default function ConversationsPage() {
       title="Unified Conversations"
       subtitle="Interleaved timeline across WhatsApp, Voice, Email & Instagram"
     >
-      <div className="h-[calc(100vh-140px)] flex border border-white/[0.08] rounded-2xl overflow-hidden bg-os-bg shadow-2xl">
+      {/* A flat background gives glass panels nothing to actually blur -
+          same fix as the dashboard, kept restrained here (Minimalism &
+          Swiss Style is this product type's own primary recommendation,
+          glassmorphism only a secondary accent) - two soft glows, no
+          grid texture, most of the screen stays clean for the timeline. */}
+      <div className="relative">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden -z-10">
+          <div className="absolute -top-16 right-[12%] w-[420px] h-[420px] rounded-full bg-brass/[0.06] blur-[130px]" />
+          <div className="absolute bottom-0 left-[6%] w-[380px] h-[380px] rounded-full bg-seal/[0.05] blur-[130px]" />
+        </div>
+
+      <div className="h-[calc(100vh-140px)] flex border border-white/[0.08] rounded-2xl overflow-hidden bg-os-card/40 backdrop-blur-xl shadow-2xl">
         {/* Left Pane: High-Density Thread List */}
-        <div className="w-80 lg:w-96 border-r border-white/[0.07] bg-os-card flex flex-col shrink-0">
+        <div className="w-80 lg:w-96 border-r border-white/[0.07] bg-os-card/70 backdrop-blur-xl flex flex-col shrink-0">
           {/* Search & Channel Filter Header */}
           <div className="p-3 border-b border-white/[0.06] space-y-2">
             <div className="flex items-center px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
@@ -655,10 +666,10 @@ export default function ConversationsPage() {
         </div>
 
         {/* Center/Right: Full Interleaved Timeline */}
-        <div className="flex-1 flex flex-col bg-os-card overflow-hidden">
+        <div className="flex-1 flex flex-col bg-os-card/45 backdrop-blur-xl overflow-hidden">
           {/* Thread Header */}
           {activeThread ? (
-            <div className="px-6 py-3.5 border-b border-white/[0.07] bg-os-card flex items-center justify-between">
+            <div className="px-6 py-3.5 border-b border-white/[0.07] bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brass to-slate-800 border border-white/20 flex items-center justify-center font-bold text-sm text-white">
                   {activeThread.name?.charAt(0) || "C"}
@@ -746,7 +757,7 @@ export default function ConversationsPage() {
                       <span>Canned Reply</span>
                     </button>
                     {isCannedPickerOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card shadow-2xl overflow-hidden">
+                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
                         <div className="p-2 max-h-72 overflow-y-auto">
                           {cannedList.length === 0 ? (
                             <p className="p-3 text-[11px] text-os-text-dim">
@@ -867,7 +878,7 @@ export default function ConversationsPage() {
           </div>
 
           {/* Context Footer Banner */}
-          <div className="p-3 bg-os-bg border-t border-white/[0.06] flex items-center justify-between text-xs text-os-text-dim">
+          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-xs text-os-text-dim">
             <span className="flex items-center gap-1.5 font-mono text-[11px]">
               <Shield className="w-3.5 h-3.5 text-brass" />
               Human-in-the-loop: Replies are proposed in the <strong>Approvals</strong> queue.
@@ -880,6 +891,7 @@ export default function ConversationsPage() {
             </a>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Customer 360 Side-Inspector Drawer */}
