@@ -736,10 +736,11 @@ export default function SettingsPage() {
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
                 Agent Autonomy Level:
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { key: "observe", title: "Observe Mode", desc: "Read & extract only" },
                   { key: "draft", title: "Draft Mode (Recommended)", desc: "Human-in-the-loop review" },
+                  { key: "conditional", title: "Conditional", desc: "Rules-based auto-send - configure in Approvals" },
                   { key: "act", title: "Act Mode", desc: "Autonomous sending" },
                 ].map((a) => (
                   <div

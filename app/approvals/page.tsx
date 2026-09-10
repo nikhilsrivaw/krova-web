@@ -19,6 +19,10 @@ import {
   CornerDownRight,
   Eye,
   Zap,
+  Settings2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -29,6 +33,7 @@ import {
   approvals,
   type MessageDraft,
   type AutonomyLevel,
+  type AutoSendRules,
 } from "@/lib/api";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
@@ -75,6 +80,55 @@ export default function ApprovalsPage() {
   // Reject Modal State
   const [rejectingDraft, setRejectingDraft] = useState<MessageDraft | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Auto-Send Rules - a business's own configuration for `conditional`
+  // autonomy, so it isn't every single draft landing here for review.
+  const [rules, setRules] = useState<AutoSendRules | null>(null);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isLoadingRules, setIsLoadingRules] = useState(true);
+  const [isSavingRules, setIsSavingRules] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
+  const [newKeyword, setNewKeyword] = useState("");
+
+  const loadRules = async () => {
+    setIsLoadingRules(true);
+    try {
+      setRules(await approvals.autoSendRules());
+    } catch {
+      // Panel just won't show a track record - the toggle below still works.
+    } finally {
+      setIsLoadingRules(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRules();
+  }, []);
+
+  const saveRules = async (patch: Partial<{ enabled: boolean; min_confidence: number; blocked_keywords: string[] }>) => {
+    setIsSavingRules(true);
+    setRulesError(null);
+    try {
+      const updated = await approvals.updateAutoSendRules(patch);
+      setRules(updated);
+    } catch (err) {
+      setRulesError(err instanceof Error ? err.message : "Could not save this rule.");
+    } finally {
+      setIsSavingRules(false);
+    }
+  };
+
+  const handleAddKeyword = () => {
+    const word = newKeyword.trim();
+    if (!word || !rules || rules.blocked_keywords.includes(word)) return;
+    setNewKeyword("");
+    saveRules({ blocked_keywords: [...rules.blocked_keywords, word] });
+  };
+
+  const handleRemoveKeyword = (word: string) => {
+    if (!rules) return;
+    saveRules({ blocked_keywords: rules.blocked_keywords.filter((k) => k !== word) });
+  };
 
   const loadDrafts = async () => {
     setIsLoading(true);
@@ -144,10 +198,18 @@ export default function ApprovalsPage() {
             </div>
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                Draft Mode Safeguard Active
+                {rules?.autonomy === "conditional"
+                  ? "Conditional Auto-Send Active"
+                  : rules?.autonomy === "act"
+                  ? "Full Auto-Send Active"
+                  : "Draft Mode Safeguard Active"}
               </h3>
               <p className="text-xs text-os-text-dim">
-                No WhatsApp messages are sent automatically. Each reply is held here with stated AI reasoning for your sign-off.
+                {rules?.autonomy === "conditional"
+                  ? "Replies that clear your own auto-send rules go out on their own. Everything else waits here."
+                  : rules?.autonomy === "act"
+                  ? "Every reply sends automatically - none reach this queue."
+                  : "No WhatsApp messages are sent automatically. Each reply is held here with stated AI reasoning for your sign-off."}
               </p>
             </div>
           </div>
@@ -169,6 +231,151 @@ export default function ApprovalsPage() {
             ))}
           </div>
         </div>
+
+        {/* Auto-Send Rules - `conditional` autonomy configured here, not a
+            separate settings page, since this is where the load it's
+            solving is actually felt. */}
+        <GlassCard className="overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsRulesOpen((v) => !v)}
+            className="w-full p-4 flex items-center justify-between gap-3 cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg border ${rules?.enabled ? "bg-seal/15 border-seal/30 text-seal-bright" : "bg-white/[0.04] border-white/[0.08] text-os-text-dim"}`}>
+                <Settings2 className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                  Auto-Send Rules
+                </h3>
+                <p className="text-xs text-os-text-dim">
+                  {rules?.enabled
+                    ? `On - replies at ${Math.round((rules.min_confidence ?? 0) * 100)}%+ confidence send without review, unless they touch a blocked topic.`
+                    : "Off - every reply waits for you. Set rules here to let the safe ones send themselves."}
+                </p>
+              </div>
+            </div>
+            {isRulesOpen ? <ChevronUp className="w-4 h-4 text-os-text-dim shrink-0" /> : <ChevronDown className="w-4 h-4 text-os-text-dim shrink-0" />}
+          </button>
+
+          {isRulesOpen && (
+            <div className="px-4 pb-4 space-y-4 border-t border-white/[0.06] pt-4">
+              {isLoadingRules ? (
+                <Skeleton className="h-24 w-full" />
+              ) : !rules ? (
+                <p className="text-xs text-os-text-dim">Could not load auto-send rules.</p>
+              ) : (
+                <>
+                  {/* Enable toggle */}
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <div>
+                      <p className="text-xs font-semibold text-white">Let safe replies send themselves</p>
+                      <p className="text-[11px] text-os-text-dim mt-0.5">
+                        A reply only auto-sends if it clears every rule below - anything uncertain still lands here.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSavingRules}
+                      onClick={() => saveRules({ enabled: !rules.enabled })}
+                      className={`shrink-0 w-11 h-6 rounded-full transition-all cursor-pointer disabled:opacity-50 relative ${
+                        rules.enabled ? "bg-seal" : "bg-white/[0.12]"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${
+                          rules.enabled ? "left-[22px]" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Track record, for context - not a hard gate */}
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-4 text-xs">
+                    <span className="text-os-text-dim">Last 30 days:</span>
+                    <span className="text-white font-mono">{rules.drafted_last_30d} drafted</span>
+                    {rules.approval_rate_last_30d != null && (
+                      <span className="text-white font-mono">
+                        {Math.round(rules.approval_rate_last_30d * 100)}% approved as-is
+                      </span>
+                    )}
+                    {rules.drafted_last_30d < 20 && (
+                      <span className="text-amber-300">- not much history yet, worth watching closely</span>
+                    )}
+                  </div>
+
+                  {/* Minimum confidence */}
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                      <span>Minimum confidence to auto-send</span>
+                      <span className="text-white">{Math.round(rules.min_confidence * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={50}
+                      max={99}
+                      value={Math.round(rules.min_confidence * 100)}
+                      onChange={(e) => setRules({ ...rules, min_confidence: Number(e.target.value) / 100 })}
+                      onMouseUp={(e) => saveRules({ min_confidence: Number((e.target as HTMLInputElement).value) / 100 })}
+                      onTouchEnd={(e) => saveRules({ min_confidence: Number((e.target as HTMLInputElement).value) / 100 })}
+                      className="w-full accent-brass cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Blocked keywords */}
+                  <div>
+                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                      Never auto-send if the reply mentions
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {rules.blocked_keywords.length === 0 ? (
+                        <p className="text-[11px] text-os-text-dim italic">No blocked phrases yet.</p>
+                      ) : (
+                        rules.blocked_keywords.map((word) => (
+                          <span
+                            key={word}
+                            className="px-2 py-1 rounded-md text-[11px] font-mono bg-thread/10 border border-thread/25 text-thread-bright flex items-center gap-1.5"
+                          >
+                            {word}
+                            <button type="button" onClick={() => handleRemoveKeyword(word)} className="hover:text-white cursor-pointer">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newKeyword}
+                        onChange={(e) => setNewKeyword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddKeyword())}
+                        placeholder="e.g. refund, cancel, price change..."
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddKeyword}
+                        disabled={!newKeyword.trim() || isSavingRules}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-os-text-dim leading-relaxed pt-2 border-t border-white/[0.06]">
+                    One rule you can't turn off: anything touching your vertical's always-escalate topics (like a medical
+                    emergency for a clinic) holds for review no matter what's set above.
+                  </p>
+
+                  {rulesError && <p className="text-[11px] text-red-400">{rulesError}</p>}
+                </>
+              )}
+            </div>
+          )}
+        </GlassCard>
 
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">

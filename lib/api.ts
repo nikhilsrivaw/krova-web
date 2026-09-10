@@ -348,7 +348,16 @@ export const crm = {
 
 // ── Approvals ─────────────────────────────────────────────────────────────────
 
-export type AutonomyLevel = "observe" | "draft" | "act";
+export type AutonomyLevel = "observe" | "draft" | "act" | "conditional";
+
+export type AutoSendRules = {
+  enabled: boolean;
+  min_confidence: number;
+  blocked_keywords: string[];
+  autonomy: AutonomyLevel;
+  drafted_last_30d: number;
+  approval_rate_last_30d: number | null;
+};
 
 export type MessageDraft = {
   id: string;
@@ -387,6 +396,11 @@ export const approvals = {
 
   setAutonomy: (autonomy: AutonomyLevel) =>
     api.post<{ autonomy: AutonomyLevel }>("/approvals/autonomy", { autonomy }),
+
+  autoSendRules: () => api.get<AutoSendRules>("/approvals/auto-send-rules"),
+
+  updateAutoSendRules: (data: Partial<{ enabled: boolean; min_confidence: number; blocked_keywords: string[] }>) =>
+    api.patch<AutoSendRules>("/approvals/auto-send-rules", data),
 };
 
 // ── Conversations ─────────────────────────────────────────────────────────────
