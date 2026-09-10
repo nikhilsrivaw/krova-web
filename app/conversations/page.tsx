@@ -525,10 +525,10 @@ export default function ConversationsPage() {
                   key={ch}
                   type="button"
                   onClick={() => setChannelFilter(ch)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono capitalize transition-all shrink-0 ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono capitalize transition-all shrink-0 border ${
                     channelFilter === ch
-                      ? "bg-white text-black font-bold"
-                      : "bg-white/[0.02] text-os-text-dim hover:text-white"
+                      ? "bg-black border-brass/50 text-brass-bright font-bold shadow-[0_0_0_1px_rgba(201,151,63,0.15)]"
+                      : "bg-white/[0.02] border-transparent text-os-text-dim hover:text-white"
                   }`}
                 >
                   {ch}
