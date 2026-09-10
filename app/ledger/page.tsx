@@ -30,11 +30,23 @@ import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   ledger,
+  templates as templatesApi,
   formatPaise,
   type Commitment,
   type CommitmentDetail,
   type LedgerSummary,
+  type Template,
 } from "@/lib/api";
+
+/** A template is only usable for a payment request if it has an
+ * ORDER_DETAILS button - the component WhatsApp Payments needs. */
+function isOrderDetailsTemplate(t: Template): boolean {
+  const components = Array.isArray(t.components) ? t.components : [];
+  return components.some((c) => {
+    const comp = c as { type?: string; buttons?: { type?: string }[] };
+    return comp?.type === "BUTTONS" && (comp.buttons || []).some((b) => b.type === "ORDER_DETAILS");
+  });
+}
 
 type FilterType = "all" | "overdue" | "they_owe" | "we_owe" | "unconfirmed";
 
@@ -55,6 +67,40 @@ export default function LedgerPage() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Request Payment (WhatsApp Payments, India - beta, see
+  // docs/whatsapp-hub-fixes-and-gaps.md for the "unverified against a
+  // live WABA" caveat this whole feature carries).
+  const [orderDetailsTemplates, setOrderDetailsTemplates] = useState<Template[]>([]);
+  const [paymentTemplateName, setPaymentTemplateName] = useState("");
+  const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+  const [paymentRequestSent, setPaymentRequestSent] = useState(false);
+
+  useEffect(() => {
+    templatesApi.list().then((all) => {
+      const usable = all.filter(isOrderDetailsTemplate);
+      setOrderDetailsTemplates(usable);
+      if (usable.length > 0) setPaymentTemplateName(usable[0].name);
+    }).catch(() => {
+      // No order-details template exists yet (or WhatsApp isn't connected) -
+      // the Request Payment section just won't have anything to offer.
+    });
+  }, []);
+
+  const handleRequestPayment = async (commitmentId: string) => {
+    if (!paymentTemplateName) return;
+    setIsRequestingPayment(true);
+    setActionError(null);
+    setPaymentRequestSent(false);
+    try {
+      await ledger.requestPayment(commitmentId, paymentTemplateName);
+      setPaymentRequestSent(true);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not send the payment request.");
+    } finally {
+      setIsRequestingPayment(false);
+    }
+  };
 
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
@@ -471,6 +517,41 @@ export default function LedgerPage() {
                   "{selectedCommitment.source_quote || selectedCommitment.description}"
                 </div>
               </div>
+
+              {/* Request Payment - WhatsApp Payments (India), beta. Only
+                  shows up once there's both a real amount and an approved
+                  order-details template to send it with. */}
+              {selectedCommitment.direction === "they_owe" &&
+                selectedCommitment.status === "open" &&
+                selectedCommitment.amount_paise != null &&
+                orderDetailsTemplates.length > 0 && (
+                  <div className="pt-4 border-t border-white/[0.06] space-y-2">
+                    <h5 className="text-xs font-mono uppercase text-os-text-dim flex items-center gap-2">
+                      Request Payment
+                      <span className="normal-case font-sans text-amber-400">(Beta - WhatsApp Payments)</span>
+                    </h5>
+                    <select
+                      value={paymentTemplateName}
+                      onChange={(e) => setPaymentTemplateName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    >
+                      {orderDetailsTemplates.map((t) => (
+                        <option key={t.id} value={t.name}>{t.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleRequestPayment(selectedCommitment.id)}
+                      disabled={isRequestingPayment}
+                      className="w-full py-2 rounded-lg bg-brass hover:bg-brass-dim text-white font-bold text-xs shadow-md disabled:opacity-50 cursor-pointer"
+                    >
+                      {isRequestingPayment ? "Sending..." : "Send Payment Request"}
+                    </button>
+                    {paymentRequestSent && (
+                      <p className="text-[11px] text-seal-bright">Sent - the customer will see a real Pay button in the chat.</p>
+                    )}
+                  </div>
+                )}
 
               {/* Action Buttons: Mark Met, Missed, Cancelled */}
               {selectedCommitment.status === "open" && (

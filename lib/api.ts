@@ -180,6 +180,13 @@ export const ledger = {
   resolve: (id: string, outcome: "met" | "missed" | "cancelled") =>
     api.post<Commitment>(`/ledger/commitments/${id}/resolve`, { outcome }),
 
+  /** Beta - WhatsApp Payments (India), unverified against a live WABA. See docs/whatsapp-hub-fixes-and-gaps.md. */
+  requestPayment: (id: string, templateName: string, templateLanguage = "en") =>
+    api.post<{ sent: boolean; message_id: string }>(`/ledger/commitments/${id}/request-payment`, {
+      template_name: templateName,
+      template_language: templateLanguage,
+    }),
+
   customers: () => api.get<CustomerSummary[]>("/ledger/customers"),
 
   importCustomers: (contacts: { phone: string; name?: string | null }[]) =>
