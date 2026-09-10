@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Fraunces } from "next/font/google";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "./globals.css";
 
 const inter = Inter({
@@ -55,7 +56,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased bg-os-bg text-os-ink" suppressHydrationWarning>
-        {children}
+        <AntdRegistry>{children}</AntdRegistry>
       </body>
     </html>
   );
