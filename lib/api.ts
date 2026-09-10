@@ -446,7 +446,11 @@ export type ConversationThread = {
 };
 
 export const conversations = {
-  list: () => api.get<ConversationItem[]>("/conversations"),
+  /** q searches actual message content in the database, not just the one
+   * last-message preview the client already has - pass it for anything
+   * beyond an instant client-side filter. */
+  list: (q?: string) =>
+    api.get<ConversationItem[]>(`/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`),
 
   thread: (customerId: string) =>
     api.get<ConversationThread>(`/conversations/${customerId}`),

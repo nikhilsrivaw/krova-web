@@ -24,6 +24,11 @@ import {
   Zap,
   Plus,
   Trash2,
+  StickyNote,
+  Tag as TagIcon,
+  AlertCircle,
+  Check,
+  X,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -39,6 +44,9 @@ import {
   team,
   account,
   queue as queueApi,
+  crm,
+  ledger,
+  cannedResponses,
   type Capability,
   type Shift,
   type ShiftSession,
@@ -46,7 +54,36 @@ import {
   type ConversationThread,
   type TeamMember,
   type ThreadMessage,
+  type CustomerTag,
+  type CustomerNote,
+  type CannedResponse,
+  type CustomerSummary,
 } from "@/lib/api";
+
+/** SLA-style countdown for the WhatsApp 24h free-form reply window - same
+ * "don't let a deadline pass silently" pattern as the dashboard's pending-
+ * draft expiry badge, applied to the window every reply in this inbox
+ * actually depends on. */
+function slaUrgency(closesAt: string | null): { label: string; className: string } | null {
+  if (!closesAt) return null;
+  const msLeft = new Date(closesAt).getTime() - Date.now();
+  if (msLeft <= 0) return null; // conversations.window_open already covers "closed"
+  const hoursLeft = msLeft / 3_600_000;
+  if (hoursLeft < 1) {
+    const mins = Math.round(msLeft / 60_000);
+    return {
+      label: `Closes in ${mins}m`,
+      className: "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse",
+    };
+  }
+  if (hoursLeft < 3) {
+    return {
+      label: `Closes in ${Math.round(hoursLeft)}h`,
+      className: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    };
+  }
+  return null;
+}
 
 type QuickSendType = "buttons" | "list" | "product" | "products" | "catalog";
 
@@ -85,6 +122,29 @@ export default function ConversationsPage() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
+  // Customer 360 drawer: notes, tags and the AI intelligence dossier -
+  // already real, working CRM features (same data the /customers page
+  // shows), just never pulled into the inbox where an agent mid-thread
+  // would actually want them, without tab-switching.
+  const [drawerTab, setDrawerTab] = useState<"overview" | "notes" | "tags">("overview");
+  const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null);
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
+  const [tags, setTags] = useState<CustomerTag[]>([]);
+  const [isLoadingDrawerExtras, setIsLoadingDrawerExtras] = useState(false);
+  const [newNoteBody, setNewNoteBody] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [newTagLabel, setNewTagLabel] = useState("");
+  const [isSavingTag, setIsSavingTag] = useState(false);
+
+  // Canned Replies - a saved template sent as-is by a person's own click,
+  // categorically different from an AI draft (no autonomy question here),
+  // so it bypasses Approvals the same way Quick Send's structured messages
+  // already do.
+  const [cannedList, setCannedList] = useState<CannedResponse[]>([]);
+  const [isCannedPickerOpen, setIsCannedPickerOpen] = useState(false);
+  const [isSendingCanned, setIsSendingCanned] = useState(false);
+  const [cannedError, setCannedError] = useState<string | null>(null);
+
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [isBookingToken, setIsBookingToken] = useState(false);
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
@@ -99,7 +159,92 @@ export default function ConversationsPage() {
       // won't have anyone to offer.
     });
     account.profile().then((p) => setCapabilities(p.capabilities || [])).catch(() => {});
+    cannedResponses.list().then(setCannedList).catch(() => {
+      // No canned replies configured yet - the picker just stays empty.
+    });
   }, []);
+
+  // Customer 360 drawer extras - loaded when the drawer opens (or the
+  // selected customer changes while it's already open), not on every
+  // thread switch, since most of a conversation is read without ever
+  // opening the drawer.
+  useEffect(() => {
+    if (!isCustomerDrawerOpen || !activeThread) return;
+    let mounted = true;
+    const customerId = activeThread.customer_id;
+    setIsLoadingDrawerExtras(true);
+    setDrawerTab("overview");
+    Promise.allSettled([
+      crm.notes(customerId),
+      crm.tags(customerId, true),
+      ledger.customers(),
+    ]).then(([notesRes, tagsRes, customersRes]) => {
+      if (!mounted) return;
+      setNotes(notesRes.status === "fulfilled" ? notesRes.value : []);
+      setTags(tagsRes.status === "fulfilled" ? tagsRes.value : []);
+      setCustomerSummary(
+        customersRes.status === "fulfilled"
+          ? customersRes.value.find((c) => c.id === customerId) || null
+          : null,
+      );
+      setIsLoadingDrawerExtras(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [isCustomerDrawerOpen, activeThread]);
+
+  const handleAddNote = async () => {
+    if (!activeThread || !newNoteBody.trim()) return;
+    setIsSavingNote(true);
+    try {
+      const note = await crm.addNote(activeThread.customer_id, newNoteBody.trim());
+      setNotes((prev) => [note, ...prev]);
+      setNewNoteBody("");
+    } catch {
+      // Left in the textarea - the person can just retry the click.
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleAddTag = async () => {
+    if (!activeThread || !newTagLabel.trim()) return;
+    setIsSavingTag(true);
+    try {
+      const tag = await crm.addTag(activeThread.customer_id, newTagLabel.trim());
+      setTags((prev) => [tag, ...prev]);
+      setNewTagLabel("");
+    } catch {
+      // Left in the input - retry on click.
+    } finally {
+      setIsSavingTag(false);
+    }
+  };
+
+  const handleTagDecision = async (tagId: string, decision: "confirm" | "reject") => {
+    try {
+      const updated = decision === "confirm" ? await crm.confirmTag(tagId) : await crm.rejectTag(tagId);
+      setTags((prev) => prev.map((t) => (t.id === tagId ? updated : t)));
+    } catch {
+      // Tag stays in its current state - the button just didn't take.
+    }
+  };
+
+  const handleSendCanned = async (canned: CannedResponse) => {
+    const to = activeThread ? phoneOf(activeThread.identities) : null;
+    if (!to) return;
+    setIsSendingCanned(true);
+    setCannedError(null);
+    try {
+      await channels.sendText(to, canned.body);
+      setIsCannedPickerOpen(false);
+    } catch (err) {
+      setCannedError(err instanceof Error ? err.message : "Could not send this reply.");
+    } finally {
+      setIsSendingCanned(false);
+    }
+  };
 
   const openBookingPanel = async () => {
     setIsBookingToken(true);
@@ -152,6 +297,45 @@ export default function ConversationsPage() {
       mounted = false;
     };
   }, []);
+
+  // Deep search - the client-side filter below only ever sees the one
+  // last-message preview already loaded; this searches actual message
+  // content in the database (debounced so it isn't a round trip per
+  // keystroke), and replaces threadList with the real result set.
+  const [isSearchingServer, setIsSearchingServer] = useState(false);
+  const [isServerFiltered, setIsServerFiltered] = useState(false);
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      if (isServerFiltered) {
+        // Query cleared after a deep search replaced threadList - restore
+        // the normal unfiltered list rather than leaving it stuck narrow.
+        setIsServerFiltered(false);
+        conversations.list().then(setThreadList).catch(() => {});
+      }
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setIsSearchingServer(true);
+      try {
+        const data = await conversations.list(query);
+        if (!cancelled) {
+          setThreadList(data);
+          setIsServerFiltered(true);
+        }
+      } catch {
+        // Deep search failing shouldn't break the inbox - the instant
+        // client-side filter below still works on whatever's loaded.
+      } finally {
+        if (!cancelled) setIsSearchingServer(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   // Load selected customer thread messages
   useEffect(() => {
@@ -279,7 +463,12 @@ export default function ConversationsPage() {
 
   const filteredThreads = threadList.filter((item) => {
     const phone = phoneOf(item.identities) || "";
+    // Once a deep server search has already narrowed threadList to real
+    // matches (possibly on a message this preview never shows), re-running
+    // the shallow name/phone/last-message check here would wrongly drop
+    // results whose match isn't in what's currently loaded.
     const matchesSearch =
+      isServerFiltered ||
       (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       phone.includes(searchQuery) ||
       (item.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -311,9 +500,12 @@ export default function ConversationsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations..."
+                placeholder="Search conversations, or anything ever said..."
                 className="w-full bg-transparent text-xs text-white placeholder:text-os-text-dim outline-none"
               />
+              {isSearchingServer && (
+                <span className="text-[10px] font-mono text-os-text-dim shrink-0 ml-2">searching…</span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
@@ -435,9 +627,19 @@ export default function ConversationsPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-os-text-dim">
-                      {!thread.window_open && (
+                    <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-os-text-dim flex-wrap">
+                      {!thread.window_open ? (
                         <span>24h window closed</span>
+                      ) : (
+                        (() => {
+                          const urgency = slaUrgency(thread.window_closes_at);
+                          return urgency ? (
+                            <span className={`px-1.5 py-0.2 rounded border flex items-center gap-1 ${urgency.className}`}>
+                              <Clock className="w-2.5 h-2.5" />
+                              {urgency.label}
+                            </span>
+                          ) : null;
+                        })()
                       )}
                       {thread.open_commitments > 0 && (
                         <span className="px-1.5 py-0.2 rounded bg-brass/20 text-brass-bright border border-brass/30">
@@ -469,6 +671,15 @@ export default function ConversationsPage() {
                     <Badge variant={activeThread.window_open ? "emerald" : "amber"} size="sm">
                       {activeThread.window_open ? "24h window open" : "Window closed"}
                     </Badge>
+                    {(() => {
+                      const urgency = activeThread.window_open ? slaUrgency(activeThread.window_closes_at) : null;
+                      return urgency ? (
+                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-1 ${urgency.className}`}>
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          {urgency.label}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   {phoneOf(activeThread.identities) && (
                     <p className="text-[11px] text-os-text-dim font-mono">
@@ -517,6 +728,52 @@ export default function ConversationsPage() {
                     </>
                   )}
                 </button>
+
+                {/* Canned Reply: a saved template sent as-is, a person's own click -
+                    not an AI draft, so it doesn't go through Approvals. */}
+                {activeThread.window_open && phoneOf(activeThread.identities) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCannedError(null);
+                        setIsCannedPickerOpen((v) => !v);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Send a saved reply as-is"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Canned Reply</span>
+                    </button>
+                    {isCannedPickerOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card shadow-2xl overflow-hidden">
+                        <div className="p-2 max-h-72 overflow-y-auto">
+                          {cannedList.length === 0 ? (
+                            <p className="p-3 text-[11px] text-os-text-dim">
+                              No canned replies yet - add some from Settings.
+                            </p>
+                          ) : (
+                            cannedList.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                disabled={isSendingCanned}
+                                onClick={() => handleSendCanned(c)}
+                                className="w-full text-left p-2.5 rounded-lg hover:bg-white/[0.06] transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                <p className="text-xs font-semibold text-white">{c.title}</p>
+                                <p className="text-[11px] text-os-text-dim line-clamp-2">{c.body}</p>
+                              </button>
+                            ))
+                          )}
+                          {cannedError && (
+                            <p className="px-2.5 py-1.5 text-[11px] text-red-400">{cannedError}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Quick Send: interactive buttons/list/product/catalog */}
                 {activeThread.window_open && phoneOf(activeThread.identities) && (
@@ -635,60 +892,214 @@ export default function ConversationsPage() {
       >
         {activeThread && (
           <div className="space-y-6">
-            {/* Identities */}
-            <div>
-              <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
-                Known Identities
-              </h4>
-              <div className="space-y-1.5">
-                {activeThread.identities.map((id) => (
-                  <div
-                    key={`${id.kind}-${id.value}`}
-                    className="px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.06] text-xs flex items-center justify-between"
-                  >
-                    <span className="text-os-text-dim uppercase font-mono text-[10px]">{id.kind}</span>
-                    <span className="text-white font-mono">{id.value}</span>
-                  </div>
-                ))}
-              </div>
+            {/* Tabs */}
+            <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-2">
+              {([
+                ["overview", "Overview"],
+                ["notes", `Notes${notes.length ? ` (${notes.length})` : ""}`],
+                ["tags", `Tags${tags.length ? ` (${tags.length})` : ""}`],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setDrawerTab(key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                    drawerTab === key
+                      ? "bg-brass/15 text-brass-bright border border-brass/30"
+                      : "text-os-text-dim hover:text-white border border-transparent"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {/* Commitments */}
-            <div>
-              <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
-                Commitments
-              </h4>
-              {activeThread.commitments.length === 0 ? (
-                <p className="text-xs text-os-text-dim">No commitments extracted from this thread yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {activeThread.commitments.map((c) => (
-                    <div
-                      key={c.id}
-                      className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/90">{c.description || "—"}</span>
-                        <Badge
-                          variant={
-                            c.status === "met" ? "emerald" : c.status === "missed" ? "rose" : "amber"
-                          }
-                          size="sm"
-                        >
-                          {c.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] font-mono text-os-text-dim">
-                        <span>{c.direction === "they_owe" ? "They owe" : "We owe"}</span>
-                        {c.amount_paise != null && (
-                          <span className="text-white">{formatPaise(c.amount_paise)}</span>
+            {drawerTab === "overview" && (
+              <div className="space-y-6">
+                {/* AI Intelligence Dossier */}
+                {isLoadingDrawerExtras ? (
+                  <Skeleton className="h-20 w-full" />
+                ) : customerSummary?.summary ? (
+                  <div className="p-3.5 rounded-xl bg-brass/[0.06] border border-brass/20">
+                    <h4 className="text-xs font-mono uppercase text-brass-bright mb-1.5 flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3" /> AI Profile
+                    </h4>
+                    <p className="text-xs text-white/90 leading-relaxed">{customerSummary.summary}</p>
+                    {(customerSummary.health_score != null || customerSummary.outstanding_paise != null) && (
+                      <div className="flex items-center gap-4 mt-2 pt-2 border-t border-brass/10 text-[11px] font-mono text-os-text-dim">
+                        {customerSummary.health_score != null && (
+                          <span>Health: <span className="text-white">{customerSummary.health_score}</span></span>
+                        )}
+                        {customerSummary.outstanding_paise != null && (
+                          <span>Outstanding: <span className="text-white">{formatPaise(customerSummary.outstanding_paise)}</span></span>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Identities */}
+                <div>
+                  <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
+                    Known Identities
+                  </h4>
+                  <div className="space-y-1.5">
+                    {activeThread.identities.map((id) => (
+                      <div
+                        key={`${id.kind}-${id.value}`}
+                        className="px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.06] text-xs flex items-center justify-between"
+                      >
+                        <span className="text-os-text-dim uppercase font-mono text-[10px]">{id.kind}</span>
+                        <span className="text-white font-mono">{id.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Commitments */}
+                <div>
+                  <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
+                    Commitments
+                  </h4>
+                  {activeThread.commitments.length === 0 ? (
+                    <p className="text-xs text-os-text-dim">No commitments extracted from this thread yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeThread.commitments.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-white/90">{c.description || "—"}</span>
+                            <Badge
+                              variant={
+                                c.status === "met" ? "emerald" : c.status === "missed" ? "rose" : "amber"
+                              }
+                              size="sm"
+                            >
+                              {c.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-os-text-dim">
+                            <span>{c.direction === "they_owe" ? "They owe" : "We owe"}</span>
+                            {c.amount_paise != null && (
+                              <span className="text-white">{formatPaise(c.amount_paise)}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {drawerTab === "notes" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <textarea
+                    value={newNoteBody}
+                    onChange={(e) => setNewNoteBody(e.target.value)}
+                    placeholder="Leave a note for the team - the customer never sees this."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNote}
+                    disabled={!newNoteBody.trim() || isSavingNote}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <StickyNote className="w-3.5 h-3.5" />
+                    {isSavingNote ? "Saving..." : "Add Note"}
+                  </button>
+                </div>
+                {isLoadingDrawerExtras ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : notes.length === 0 ? (
+                  <p className="text-xs text-os-text-dim">No notes yet on this customer.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {notes.map((n) => (
+                      <div key={n.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs space-y-1">
+                        <p className="text-white/90 whitespace-pre-wrap">{n.body}</p>
+                        <p className="text-[10px] font-mono text-os-text-dim">
+                          {n.author_name || "Someone"} · {new Date(n.created_at).toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {drawerTab === "tags" && (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTagLabel}
+                    onChange={(e) => setNewTagLabel(e.target.value)}
+                    placeholder="Add a tag..."
+                    className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    disabled={!newTagLabel.trim() || isSavingTag}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {isLoadingDrawerExtras ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : tags.length === 0 ? (
+                  <p className="text-xs text-os-text-dim">No tags yet on this customer.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tags.map((t) => (
+                      <div key={t.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 text-white font-semibold">
+                            <TagIcon className="w-3 h-3 text-brass" />
+                            {t.label}
+                          </span>
+                          {t.status === "suggested" ? (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleTagDecision(t.id, "confirm")}
+                                className="p-1 rounded bg-seal/15 text-seal-bright hover:bg-seal/25 cursor-pointer"
+                                title="Confirm"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleTagDecision(t.id, "reject")}
+                                className="p-1 rounded bg-thread/15 text-thread-bright hover:bg-thread/25 cursor-pointer"
+                                title="Reject"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <Badge variant={t.status === "confirmed" ? "emerald" : "rose"} size="sm">
+                              {t.status}
+                            </Badge>
+                          )}
+                        </div>
+                        {t.status === "suggested" && t.reasoning && (
+                          <p className="text-[10px] text-os-text-dim mt-1 italic">"{t.reasoning}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-4 border-t border-white/[0.06] space-y-2">
               <a
