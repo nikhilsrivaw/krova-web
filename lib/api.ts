@@ -143,8 +143,13 @@ export type CommitmentDetail = Commitment & { evidence: EvidenceMessage[] };
 export type LedgerSummary = {
   owed_to_us_paise: number;
   owed_by_us_paise: number;
+  /** Both directions combined — a UI presenting this as receivables should use overdue_they_owe_* instead. */
   overdue_count: number;
   overdue_paise: number;
+  overdue_they_owe_count: number;
+  overdue_they_owe_paise: number;
+  overdue_we_owe_count: number;
+  overdue_we_owe_paise: number;
   open_count: number;
   /** Deliberately outside every total — these are guesses awaiting a human. */
   unconfirmed_count: number;

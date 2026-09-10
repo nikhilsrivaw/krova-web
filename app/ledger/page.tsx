@@ -210,8 +210,8 @@ export default function LedgerPage() {
 
           <MetricCard
             title="Overdue Receivables"
-            value={formatPaise(summary?.overdue_paise ?? 0)}
-            subtitle={`${summary?.overdue_count ?? 0} promises overdue`}
+            value={formatPaise(summary?.overdue_they_owe_paise ?? 0)}
+            subtitle={`${summary?.overdue_they_owe_count ?? 0} promises overdue`}
             icon={AlertTriangle}
             accentColor="rose"
             badgeText="Urgent"

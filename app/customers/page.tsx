@@ -24,6 +24,7 @@ import {
   Plus,
   StickyNote,
   Check,
+  AlertCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -76,6 +77,7 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [healthFilter, setHealthFilter] = useState<"all" | "high" | "low">("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Contact import
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -142,8 +144,11 @@ export default function CustomersPage() {
     try {
       const data = await ledger.customers();
       setCustomers(data);
-    } catch {
-      // Leave whatever is already showing (real data or the mock fallback).
+      setLoadError(null);
+    } catch (err) {
+      // Leave whatever real data is already showing; surface the error
+      // rather than silently doing nothing.
+      setLoadError(err instanceof Error ? err.message : "Could not reload customers.");
     }
   };
 
@@ -380,56 +385,17 @@ export default function CustomersPage() {
   useEffect(() => {
     let mounted = true;
     const loadCustomers = async () => {
+      if (mounted) {
+        setIsLoading(true);
+        setLoadError(null);
+      }
       try {
         const data = await ledger.customers();
         if (mounted) setCustomers(data);
-      } catch {
-        // Mock fallback
+      } catch (err) {
         if (mounted) {
-          setCustomers([
-            {
-              id: "cust-101",
-              name: "Dr. Rajesh Sharma",
-              identities: [
-                { kind: "phone", value: "+91 98201 44521" },
-                { kind: "email", value: "dr.rajesh@sharmaclinic.in" },
-              ],
-              last_contact_at: new Date().toISOString(),
-              open_commitments: 1,
-              is_private: false,
-              health_score: 88,
-              outstanding_paise: 1850000,
-              summary:
-                "Lead clinical ultrasound consultant. Enrolled in multiple workshop modules. Reliable payment record.",
-              preferred_channel: "whatsapp",
-            },
-            {
-              id: "cust-102",
-              name: "Anita Varma (Radiance)",
-              identities: [{ kind: "phone", value: "+91 91672 88910" }],
-              last_contact_at: new Date(Date.now() - 86400000).toISOString(),
-              open_commitments: 0,
-              is_private: false,
-              health_score: 92,
-              outstanding_paise: 0,
-              summary:
-                "Corporate salon chain owner. Schedules team training sessions every quarter.",
-              preferred_channel: "voice",
-            },
-            {
-              id: "cust-103",
-              name: "Vikram Malhotra",
-              identities: [{ kind: "phone", value: "+91 98450 11223" }],
-              last_contact_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-              open_commitments: 2,
-              is_private: true,
-              health_score: 42,
-              outstanding_paise: 5000000,
-              summary:
-                "Promised retainer fee payment 3 times and delayed twice. Pattern extracted: Needs structured deadline reminders.",
-              preferred_channel: "whatsapp",
-            },
-          ]);
+          setCustomers([]);
+          setLoadError(err instanceof Error ? err.message : "Could not load customers.");
         }
       } finally {
         if (mounted) setIsLoading(false);
@@ -610,6 +576,13 @@ export default function CustomersPage() {
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
+          ) : loadError && customers.length === 0 ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Couldn't load customers"
+              description={loadError}
+              action={{ label: "Try again", onClick: reloadCustomers }}
+            />
           ) : filteredCustomers.length === 0 ? (
             <EmptyState
               icon={Users}
