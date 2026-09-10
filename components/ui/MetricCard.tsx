@@ -6,7 +6,7 @@ import { GlassCard } from "./GlassCard";
 
 interface MetricCardProps {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   subtitle?: string;
   trend?: {
     value: string;
