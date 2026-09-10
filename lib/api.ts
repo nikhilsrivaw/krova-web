@@ -2053,10 +2053,26 @@ export type FlowSendResult = {
   flow_token: string;
 };
 
+// Ready-made Flow JSON for the signed-in business's own vertical - a
+// starting point to lightly edit, not a fixed builder. See
+// shared/verticals/templates/*.json's "flow_templates" key.
+export type FlowTemplate = {
+  key: string;
+  name: string;
+  description: string;
+  categories: string[];
+  cta: string;
+  body: string;
+  screen: string;
+  flow_json: Record<string, unknown>;
+};
+
 export const flows = {
   list: () => api.get<WhatsAppFlow[]>("/flows"),
 
   get: (id: string) => api.get<WhatsAppFlow>(`/flows/${id}`),
+
+  templates: () => api.get<FlowTemplate[]>("/flows/templates"),
 
   create: (data: { name: string; categories: string[]; flow_json: Record<string, unknown> }) =>
     api.post<WhatsAppFlow>("/flows", data),

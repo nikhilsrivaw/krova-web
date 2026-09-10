@@ -12,6 +12,7 @@ import {
   ledger,
   type WhatsAppFlow,
   type CustomerSummary,
+  type FlowTemplate,
 } from "@/lib/api";
 
 const CATEGORIES = [
@@ -65,6 +66,7 @@ const EXAMPLE_FLOW_JSON = {
 export default function FlowsPage() {
   const [flowList, setFlowList] = useState<WhatsAppFlow[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [templates, setTemplates] = useState<FlowTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -91,9 +93,16 @@ export default function FlowsPage() {
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const [flowsRes, custRes] = await Promise.allSettled([flowsApi.list(), ledger.customers()]);
+    const [flowsRes, custRes, templatesRes] = await Promise.allSettled([
+      flowsApi.list(),
+      ledger.customers(),
+      flowsApi.templates(),
+    ]);
     if (flowsRes.status === "fulfilled") setFlowList(flowsRes.value);
     if (custRes.status === "fulfilled") setCustomers(custRes.value);
+    // Best-effort: a business without a vertical-specific template (or a
+    // transient failure) just sees no template picker, never a page error.
+    if (templatesRes.status === "fulfilled") setTemplates(templatesRes.value);
     if (flowsRes.status === "rejected") {
       setLoadError(flowsRes.reason instanceof Error ? flowsRes.reason.message : "Could not load flows.");
     }
@@ -114,6 +123,13 @@ export default function FlowsPage() {
 
   const toggleCategory = (cat: string) => {
     setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+  };
+
+  const applyTemplate = (tpl: FlowTemplate) => {
+    setName(tpl.name);
+    setCategories(tpl.categories);
+    setFlowJsonText(JSON.stringify(tpl.flow_json, null, 2));
+    setCreateError(null);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -279,6 +295,26 @@ export default function FlowsPage() {
           subtitle="Paste Flow JSON authored in Meta's Flow Builder (Business Manager -> WhatsApp Manager -> Flows). This creates it in DRAFT - you publish separately once it validates clean."
         >
           <form onSubmit={handleCreate} className="space-y-4">
+            {templates.length > 0 && (
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                  Start from a template for your business
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {templates.map((tpl) => (
+                    <button
+                      key={tpl.key}
+                      type="button"
+                      title={tpl.description}
+                      onClick={() => applyTemplate(tpl)}
+                      className="px-3 py-2 rounded-lg bg-brass/10 hover:bg-brass/20 border border-brass/30 text-[11px] font-semibold text-brass-bright cursor-pointer text-left"
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Name</label>
               <input
