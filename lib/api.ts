@@ -922,39 +922,68 @@ export type VoiceTrust = {
   avg_duration_seconds: number | null;
 };
 
-// ── Post-call action rules (the voice-to-action bridge) ─────────────────────
+// ── Automation rules (the trigger-to-action bridge) ─────────────────────────
+// Started as the voice-only "post-call action" bridge - the backend table
+// and endpoint (/post-call-rules) keep that original name rather than a
+// rename migration for a naming-only gain, but the mechanism was always
+// generic (trigger_type is a plain string, never FK'd to call.* alone).
+// Now covers every real, already-tracked event in the product: a message
+// arriving, a WhatsApp Flow being completed, an appointment booked or
+// cancelled, an escalation raised, a queue token issued, a competitor
+// mentioned - not only how a call ends. See
+// shared/care/post_call_actions.py for the real dispatch points.
 
-export type PostCallTrigger = "call.completed" | "call.voicemail" | "call.no_answer";
-export type PostCallAction = "whatsapp_followup" | "create_escalation_task";
+export type AutomationTrigger =
+  | "call.completed"
+  | "call.voicemail"
+  | "call.no_answer"
+  | "message.received"
+  | "flow.completed"
+  | "appointment.booked"
+  | "appointment.cancelled"
+  | "escalation.raised"
+  | "queue_token.issued"
+  | "competitor.mentioned";
 
-export type PostCallRule = {
+export type AutomationAction = "whatsapp_followup" | "create_escalation_task" | "add_tag" | "send_flow";
+
+export type AutomationRule = {
   id: string;
-  trigger_type: PostCallTrigger;
-  action_type: PostCallAction;
-  /** whatsapp_followup: {message: string}. create_escalation_task: {reason: string}. */
+  trigger_type: AutomationTrigger;
+  action_type: AutomationAction;
+  /**
+   * whatsapp_followup: {message}. create_escalation_task: {reason}.
+   * add_tag: {tag}. send_flow: {flow_id, body, screen, cta}.
+   */
   action_config: Record<string, string>;
   is_active: boolean;
 };
 
+// Old names kept as aliases - PostCallRulesTab (the /voice page's own,
+// call-only view) still imports these; no behaviour change for it.
+export type PostCallTrigger = AutomationTrigger;
+export type PostCallAction = AutomationAction;
+export type PostCallRule = AutomationRule;
+
 export const postCallRules = {
-  list: () => api.get<PostCallRule[]>("/post-call-rules"),
+  list: () => api.get<AutomationRule[]>("/post-call-rules"),
 
   create: (data: {
-    trigger_type: PostCallTrigger;
-    action_type: PostCallAction;
+    trigger_type: AutomationTrigger;
+    action_type: AutomationAction;
     action_config: Record<string, string>;
     is_active?: boolean;
-  }) => api.post<PostCallRule>("/post-call-rules", data),
+  }) => api.post<AutomationRule>("/post-call-rules", data),
 
   update: (
     id: string,
     data: {
-      trigger_type: PostCallTrigger;
-      action_type: PostCallAction;
+      trigger_type: AutomationTrigger;
+      action_type: AutomationAction;
       action_config: Record<string, string>;
       is_active: boolean;
     },
-  ) => api.patch<PostCallRule>(`/post-call-rules/${id}`, data),
+  ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
   remove: (id: string) => api.delete<void>(`/post-call-rules/${id}`),
 };

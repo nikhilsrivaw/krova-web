@@ -128,6 +128,12 @@ export function AppSidebar({
       accent: "text-seal-bright",
       shortcut: "G F",
     },
+    {
+      label: "Automations",
+      href: "/automations",
+      icon: Zap,
+      accent: "text-cyan-400",
+    },
     // Vertical-specific tools, only shown when the business's own
     // capabilities include them - never hardcoded per vertical key, always
     // read from what /auth/me actually declared.

@@ -8,17 +8,22 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import {
   postCallRules,
   type PostCallRule,
-  type PostCallTrigger,
-  type PostCallAction,
 } from "@/lib/api";
 
-const TRIGGER_LABEL: Record<PostCallTrigger, string> = {
+// Narrower than the full AutomationTrigger/AutomationAction vocabulary
+// (lib/api.ts) on purpose - this tab is the /voice page's own call-only
+// view. The broader cross-channel set lives on the /automations page;
+// creating a rule from either place hits the same backend endpoint.
+type VoiceTrigger = "call.completed" | "call.voicemail" | "call.no_answer";
+type VoiceAction = "whatsapp_followup" | "create_escalation_task";
+
+const TRIGGER_LABEL: Record<VoiceTrigger, string> = {
   "call.completed": "A call finishes",
   "call.voicemail": "A call goes to voicemail",
   "call.no_answer": "A call goes unanswered",
 };
 
-const ACTION_LABEL: Record<PostCallAction, string> = {
+const ACTION_LABEL: Record<VoiceAction, string> = {
   whatsapp_followup: "Send a WhatsApp follow-up",
   create_escalation_task: "Create a task for the team",
 };
@@ -29,8 +34,8 @@ export function PostCallRulesTab() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isCreating, setIsCreating] = useState(false);
-  const [trigger, setTrigger] = useState<PostCallTrigger>("call.voicemail");
-  const [action, setAction] = useState<PostCallAction>("whatsapp_followup");
+  const [trigger, setTrigger] = useState<VoiceTrigger>("call.voicemail");
+  const [action, setAction] = useState<VoiceAction>("whatsapp_followup");
   const [configText, setConfigText] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -127,10 +132,10 @@ export function PostCallRulesTab() {
                 </label>
                 <select
                   value={trigger}
-                  onChange={(e) => setTrigger(e.target.value as PostCallTrigger)}
+                  onChange={(e) => setTrigger(e.target.value as VoiceTrigger)}
                   className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                 >
-                  {(Object.keys(TRIGGER_LABEL) as PostCallTrigger[]).map((t) => (
+                  {(Object.keys(TRIGGER_LABEL) as VoiceTrigger[]).map((t) => (
                     <option key={t} value={t}>
                       {TRIGGER_LABEL[t]}
                     </option>
@@ -144,12 +149,12 @@ export function PostCallRulesTab() {
                 <select
                   value={action}
                   onChange={(e) => {
-                    setAction(e.target.value as PostCallAction);
+                    setAction(e.target.value as VoiceAction);
                     setConfigText("");
                   }}
                   className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                 >
-                  {(Object.keys(ACTION_LABEL) as PostCallAction[]).map((a) => (
+                  {(Object.keys(ACTION_LABEL) as VoiceAction[]).map((a) => (
                     <option key={a} value={a}>
                       {ACTION_LABEL[a]}
                     </option>
