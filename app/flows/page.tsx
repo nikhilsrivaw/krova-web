@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy, X, ArrowUp, ArrowDown, Eye, EyeOff, Zap } from "lucide-react";
+import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy, X, ArrowUp, ArrowDown, Eye, EyeOff, Zap, Archive, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -200,6 +200,8 @@ export default function FlowsPage() {
   const nextFieldKey = React.useRef(2);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [deprecatingId, setDeprecatingId] = useState<string | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [enablingLiveDataId, setEnablingLiveDataId] = useState<string | null>(null);
   const [liveDataEnabledIds, setLiveDataEnabledIds] = useState<Set<string>>(new Set());
 
@@ -339,6 +341,32 @@ export default function FlowsPage() {
     }
   };
 
+  const handleDeprecate = async (flow: WhatsAppFlow) => {
+    setActionError(null);
+    setDeprecatingId(flow.id);
+    try {
+      const updated = await flowsApi.deprecate(flow.id);
+      setFlowList((prev) => prev.map((f) => (f.id === flow.id ? updated : f)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not retire this flow.");
+    } finally {
+      setDeprecatingId(null);
+    }
+  };
+
+  const handleRefresh = async (flow: WhatsAppFlow) => {
+    setActionError(null);
+    setRefreshingId(flow.id);
+    try {
+      const updated = await flowsApi.refresh(flow.id);
+      setFlowList((prev) => prev.map((f) => (f.id === flow.id ? updated : f)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not refresh this flow's status.");
+    } finally {
+      setRefreshingId(null);
+    }
+  };
+
   const handleEnableLiveData = async (flow: WhatsAppFlow) => {
     setActionError(null);
     setEnablingLiveDataId(flow.id);
@@ -445,6 +473,15 @@ export default function FlowsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRefresh(flow)}
+                      disabled={refreshingId === flow.id}
+                      title="Re-check this flow's real status and validation with Meta"
+                      className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white cursor-pointer disabled:opacity-40"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${refreshingId === flow.id ? "animate-spin" : ""}`} />
+                    </button>
                     {flow.status === "DRAFT" && (
                       <button
                         type="button"
@@ -455,6 +492,18 @@ export default function FlowsPage() {
                       >
                         <Rocket className="w-3.5 h-3.5" />
                         {publishingId === flow.id ? "Publishing..." : "Publish"}
+                      </button>
+                    )}
+                    {flow.status === "PUBLISHED" && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeprecate(flow)}
+                        disabled={deprecatingId === flow.id}
+                        title="Retire this flow - it can never be published or sent again"
+                        className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                        {deprecatingId === flow.id ? "Retiring..." : "Retire"}
                       </button>
                     )}
                     {/* Beta: only flows that actually declare a dynamic

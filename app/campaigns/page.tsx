@@ -31,6 +31,20 @@ import {
   type WhatsAppFlow,
 } from "@/lib/api";
 
+/**
+ * Whether a flow needs KROVA's own live-data endpoint enabled before it'll
+ * actually work (same check as app/flows/page.tsx's own usesLiveData) -
+ * attaching one of these to a campaign still requires "Enable live data"
+ * to have been turned on for it separately, on the Flows page, once.
+ */
+function usesLiveData(flow: WhatsAppFlow): boolean {
+  try {
+    return JSON.stringify(flow.flow_json).includes('"data":');
+  } catch {
+    return false;
+  }
+}
+
 /** The {{placeholders}} in one card's body text, in order, without duplicates - mirrors variables_in() on the backend. */
 function cardVariables(template: Template, cardIndex: number): string[] {
   const components = Array.isArray(template.components) ? template.components : [];
@@ -431,16 +445,27 @@ export default function CampaignsPage() {
                     This template has a Flow button - open a WhatsApp Flow
                   </label>
                   {attachFlow && (
-                    <select
-                      value={selectedFlowId}
-                      onChange={(e) => setSelectedFlowId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                    >
-                      <option value="">Choose the flow this button opens...</option>
-                      {publishedFlows.map((f) => (
-                        <option key={f.id} value={f.id}>{f.name}</option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={selectedFlowId}
+                        onChange={(e) => setSelectedFlowId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                      >
+                        <option value="">Choose the flow this button opens...</option>
+                        {publishedFlows.map((f) => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                      {(() => {
+                        const flow = publishedFlows.find((f) => f.id === selectedFlowId);
+                        return flow && usesLiveData(flow) ? (
+                          <p className="text-[11px] text-amber-400 mt-1.5">
+                            This flow shows live data - make sure &quot;Enable live data&quot; has been turned on
+                            for it on the Flows page, or it won&apos;t work for recipients.
+                          </p>
+                        ) : null;
+                      })()}
+                    </>
                   )}
                 </div>
               )}
@@ -604,16 +629,26 @@ export default function CampaignsPage() {
                     </button>
                   </div>
                   {publishedFlows.length > 0 && (
-                    <select
-                      value={newStepFlowId}
-                      onChange={(e) => setNewStepFlowId(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
-                    >
-                      <option value="">This step's template has no Flow button (default)</option>
-                      {publishedFlows.map((f) => (
-                        <option key={f.id} value={f.id}>Opens flow: {f.name}</option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={newStepFlowId}
+                        onChange={(e) => setNewStepFlowId(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                      >
+                        <option value="">This step's template has no Flow button (default)</option>
+                        {publishedFlows.map((f) => (
+                          <option key={f.id} value={f.id}>Opens flow: {f.name}</option>
+                        ))}
+                      </select>
+                      {(() => {
+                        const flow = publishedFlows.find((f) => f.id === newStepFlowId);
+                        return flow && usesLiveData(flow) ? (
+                          <p className="text-[11px] text-amber-400">
+                            This flow shows live data - make sure &quot;Enable live data&quot; is on for it (Flows page).
+                          </p>
+                        ) : null;
+                      })()}
+                    </>
                   )}
                 </div>
               </div>

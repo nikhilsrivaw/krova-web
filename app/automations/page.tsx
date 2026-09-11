@@ -15,6 +15,15 @@ import {
   type WhatsAppFlow,
 } from "@/lib/api";
 
+/** Same check as app/flows/page.tsx and app/campaigns/page.tsx's own usesLiveData. */
+function usesLiveData(flow: WhatsAppFlow): boolean {
+  try {
+    return JSON.stringify(flow.flow_json).includes('"data":');
+  } catch {
+    return false;
+  }
+}
+
 const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "message.received": "A customer sends a message",
   "flow.completed": "A customer completes a WhatsApp Flow",
@@ -299,6 +308,12 @@ export default function AutomationsPage() {
                     Only sends inside the 24-hour reply window, same as sending a flow by hand - a rule can&apos;t
                     reach someone outside it either.
                   </p>
+                  {selectedFlow && usesLiveData(selectedFlow) && (
+                    <p className="text-[11px] text-amber-400">
+                      This flow shows live data - make sure &quot;Enable live data&quot; is on for it (Flows page),
+                      or it won&apos;t work when this rule fires.
+                    </p>
+                  )}
                 </div>
               )}
 

@@ -2155,6 +2155,10 @@ export const flows = {
 
   publish: (id: string) => api.post<WhatsAppFlow>(`/flows/${id}/publish`),
 
+  deprecate: (id: string) => api.post<WhatsAppFlow>(`/flows/${id}/deprecate`),
+
+  refresh: (id: string) => api.post<WhatsAppFlow>(`/flows/${id}/refresh`),
+
   // Beta - points this flow at KROVA's own data_exchange endpoint, so a
   // screen can show real data (today: real open appointment slots)
   // instead of a fixed set of options. See services/api/routers/
@@ -2201,6 +2205,11 @@ export const WEBHOOK_EVENT_TYPES = [
   "call.completed",
   "call.voicemail",
   "call.no_answer",
+  // Same story, found in a wiring audit after the Flow live-data work -
+  // fires when a customer completes any Flow (see shared/channels/
+  // whatsapp/webhook.py's flow_reply handling), the backend already
+  // accepted it, this list just never got it added.
+  "flow.completed",
 ] as const;
 
 export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;
