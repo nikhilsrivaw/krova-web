@@ -91,6 +91,22 @@ type BuilderField = {
   options: string; // comma-separated, only used for choose_one/choose_list
 };
 
+/**
+ * Whether this flow has any real use for the data_exchange endpoint -
+ * NOT the same as "more than one screen" (case_status_live is a single
+ * screen that still needs it, populated entirely from Meta's own INIT
+ * call, with no data_exchange action anywhere in its JSON at all). The
+ * one signal every live flow template actually shares is a screen-level
+ * "data" schema declaration - a plain static flow never has one.
+ */
+function usesLiveData(flow: WhatsAppFlow): boolean {
+  try {
+    return JSON.stringify(flow.flow_json).includes('"data":');
+  } catch {
+    return false;
+  }
+}
+
 function slug(text: string, fallback: string): string {
   const s = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s || fallback;
@@ -441,10 +457,10 @@ export default function FlowsPage() {
                         {publishingId === flow.id ? "Publishing..." : "Publish"}
                       </button>
                     )}
-                    {/* Beta: only flows with more than one screen have any
-                        real use for a data_exchange endpoint - a static
-                        single-screen flow has nothing dynamic to fetch. */}
-                    {((flow.flow_json as { screens?: unknown[] })?.screens?.length ?? 0) > 1 && (
+                    {/* Beta: only flows that actually declare a dynamic
+                        screen data schema have any use for the live-data
+                        endpoint - a plain static flow has nothing to fetch. */}
+                    {usesLiveData(flow) && (
                       <button
                         type="button"
                         onClick={() => handleEnableLiveData(flow)}
