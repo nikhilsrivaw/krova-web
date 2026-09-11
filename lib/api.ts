@@ -1139,6 +1139,8 @@ export type CampaignStepRequest = {
   template_language?: string;
   variable_mapping?: string[];
   carousel_cards?: CampaignCardRequest[];
+  /** Same FLOW-button-template mechanism as the base campaign's own flow_id - a step can open a Flow too. */
+  flow_id?: string;
 };
 
 export type CampaignStep = {
@@ -1149,6 +1151,7 @@ export type CampaignStep = {
   stop_on_reply: boolean;
   template_name: string;
   template_language: string;
+  flow_id: string | null;
   sent_count: number;
   failed_count: number;
   skipped_count: number;

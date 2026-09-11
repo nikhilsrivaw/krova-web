@@ -85,6 +85,7 @@ export default function CampaignsPage() {
   const [newStepDelay, setNewStepDelay] = useState<number>(3);
   const [newStepCondition, setNewStepCondition] = useState<"always" | "no_reply">("no_reply");
   const [newStepStopOnReply, setNewStepStopOnReply] = useState(true);
+  const [newStepFlowId, setNewStepFlowId] = useState<string>("");
 
   // Follow-ups on past campaigns - loaded on demand per card, not on every
   // page load.
@@ -221,12 +222,14 @@ export default function CampaignsPage() {
         stop_on_reply: newStepStopOnReply,
         template_name: newStepTemplate,
         template_language: templateList.find((t) => t.name === newStepTemplate)?.language || "en",
+        flow_id: newStepFlowId || undefined,
       },
     ]);
     setNewStepTemplate("");
     setNewStepDelay(3);
     setNewStepCondition("no_reply");
     setNewStepStopOnReply(true);
+    setNewStepFlowId("");
   };
 
   const removeDraftStep = (index: number) => {
@@ -532,6 +535,11 @@ export default function CampaignsPage() {
                           {i === 0 ? "step 0" : `step ${i}`} if{" "}
                           {step.condition === "no_reply" ? "no reply" : "always"} →{" "}
                           <span className="text-white">{step.template_name}</span>
+                          {step.flow_id && (
+                            <span className="text-cyan-400">
+                              {" "}+ flow: {publishedFlows.find((f) => f.id === step.flow_id)?.name || step.flow_id}
+                            </span>
+                          )}
                         </span>
                         <button
                           type="button"
@@ -595,6 +603,18 @@ export default function CampaignsPage() {
                       <Plus className="w-3 h-3" /> Add step
                     </button>
                   </div>
+                  {publishedFlows.length > 0 && (
+                    <select
+                      value={newStepFlowId}
+                      onChange={(e) => setNewStepFlowId(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                    >
+                      <option value="">This step's template has no Flow button (default)</option>
+                      {publishedFlows.map((f) => (
+                        <option key={f.id} value={f.id}>Opens flow: {f.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -755,6 +775,7 @@ export default function CampaignsPage() {
                                   Step {step.step_order} · {step.delay_days}d ·{" "}
                                   {step.condition === "no_reply" ? "no reply" : "always"} ·{" "}
                                   <span className="text-white">{step.template_name}</span>
+                                  {step.flow_id && <span className="text-cyan-400"> · flow</span>}
                                 </span>
                                 <span className="shrink-0 text-seal-bright">
                                   {step.sent_count} sent
