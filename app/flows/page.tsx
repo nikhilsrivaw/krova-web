@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy } from "lucide-react";
+import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy, X, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -63,6 +63,98 @@ const EXAMPLE_FLOW_JSON = {
   ],
 };
 
+// The guided builder's own field types, each mapped to the real Meta Flow
+// JSON component it compiles into - confirmed against Meta's own Flow
+// component reference, the same components the vertical templates above
+// already use. Deliberately narrow (the common structured-form case) -
+// anything needing branching, images, or multiple screens still goes
+// through "Paste JSON" (build it in Meta's own Flow Builder, paste the
+// result here), not reinvented here.
+type BuilderFieldType = "text" | "phone" | "email" | "number" | "paragraph" | "date" | "choose_one" | "choose_list";
+
+const FIELD_TYPE_LABEL: Record<BuilderFieldType, string> = {
+  text: "Short answer",
+  phone: "Phone number",
+  email: "Email",
+  number: "Number",
+  paragraph: "Paragraph",
+  date: "Date",
+  choose_one: "Choose one",
+  choose_list: "Choose from a list",
+};
+
+type BuilderField = {
+  key: string; // React list key only, not sent anywhere
+  type: BuilderFieldType;
+  label: string;
+  required: boolean;
+  options: string; // comma-separated, only used for choose_one/choose_list
+};
+
+function slug(text: string, fallback: string): string {
+  const s = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return s || fallback;
+}
+
+/** What the guided builder actually produces - real Meta Flow JSON, nothing KROVA-specific in the output. */
+function compileFlowJson(screenTitle: string, footerLabel: string, fields: BuilderField[]): Record<string, unknown> {
+  const screenId = slug(screenTitle, "screen").toUpperCase();
+  const usedNames = new Set<string>();
+  const formChildren: Record<string, unknown>[] = fields.map((f, i) => {
+    let name = slug(f.label, `field_${i + 1}`);
+    while (usedNames.has(name)) name = `${name}_${i + 1}`;
+    usedNames.add(name);
+
+    const base = { name, label: f.label || `Field ${i + 1}`, required: f.required };
+    switch (f.type) {
+      case "text":
+        return { type: "TextInput", "input-type": "text", ...base };
+      case "phone":
+        return { type: "TextInput", "input-type": "phone", ...base };
+      case "email":
+        return { type: "TextInput", "input-type": "email", ...base };
+      case "number":
+        return { type: "TextInput", "input-type": "number", ...base };
+      case "paragraph":
+        return { type: "TextArea", ...base };
+      case "date":
+        return { type: "DatePicker", ...base };
+      case "choose_one":
+      case "choose_list": {
+        const opts = f.options.split(",").map((o) => o.trim()).filter(Boolean);
+        const dataSource = opts.length > 0
+          ? opts.map((title, oi) => ({ id: `opt_${oi + 1}`, title }))
+          : [{ id: "opt_1", title: "Option 1" }];
+        return { type: f.type === "choose_one" ? "RadioButtonsGroup" : "Dropdown", "data-source": dataSource, ...base };
+      }
+    }
+  });
+
+  const payload: Record<string, string> = {};
+  for (const child of formChildren) {
+    const n = String(child.name);
+    payload[n] = `\${form.${n}}`;
+  }
+
+  formChildren.push({
+    type: "Footer",
+    label: footerLabel || "Submit",
+    "on-click-action": { name: "complete", payload },
+  });
+
+  return {
+    version: "5.0",
+    screens: [
+      {
+        id: screenId,
+        title: screenTitle || "Screen",
+        terminal: true,
+        layout: { type: "SingleColumnLayout", children: [{ type: "Form", name: "form", children: formChildren }] },
+      },
+    ],
+  };
+}
+
 export default function FlowsPage() {
   const [flowList, setFlowList] = useState<WhatsAppFlow[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -77,6 +169,19 @@ export default function FlowsPage() {
   const [flowJsonText, setFlowJsonText] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Guided builder - Meta's real Flow JSON underneath (compileFlowJson
+  // above), just no need to leave KROVA or hand-write JSON for the common
+  // single-screen structured-form case. "Paste JSON" stays for anything
+  // this doesn't cover (branching, multiple screens, images).
+  const [builderMode, setBuilderMode] = useState<"guided" | "json">("guided");
+  const [builderFields, setBuilderFields] = useState<BuilderField[]>([
+    { key: "f0", type: "text", label: "Full name", required: true, options: "" },
+    { key: "f1", type: "phone", label: "Phone number", required: true, options: "" },
+  ]);
+  const [footerLabel, setFooterLabel] = useState("Submit");
+  const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const nextFieldKey = React.useRef(2);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
@@ -118,6 +223,14 @@ export default function FlowsPage() {
     setCategories([]);
     setFlowJsonText("");
     setCreateError(null);
+    setBuilderMode("guided");
+    setBuilderFields([
+      { key: "f0", type: "text", label: "Full name", required: true, options: "" },
+      { key: "f1", type: "phone", label: "Phone number", required: true, options: "" },
+    ]);
+    nextFieldKey.current = 2;
+    setFooterLabel("Submit");
+    setShowJsonPreview(false);
     setIsCreateOpen(true);
   };
 
@@ -129,19 +242,60 @@ export default function FlowsPage() {
     setName(tpl.name);
     setCategories(tpl.categories);
     setFlowJsonText(JSON.stringify(tpl.flow_json, null, 2));
+    // A pre-built template is already-authored JSON, not guided-builder
+    // fields to reverse-engineer - switches to Paste JSON so what's about
+    // to be created matches what's shown.
+    setBuilderMode("json");
     setCreateError(null);
+  };
+
+  const addField = (type: BuilderFieldType) => {
+    const key = `f${nextFieldKey.current++}`;
+    setBuilderFields((prev) => [...prev, { key, type, label: "", required: true, options: "" }]);
+  };
+
+  const updateField = (key: string, patch: Partial<BuilderField>) => {
+    setBuilderFields((prev) => prev.map((f) => (f.key === key ? { ...f, ...patch } : f)));
+  };
+
+  const removeField = (key: string) => {
+    setBuilderFields((prev) => prev.filter((f) => f.key !== key));
+  };
+
+  const moveField = (index: number, direction: -1 | 1) => {
+    setBuilderFields((prev) => {
+      const next = [...prev];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
+
     let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(flowJsonText);
-    } catch {
-      setCreateError("That isn't valid JSON - check for a missing comma or bracket.");
-      return;
+    if (builderMode === "guided") {
+      if (builderFields.length === 0) {
+        setCreateError("Add at least one field.");
+        return;
+      }
+      if (builderFields.some((f) => !f.label.trim())) {
+        setCreateError("Every field needs a label.");
+        return;
+      }
+      parsed = compileFlowJson(name, footerLabel, builderFields);
+    } else {
+      try {
+        parsed = JSON.parse(flowJsonText);
+      } catch {
+        setCreateError("That isn't valid JSON - check for a missing comma or bracket.");
+        return;
+      }
     }
+
     setIsCreating(true);
     try {
       const created = await flowsApi.create({ name, categories, flow_json: parsed });
@@ -292,9 +446,24 @@ export default function FlowsPage() {
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
           title="New Flow"
-          subtitle="Paste Flow JSON authored in Meta's Flow Builder (Business Manager -> WhatsApp Manager -> Flows). This creates it in DRAFT - you publish separately once it validates clean."
+          subtitle="Build it here, or paste Flow JSON authored in Meta's own Flow Builder (Business Manager -> WhatsApp Manager -> Flows). Either way this creates it in DRAFT - you publish separately once it validates clean."
         >
           <form onSubmit={handleCreate} className="space-y-4">
+            <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
+              {(["guided", "json"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setBuilderMode(mode)}
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-all ${
+                    builderMode === mode ? "bg-brass text-[#14151F]" : "text-os-text-dim hover:text-white"
+                  }`}
+                >
+                  {mode === "guided" ? "Build a form" : "Paste JSON"}
+                </button>
+              ))}
+            </div>
+
             {templates.length > 0 && (
               <div>
                 <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
@@ -338,23 +507,114 @@ export default function FlowsPage() {
                 ))}
               </div>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-mono uppercase text-os-text-dim">Flow JSON</label>
+            {builderMode === "json" ? (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-mono uppercase text-os-text-dim">Flow JSON</label>
+                  <button
+                    type="button"
+                    onClick={() => setFlowJsonText(JSON.stringify(EXAMPLE_FLOW_JSON, null, 2))}
+                    className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" /> Load example
+                  </button>
+                </div>
+                <textarea
+                  required rows={10} value={flowJsonText} onChange={(e) => setFlowJsonText(e.target.value)}
+                  placeholder="{ ... }"
+                  className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-[11px] font-mono text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">Fields</label>
+                  <div className="space-y-2">
+                    {builderFields.map((field, i) => (
+                      <div key={field.key} className="p-2.5 rounded-lg bg-black/30 border border-white/[0.08] space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={field.label}
+                            onChange={(e) => updateField(field.key, { label: e.target.value })}
+                            placeholder="Field label, e.g. Full name"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                          />
+                          <select
+                            value={field.type}
+                            onChange={(e) => updateField(field.key, { type: e.target.value as BuilderFieldType })}
+                            className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                          >
+                            {(Object.keys(FIELD_TYPE_LABEL) as BuilderFieldType[]).map((t) => (
+                              <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
+                            ))}
+                          </select>
+                          <button type="button" onClick={() => moveField(i, -1)} disabled={i === 0}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button type="button" onClick={() => moveField(i, 1)} disabled={i === builderFields.length - 1}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                          <button type="button" onClick={() => removeField(field.key)}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 cursor-pointer">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim cursor-pointer">
+                            <input type="checkbox" checked={field.required} onChange={(e) => updateField(field.key, { required: e.target.checked })} />
+                            Required
+                          </label>
+                          {(field.type === "choose_one" || field.type === "choose_list") && (
+                            <input
+                              type="text"
+                              value={field.options}
+                              onChange={(e) => updateField(field.key, { options: e.target.value })}
+                              placeholder="Options, comma separated"
+                              className="flex-1 px-2.5 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {(Object.keys(FIELD_TYPE_LABEL) as BuilderFieldType[]).map((t) => (
+                      <button
+                        key={t} type="button" onClick={() => addField(t)}
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-[11px] text-os-text-dim hover:text-white cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" /> {FIELD_TYPE_LABEL[t]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Submit button text</label>
+                  <input
+                    type="text" maxLength={20} value={footerLabel} onChange={(e) => setFooterLabel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setFlowJsonText(JSON.stringify(EXAMPLE_FLOW_JSON, null, 2))}
-                  className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                  onClick={() => setShowJsonPreview((v) => !v)}
+                  className="text-[11px] text-os-text-dim hover:text-white flex items-center gap-1 cursor-pointer"
                 >
-                  <Copy className="w-3 h-3" /> Load example
+                  {showJsonPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  {showJsonPreview ? "Hide" : "Preview"} the real Flow JSON this builds
                 </button>
+                {showJsonPreview && (
+                  <pre className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-[10px] font-mono text-os-text-dim overflow-x-auto max-h-64 overflow-y-auto">
+                    {JSON.stringify(compileFlowJson(name, footerLabel, builderFields), null, 2)}
+                  </pre>
+                )}
               </div>
-              <textarea
-                required rows={10} value={flowJsonText} onChange={(e) => setFlowJsonText(e.target.value)}
-                placeholder="{ ... }"
-                className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-[11px] font-mono text-white focus:border-brass focus:outline-none"
-              />
-            </div>
+            )}
             {createError && <p className="text-xs text-red-400">{createError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setIsCreateOpen(false)} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
