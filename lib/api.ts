@@ -1078,6 +1078,13 @@ export type CampaignRequest = {
   variable_mapping?: string[];
   /** Present only when template_name is a carousel template - one entry per card. */
   carousel_cards?: CampaignCardRequest[];
+  /**
+   * Only meaningful when template_name is a template with a FLOW-type
+   * button, created that way in Meta's own WhatsApp Manager - which
+   * published Flow it opens is set there, not auto-detected here, so a
+   * business names it explicitly to keep the two associated.
+   */
+  flow_id?: string;
 };
 
 export type RecipientPreview = {
@@ -1109,6 +1116,7 @@ export type Campaign = {
   audience_label: string;
   status: "draft" | "sending" | "sent" | "paused" | "failed";
   template_name: string | null;
+  flow_id: string | null;
   category: string | null;
   recipients: number;
   sent_count: number;

@@ -20,6 +20,7 @@ import {
   campaigns,
   templates,
   crm,
+  flows as flowsApi,
   type AudienceSegment,
   type AudienceKey,
   type CampaignPreview,
@@ -27,6 +28,7 @@ import {
   type CampaignStep,
   type CampaignStepRequest,
   type Template,
+  type WhatsAppFlow,
 } from "@/lib/api";
 
 /** The {{placeholders}} in one card's body text, in order, without duplicates - mirrors variables_in() on the backend. */
@@ -68,6 +70,13 @@ export default function CampaignsPage() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  // Only meaningful when the chosen template has a FLOW-type button
+  // (created that way in Meta's own WhatsApp Manager) - which Flow it
+  // opens is set there, not detected here, so it's named explicitly.
+  const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
+  const [attachFlow, setAttachFlow] = useState(false);
+  const [selectedFlowId, setSelectedFlowId] = useState<string>("");
+
   // Follow-up steps - a drip sequence is the campaign's own template (sent
   // immediately, unchanged from before) plus zero or more of these, each
   // added to the campaign right after it's created and before it's sent.
@@ -88,11 +97,12 @@ export default function CampaignsPage() {
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const [audRes, tplRes, campRes, tagRes] = await Promise.allSettled([
+    const [audRes, tplRes, campRes, tagRes, flowRes] = await Promise.allSettled([
       campaigns.audiences(),
       templates.list(),
       campaigns.list(),
       crm.allTags(),
+      flowsApi.list(),
     ]);
 
     if (audRes.status === "fulfilled") {
@@ -115,6 +125,7 @@ export default function CampaignsPage() {
     }
     if (campRes.status === "fulfilled") setPastCampaigns(campRes.value);
     if (tagRes.status === "fulfilled") setAvailableTags(tagRes.value);
+    if (flowRes.status === "fulfilled") setPublishedFlows(flowRes.value.filter((f) => f.status === "PUBLISHED"));
 
     const failed = [audRes, tplRes, campRes].find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
@@ -256,6 +267,7 @@ export default function CampaignsPage() {
         template_language: selectedTemplate.language,
         variable_mapping: variableMapping,
         carousel_cards: carouselCardsPayload,
+        flow_id: attachFlow && selectedFlowId ? selectedFlowId : undefined,
       });
       // Attach follow-up steps before the first send goes out - step 0
       // (above) is unaffected either way, but a step can only be added
@@ -401,6 +413,34 @@ export default function CampaignsPage() {
                   </select>
                 )}
               </div>
+
+              {/* Optional: this template has a FLOW-type button attached to a
+                  published flow (set up in Meta's own WhatsApp Manager) - name
+                  which flow it opens so a completion can be matched back. */}
+              {publishedFlows.length > 0 && (
+                <div>
+                  <label className="flex items-center gap-2 text-[11px] text-os-text-dim cursor-pointer mb-1.5">
+                    <input
+                      type="checkbox"
+                      checked={attachFlow}
+                      onChange={(e) => { setAttachFlow(e.target.checked); if (!e.target.checked) setSelectedFlowId(""); }}
+                    />
+                    This template has a Flow button - open a WhatsApp Flow
+                  </label>
+                  {attachFlow && (
+                    <select
+                      value={selectedFlowId}
+                      onChange={(e) => setSelectedFlowId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    >
+                      <option value="">Choose the flow this button opens...</option>
+                      {publishedFlows.map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
               {/* Step 4: Variable mapping - which recipient field fills each {{n}} */}
               {selectedTemplate && variableMapping.length > 0 && (
@@ -755,6 +795,12 @@ export default function CampaignsPage() {
                 <p className="opacity-90">
                   Plus <strong>{draftSteps.length} follow-up step{draftSteps.length > 1 ? "s" : ""}</strong> scheduled
                   automatically - each only to whoever still matches this audience and hasn&apos;t replied, if set that way.
+                </p>
+              )}
+              {attachFlow && selectedFlowId && (
+                <p className="opacity-90">
+                  Opens the flow <strong>{publishedFlows.find((f) => f.id === selectedFlowId)?.name}</strong> for
+                  anyone who taps the template&apos;s Flow button.
                 </p>
               )}
             </div>
