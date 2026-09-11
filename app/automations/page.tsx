@@ -15,7 +15,7 @@ import {
   type WhatsAppFlow,
 } from "@/lib/api";
 
-/** Same check as app/flows/page.tsx and app/campaigns/page.tsx's own usesLiveData. */
+/** Same check as components/whatsapp/FlowsPanel.tsx and app/campaigns/page.tsx's own usesLiveData. */
 function usesLiveData(flow: WhatsAppFlow): boolean {
   try {
     return JSON.stringify(flow.flow_json).includes('"data":');
@@ -80,7 +80,7 @@ export default function AutomationsPage() {
   }, []);
 
   const selectedFlow = publishedFlows.find((f) => f.id === flowId) || null;
-  // Best-effort guess at the entry screen id, same as the /flows page's own send modal.
+  // Best-effort guess at the entry screen id, same as FlowsPanel's own send modal.
   const flowScreen = (() => {
     const screens = (selectedFlow?.flow_json as { screens?: { id?: string }[] } | undefined)?.screens;
     return screens?.[0]?.id || "";

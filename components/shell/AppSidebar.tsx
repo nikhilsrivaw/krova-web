@@ -25,7 +25,6 @@ import {
   Radar,
   Package,
   Building2,
-  Workflow,
   Clock,
   FileCheck2,
   Siren,
@@ -120,13 +119,6 @@ export function AppSidebar({
       icon: PhoneCall,
       accent: "text-cyan-400",
       shortcut: "G V",
-    },
-    {
-      label: "Flows",
-      href: "/flows",
-      icon: Workflow,
-      accent: "text-seal-bright",
-      shortcut: "G F",
     },
     {
       label: "Automations",

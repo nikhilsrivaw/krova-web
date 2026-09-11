@@ -33,7 +33,7 @@ import {
 
 /**
  * Whether a flow needs KROVA's own live-data endpoint enabled before it'll
- * actually work (same check as app/flows/page.tsx's own usesLiveData) -
+ * actually work (same check as components/whatsapp/FlowsPanel.tsx's own usesLiveData) -
  * attaching one of these to a campaign still requires "Enable live data"
  * to have been turned on for it separately, on the Flows page, once.
  */

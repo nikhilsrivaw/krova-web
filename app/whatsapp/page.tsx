@@ -45,6 +45,7 @@ import {
 } from "@/lib/api";
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
 import { CarouselTemplateModal } from "@/components/whatsapp/CarouselTemplateModal";
+import { FlowsPanel } from "@/components/whatsapp/FlowsPanel";
 
 const TIER_LABELS: Record<string, string> = {
   TIER_250: "250/day",
@@ -53,7 +54,7 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 export default function WhatsAppPage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose" | "flows">("overview");
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -511,6 +512,7 @@ export default function WhatsAppPage() {
             { key: "overview", label: "Connection & Health" },
             { key: "templates", label: `Meta Templates (${templateList.length})` },
             { key: "compose", label: "24h Window & Direct Send" },
+            { key: "flows", label: "Flows" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -1028,6 +1030,8 @@ export default function WhatsAppPage() {
             </GlassCard>
           </div>
         )}
+
+        {activeTab === "flows" && <FlowsPanel />}
 
         <CarouselTemplateModal
           isOpen={isCarouselModalOpen}
