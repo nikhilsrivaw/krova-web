@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -23,6 +23,7 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   demo_request: { label: "Demo Request", icon: Video, badge: "indigo" },
   pricing_question: { label: "Pricing Question", icon: Tag, badge: "purple" },
   competitor_mention: { label: "Competitor Mentioned", icon: Swords, badge: "rose" },
+  escalation_rate: { label: "Escalation Rate", icon: PhoneOff, badge: "rose" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {

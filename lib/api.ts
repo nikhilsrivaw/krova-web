@@ -1745,7 +1745,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention" | "escalation_rate";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {

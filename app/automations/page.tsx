@@ -233,6 +233,11 @@ export default function AutomationsPage() {
                     placeholder="Thanks for reaching out - we'll get right back to you."
                     className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
                   />
+                  {trigger === "call.completed" && (
+                    <p className="text-[11px] text-os-text-dim mt-1.5">
+                      Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about this call.
+                    </p>
+                  )}
                 </div>
               )}
 
