@@ -2152,6 +2152,12 @@ export const flows = {
 
   publish: (id: string) => api.post<WhatsAppFlow>(`/flows/${id}/publish`),
 
+  // Beta - points this flow at KROVA's own data_exchange endpoint, so a
+  // screen can show real data (today: real open appointment slots)
+  // instead of a fixed set of options. See services/api/routers/
+  // flow_exchange.py.
+  enableLiveData: (id: string) => api.post<{ enabled: boolean }>(`/flows/${id}/enable-live-data`),
+
   send: (
     id: string,
     data: { customer_id: string; body: string; screen: string; cta: string; data?: Record<string, unknown>; draft?: boolean },

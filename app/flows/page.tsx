@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy, X, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
+import { Workflow, Plus, Send, Rocket, AlertTriangle, Copy, X, ArrowUp, ArrowDown, Eye, EyeOff, Zap } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -184,6 +184,8 @@ export default function FlowsPage() {
   const nextFieldKey = React.useRef(2);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [enablingLiveDataId, setEnablingLiveDataId] = useState<string | null>(null);
+  const [liveDataEnabledIds, setLiveDataEnabledIds] = useState<Set<string>>(new Set());
 
   const [sendTarget, setSendTarget] = useState<WhatsAppFlow | null>(null);
   const [sendCustomerId, setSendCustomerId] = useState("");
@@ -321,6 +323,19 @@ export default function FlowsPage() {
     }
   };
 
+  const handleEnableLiveData = async (flow: WhatsAppFlow) => {
+    setActionError(null);
+    setEnablingLiveDataId(flow.id);
+    try {
+      await flowsApi.enableLiveData(flow.id);
+      setLiveDataEnabledIds((prev) => new Set(prev).add(flow.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not enable live data for this flow.");
+    } finally {
+      setEnablingLiveDataId(null);
+    }
+  };
+
   const openSend = (flow: WhatsAppFlow) => {
     setSendTarget(flow);
     setSendCustomerId("");
@@ -424,6 +439,25 @@ export default function FlowsPage() {
                       >
                         <Rocket className="w-3.5 h-3.5" />
                         {publishingId === flow.id ? "Publishing..." : "Publish"}
+                      </button>
+                    )}
+                    {/* Beta: only flows with more than one screen have any
+                        real use for a data_exchange endpoint - a static
+                        single-screen flow has nothing dynamic to fetch. */}
+                    {((flow.flow_json as { screens?: unknown[] })?.screens?.length ?? 0) > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleEnableLiveData(flow)}
+                        disabled={enablingLiveDataId === flow.id}
+                        title="Point this flow at KROVA's own data endpoint, so a later screen can show real data (Beta)"
+                        className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        {enablingLiveDataId === flow.id
+                          ? "Enabling..."
+                          : liveDataEnabledIds.has(flow.id)
+                          ? "Live data on"
+                          : "Enable live data (Beta)"}
                       </button>
                     )}
                     <button
