@@ -998,9 +998,13 @@ export type AutomationCondition = {
   value: string | number | boolean;
 };
 
-export type AutomationRule = {
-  id: string;
-  trigger_type: AutomationTrigger;
+// One action in a rule's chain - a rule holds an ordered list of these
+// (position is the array index, not a field on the object). Each step is
+// independently gated by its own optional condition and optional delay;
+// there is no branching - a step whose condition doesn't hold is skipped,
+// the rest of the chain still runs. See shared/db/models/integrations.py::
+// AutomationStep's own docstring for why that's deliberate.
+export type AutomationStepConfig = {
   action_type: AutomationAction;
   /**
    * whatsapp_followup: {message}. create_escalation_task: {reason}.
@@ -1008,19 +1012,24 @@ export type AutomationRule = {
    * place_call: {reason}. send_sms: {message}. send_email: {subject, body}.
    */
   action_config: Record<string, string>;
+  // null/omitted = this step always runs. See CONDITION_FIELDS above for
+  // what `field` may be, per the rule's own trigger_type.
+  condition?: AutomationCondition | null;
+  // null/omitted = runs immediately (or, for step 2+, right after the
+  // previous step). Set so this step waits this many seconds first.
+  delay_seconds?: number | null;
+};
+
+export type AutomationRule = {
+  id: string;
+  trigger_type: AutomationTrigger;
   is_active: boolean;
   // null/omitted = fires for any channel - the original, unfiltered
   // behaviour. Set to one channel so a rule authored with e.g. WhatsApp
   // in mind doesn't also fire on every utterance of a live voice call -
   // message.received fires identically for both (and Instagram, email).
   channel?: AutomationChannel | null;
-  // null/omitted = the step always runs, today's original behaviour. Set
-  // so the rule only fires when its one condition holds - see
-  // CONDITION_FIELDS above for what `field` may be, per trigger_type.
-  condition?: AutomationCondition | null;
-  // null/omitted = runs immediately, today's original behaviour. Set so
-  // the rule waits this many seconds after the trigger before it fires.
-  delay_seconds?: number | null;
+  steps: AutomationStepConfig[];
 };
 
 // Old names kept as aliases - PostCallRulesTab (the /voice page's own,
@@ -1034,24 +1043,18 @@ export const postCallRules = {
 
   create: (data: {
     trigger_type: AutomationTrigger;
-    action_type: AutomationAction;
-    action_config: Record<string, string>;
     is_active?: boolean;
     channel?: AutomationChannel | null;
-    condition?: AutomationCondition | null;
-    delay_seconds?: number | null;
+    steps: AutomationStepConfig[];
   }) => api.post<AutomationRule>("/post-call-rules", data),
 
   update: (
     id: string,
     data: {
       trigger_type: AutomationTrigger;
-      action_type: AutomationAction;
-      action_config: Record<string, string>;
       is_active: boolean;
       channel?: AutomationChannel | null;
-      condition?: AutomationCondition | null;
-      delay_seconds?: number | null;
+      steps: AutomationStepConfig[];
     },
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 

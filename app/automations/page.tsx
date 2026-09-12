@@ -11,6 +11,7 @@ import {
   flows as flowsApi,
   CONDITION_FIELDS,
   type AutomationRule,
+  type AutomationStepConfig,
   type AutomationTrigger,
   type AutomationAction,
   type AutomationChannel,
@@ -142,6 +143,13 @@ export default function AutomationsPage() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [trigger, setTrigger] = useState<AutomationTrigger>("message.received");
+  // Steps already staged for the rule being created (position order).
+  // The fields below (action/textConfig/condition*/delay*) describe the
+  // ONE step currently being built - "+ Add another step" pushes it in
+  // here and clears them for the next one; "Save rule" saves this list
+  // plus whatever's currently filled in, so the common single-step case
+  // needs no extra click.
+  const [steps, setSteps] = useState<AutomationStepConfig[]>([]);
   const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
   // "" = any channel (the default, unfiltered) - a real dropdown value,
   // not left implicit, since leaving it invisible is exactly what let a
@@ -188,10 +196,11 @@ export default function AutomationsPage() {
     return screens?.[0]?.id || "";
   })();
 
-  const resetForm = () => {
-    setTrigger("message.received");
+  // Clears only the "current step being built" fields - not trigger/
+  // channel (rule-level, shared across every step) and not `steps`
+  // itself (the already-staged ones stay put).
+  const resetStepDraft = () => {
     setAction("whatsapp_followup");
-    setChannel("");
     setConditionEnabled(false);
     setConditionField("");
     setConditionOperator("equals");
@@ -204,6 +213,13 @@ export default function AutomationsPage() {
     setFlowId("");
     setFlowBody("Please fill this in:");
     setFlowCta("Open");
+  };
+
+  const resetForm = () => {
+    setTrigger("message.received");
+    setChannel("");
+    setSteps([]);
+    resetStepDraft();
     setSaveError(null);
   };
 
@@ -269,17 +285,50 @@ export default function AutomationsPage() {
     return null;
   };
 
-  const handleCreate = async () => {
-    const config = buildConfig();
+  // Combines the current step-builder fields into one step object.
+  // null = nothing entered for this step (no action config filled) -
+  // not an error, just "no more steps to add". undefined = actively
+  // invalid (a condition or delay was started but left incomplete) ->
+  // blocks saving/adding rather than silently dropping it.
+  const buildStep = (): AutomationStepConfig | null | undefined => {
     const condition = buildCondition();
     const delaySeconds = buildDelaySeconds();
-    if (!config || condition === undefined || delaySeconds === undefined) return;
+    if (condition === undefined || delaySeconds === undefined) return undefined;
+    const config = buildConfig();
+    if (!config) return null;
+    return { action_type: action, action_config: config, condition, delay_seconds: delaySeconds };
+  };
+
+  // The full step list this rule would save right now: everything
+  // already staged in `steps`, plus the current step-builder fields if
+  // they form a complete step. undefined = block saving entirely (either
+  // an actively invalid draft, or nothing valid to save at all).
+  const buildFinalSteps = (): AutomationStepConfig[] | undefined => {
+    const draft = buildStep();
+    if (draft === undefined) return undefined;
+    const combined = draft ? [...steps, draft] : steps;
+    return combined.length > 0 ? combined : undefined;
+  };
+
+  const handleAddStep = () => {
+    const draft = buildStep();
+    if (!draft) return;
+    setSteps((prev) => [...prev, draft]);
+    resetStepDraft();
+  };
+
+  const removeStep = (index: number) => {
+    setSteps((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreate = async () => {
+    const finalSteps = buildFinalSteps();
+    if (!finalSteps) return;
     setIsSaving(true);
     setSaveError(null);
     try {
       const created = await postCallRules.create({
-        trigger_type: trigger, action_type: action, action_config: config,
-        channel: channel || null, condition, delay_seconds: delaySeconds,
+        trigger_type: trigger, channel: channel || null, steps: finalSteps,
       });
       setRules((prev) => [...prev, created]);
       resetForm();
@@ -292,17 +341,14 @@ export default function AutomationsPage() {
   };
 
   const handleToggle = async (rule: AutomationRule) => {
-    // PATCH replaces the whole rule server-side, not a partial merge - omitting
-    // channel, condition, or delay_seconds here would silently reset any of
-    // them back to "any"/none/immediate every time a rule is toggled on/off.
+    // PATCH replaces the whole rule server-side, not a partial merge -
+    // resend the rule's own steps/channel unchanged so toggling active/
+    // inactive doesn't silently wipe either.
     const updated = await postCallRules.update(rule.id, {
       trigger_type: rule.trigger_type,
-      action_type: rule.action_type,
-      action_config: rule.action_config,
       is_active: !rule.is_active,
       channel: rule.channel ?? null,
-      condition: rule.condition ?? null,
-      delay_seconds: rule.delay_seconds ?? null,
+      steps: rule.steps,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
   };
@@ -312,15 +358,26 @@ export default function AutomationsPage() {
     setRules((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const ruleSummary = (rule: AutomationRule): string => {
-    if (rule.action_type === "send_flow") {
-      const flow = publishedFlows.find((f) => f.id === rule.action_config.flow_id);
-      return `Flow: ${flow?.name || rule.action_config.flow_id}`;
+  const stepSummary = (step: AutomationStepConfig): string => {
+    if (step.action_type === "send_flow") {
+      const flow = publishedFlows.find((f) => f.id === step.action_config.flow_id);
+      return `Flow: ${flow?.name || step.action_config.flow_id}`;
     }
-    if (rule.action_type === "send_email") {
-      return rule.action_config.subject || "";
+    if (step.action_type === "send_email") {
+      return step.action_config.subject || "";
     }
-    return rule.action_config.message || rule.action_config.reason || rule.action_config.tag || "";
+    return step.action_config.message || step.action_config.reason || step.action_config.tag || "";
+  };
+
+  const stepConditionDelaySuffix = (step: AutomationStepConfig): string => {
+    const parts: string[] = [];
+    if (step.condition) {
+      parts.push(
+        `only when ${FIELD_LABEL[step.condition.field] ?? step.condition.field} ${OPERATOR_LABEL[step.condition.operator] ?? step.condition.operator} "${String(step.condition.value)}"`,
+      );
+    }
+    if (step.delay_seconds) parts.push(`waits ${formatDelay(step.delay_seconds)} first`);
+    return parts.join(", ");
   };
 
   return (
@@ -387,7 +444,9 @@ export default function AutomationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Then</label>
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
+                    {steps.length > 0 ? `Then (step ${steps.length + 1})` : "Then"}
+                  </label>
                   <select
                     value={action}
                     onChange={(e) => {
@@ -420,6 +479,37 @@ export default function AutomationsPage() {
                       <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {steps.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
+                    Steps already added
+                  </label>
+                  {steps.map((s, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs text-white truncate">
+                          {i + 1}. {ACTION_LABEL[s.action_type]}
+                          {stepSummary(s) && <span className="text-os-text-dim"> - {stepSummary(s)}</span>}
+                        </p>
+                        {stepConditionDelaySuffix(s) && (
+                          <p className="text-[11px] text-cyan-400/80 truncate">{stepConditionDelaySuffix(s)}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeStep(i)}
+                        className="p-1 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 border border-white/[0.08] transition-all cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -693,10 +783,16 @@ export default function AutomationsPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleAddStep}
+                  disabled={!buildStep()}
+                  className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add another step
+                </button>
+                <button
+                  type="button"
                   onClick={handleCreate}
-                  disabled={
-                    isSaving || !buildConfig() || buildCondition() === undefined || buildDelaySeconds() === undefined
-                  }
+                  disabled={isSaving || !buildFinalSteps()}
                   className="px-4 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer"
                 >
                   {isSaving ? "Saving…" : "Save rule"}
@@ -731,22 +827,21 @@ export default function AutomationsPage() {
                     <p className="text-xs text-white">
                       <span className="text-os-text-dim">When </span>
                       {(TRIGGER_LABEL[rule.trigger_type] ?? rule.trigger_type).toLowerCase()}
-                      <span className="text-os-text-dim">, </span>
-                      {(ACTION_LABEL[rule.action_type] ?? rule.action_type).toLowerCase()}
                     </p>
-                    <p className="text-[11px] text-os-text-dim mt-0.5 truncate">{ruleSummary(rule)}</p>
-                    {rule.condition && (
-                      <p className="text-[11px] text-cyan-400/80 mt-0.5 truncate">
-                        Only when {FIELD_LABEL[rule.condition.field] ?? rule.condition.field}{" "}
-                        {OPERATOR_LABEL[rule.condition.operator] ?? rule.condition.operator}{" "}
-                        &quot;{String(rule.condition.value)}&quot;
-                      </p>
-                    )}
-                    {!!rule.delay_seconds && (
-                      <p className="text-[11px] text-amber-400/80 mt-0.5 truncate">
-                        Waits {formatDelay(rule.delay_seconds)} first
-                      </p>
-                    )}
+                    <div className="mt-1 space-y-1">
+                      {rule.steps.map((step, i) => (
+                        <div key={i}>
+                          <p className="text-[11px] text-white/90 truncate">
+                            {rule.steps.length > 1 && <span className="text-os-text-dim">{i + 1}. </span>}
+                            {ACTION_LABEL[step.action_type] ?? step.action_type}
+                            {stepSummary(step) && <span className="text-os-text-dim"> - {stepSummary(step)}</span>}
+                          </p>
+                          {stepConditionDelaySuffix(step) && (
+                            <p className="text-[11px] text-cyan-400/80 truncate">{stepConditionDelaySuffix(step)}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="default">

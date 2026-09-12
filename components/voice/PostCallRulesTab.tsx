@@ -65,8 +65,7 @@ export function PostCallRulesTab() {
     try {
       const created = await postCallRules.create({
         trigger_type: trigger,
-        action_type: action,
-        action_config: { [configKey]: configText.trim() },
+        steps: [{ action_type: action, action_config: { [configKey]: configText.trim() } }],
       });
       setRules((prev) => [...prev, created]);
       setConfigText("");
@@ -79,11 +78,14 @@ export function PostCallRulesTab() {
   };
 
   const handleToggle = async (rule: PostCallRule) => {
+    // PATCH replaces the whole rule server-side, not a partial merge -
+    // resend the rule's own steps unchanged so toggling active/inactive
+    // doesn't silently wipe them.
     const updated = await postCallRules.update(rule.id, {
       trigger_type: rule.trigger_type,
-      action_type: rule.action_type,
-      action_config: rule.action_config,
       is_active: !rule.is_active,
+      channel: rule.channel ?? null,
+      steps: rule.steps,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
   };
@@ -228,11 +230,16 @@ export function PostCallRulesTab() {
                     <span className="text-os-text-dim">When </span>
                     {TRIGGER_LABEL[rule.trigger_type]?.toLowerCase() ?? rule.trigger_type}
                     <span className="text-os-text-dim">, </span>
-                    {ACTION_LABEL[rule.action_type]?.toLowerCase() ?? rule.action_type}
+                    {ACTION_LABEL[rule.steps[0]?.action_type as VoiceAction]?.toLowerCase() ?? rule.steps[0]?.action_type}
                   </p>
                   <p className="text-[11px] text-os-text-dim mt-0.5 truncate">
-                    {rule.action_config.message || rule.action_config.reason}
+                    {rule.steps[0]?.action_config.message || rule.steps[0]?.action_config.reason}
                   </p>
+                  {rule.steps.length > 1 && (
+                    <p className="text-[11px] text-os-text-dim mt-0.5">
+                      +{rule.steps.length - 1} more step{rule.steps.length - 1 === 1 ? "" : "s"} - manage on the Automations page
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant={rule.is_active ? "emerald" : "amber"} dot>
