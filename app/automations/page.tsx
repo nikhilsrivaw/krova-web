@@ -9,10 +9,13 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   postCallRules,
   flows as flowsApi,
+  CONDITION_FIELDS,
   type AutomationRule,
   type AutomationTrigger,
   type AutomationAction,
   type AutomationChannel,
+  type AutomationCondition,
+  type AutomationOperator,
   type WhatsAppFlow,
 } from "@/lib/api";
 
@@ -75,6 +78,52 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   send_email: "Send an email",
 };
 
+// Human labels for the real, per-trigger_type condition fields
+// (CONDITION_FIELDS, lib/api.ts - mirrors shared/care/post_call_actions.py's
+// own allowlist). Only fields actually reachable from some trigger appear.
+const FIELD_LABEL: Record<string, string> = {
+  duration_seconds: "Call duration (seconds)",
+  outcome: "Call outcome",
+  sentiment: "Call sentiment",
+  escalated: "Call was escalated",
+  topic: "Call topic",
+  campaign_objective: "Campaign objective",
+  text: "Message text",
+  flow_id: "Flow",
+  starts_at: "Appointment time",
+  intake_channel: "Booking channel",
+  reason: "Reason",
+  shift: "Shift",
+  queue_number: "Queue number",
+  severity: "Severity",
+  title: "Signal title",
+  body: "Signal detail",
+};
+
+// How to render/parse each field's value - most conditions compare plain
+// text (contains/equals a string), a few are genuinely numeric or boolean.
+const FIELD_TYPE: Record<string, "text" | "number" | "boolean"> = {
+  duration_seconds: "number",
+  queue_number: "number",
+  escalated: "boolean",
+};
+
+const OPERATOR_LABEL: Record<AutomationOperator, string> = {
+  equals: "is",
+  not_equals: "is not",
+  contains: "contains",
+  greater_than: "is greater than",
+  less_than: "is less than",
+  greater_than_or_equal: "is at least",
+  less_than_or_equal: "is at most",
+};
+
+const TEXT_OPERATORS: AutomationOperator[] = ["equals", "not_equals", "contains"];
+const NUMBER_OPERATORS: AutomationOperator[] = [
+  "equals", "not_equals", "greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal",
+];
+const BOOLEAN_OPERATORS: AutomationOperator[] = ["equals"];
+
 export default function AutomationsPage() {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
@@ -88,6 +137,10 @@ export default function AutomationsPage() {
   // not left implicit, since leaving it invisible is exactly what let a
   // WhatsApp-authored rule fire on every utterance of a live voice call.
   const [channel, setChannel] = useState<AutomationChannel | "">("");
+  const [conditionEnabled, setConditionEnabled] = useState(false);
+  const [conditionField, setConditionField] = useState("");
+  const [conditionOperator, setConditionOperator] = useState<AutomationOperator>("equals");
+  const [conditionValue, setConditionValue] = useState("");
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
   const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
   const [flowId, setFlowId] = useState("");
@@ -126,12 +179,37 @@ export default function AutomationsPage() {
     setTrigger("message.received");
     setAction("whatsapp_followup");
     setChannel("");
+    setConditionEnabled(false);
+    setConditionField("");
+    setConditionOperator("equals");
+    setConditionValue("");
     setTextConfig("");
     setEmailSubject("");
     setFlowId("");
     setFlowBody("Please fill this in:");
     setFlowCta("Open");
     setSaveError(null);
+  };
+
+  const availableFields = CONDITION_FIELDS[trigger] ?? [];
+  const conditionFieldType = FIELD_TYPE[conditionField] ?? "text";
+  const conditionOperators =
+    conditionFieldType === "number" ? NUMBER_OPERATORS : conditionFieldType === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
+
+  const buildCondition = (): AutomationCondition | null | undefined => {
+    // undefined = invalid state (enabled but incomplete) -> block save,
+    // same contract as buildConfig() returning null.
+    if (!conditionEnabled) return null;
+    if (!conditionField || !conditionValue.trim()) return undefined;
+    if (conditionFieldType === "number") {
+      const n = Number(conditionValue);
+      if (Number.isNaN(n)) return undefined;
+      return { field: conditionField, operator: conditionOperator, value: n };
+    }
+    if (conditionFieldType === "boolean") {
+      return { field: conditionField, operator: conditionOperator, value: conditionValue === "true" };
+    }
+    return { field: conditionField, operator: conditionOperator, value: conditionValue.trim() };
   };
 
   const buildConfig = (): Record<string, string> | null => {
@@ -164,13 +242,14 @@ export default function AutomationsPage() {
 
   const handleCreate = async () => {
     const config = buildConfig();
-    if (!config) return;
+    const condition = buildCondition();
+    if (!config || condition === undefined) return;
     setIsSaving(true);
     setSaveError(null);
     try {
       const created = await postCallRules.create({
         trigger_type: trigger, action_type: action, action_config: config,
-        channel: channel || null,
+        channel: channel || null, condition,
       });
       setRules((prev) => [...prev, created]);
       resetForm();
@@ -184,7 +263,7 @@ export default function AutomationsPage() {
 
   const handleToggle = async (rule: AutomationRule) => {
     // PATCH replaces the whole rule server-side, not a partial merge - omitting
-    // channel here would silently reset an existing channel filter to "any"
+    // channel or condition here would silently reset either back to "any"/none
     // every time a rule is toggled on/off.
     const updated = await postCallRules.update(rule.id, {
       trigger_type: rule.trigger_type,
@@ -192,6 +271,7 @@ export default function AutomationsPage() {
       action_config: rule.action_config,
       is_active: !rule.is_active,
       channel: rule.channel ?? null,
+      condition: rule.condition ?? null,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
   };
@@ -261,6 +341,12 @@ export default function AutomationsPage() {
                       // once switched to one that's only ever one channel anyway
                       // (the picker disappears too) - don't silently carry it over.
                       if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
+                      // A condition field belongs to the OLD trigger's own
+                      // allowlist (CONDITION_FIELDS) - carrying it over to a
+                      // different trigger could silently point at a field
+                      // that trigger never even provides.
+                      setConditionField("");
+                      setConditionValue("");
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                   >
@@ -303,6 +389,72 @@ export default function AutomationsPage() {
                       <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {availableFields.length > 0 && (
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={conditionEnabled}
+                      onChange={(e) => {
+                        setConditionEnabled(e.target.checked);
+                        if (!e.target.checked) { setConditionField(""); setConditionValue(""); }
+                      }}
+                      className="cursor-pointer"
+                    />
+                    Only when...
+                  </label>
+                  {conditionEnabled && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <select
+                        value={conditionField}
+                        onChange={(e) => {
+                          setConditionField(e.target.value);
+                          setConditionOperator("equals");
+                          setConditionValue("");
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                      >
+                        <option value="">Choose a field...</option>
+                        {availableFields.map((f) => (
+                          <option key={f} value={f}>{FIELD_LABEL[f] ?? f}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={conditionOperator}
+                        onChange={(e) => setConditionOperator(e.target.value as AutomationOperator)}
+                        disabled={!conditionField}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                      >
+                        {conditionOperators.map((op) => (
+                          <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
+                        ))}
+                      </select>
+                      {conditionFieldType === "boolean" ? (
+                        <select
+                          value={conditionValue}
+                          onChange={(e) => setConditionValue(e.target.value)}
+                          disabled={!conditionField}
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                        >
+                          <option value="">Choose...</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </select>
+                      ) : (
+                        <input
+                          type={conditionFieldType === "number" ? "number" : "text"}
+                          value={conditionValue}
+                          onChange={(e) => setConditionValue(e.target.value)}
+                          disabled={!conditionField}
+                          placeholder="value"
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -479,7 +631,7 @@ export default function AutomationsPage() {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={isSaving || !buildConfig()}
+                  disabled={isSaving || !buildConfig() || buildCondition() === undefined}
                   className="px-4 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer"
                 >
                   {isSaving ? "Saving…" : "Save rule"}
@@ -518,6 +670,13 @@ export default function AutomationsPage() {
                       {(ACTION_LABEL[rule.action_type] ?? rule.action_type).toLowerCase()}
                     </p>
                     <p className="text-[11px] text-os-text-dim mt-0.5 truncate">{ruleSummary(rule)}</p>
+                    {rule.condition && (
+                      <p className="text-[11px] text-cyan-400/80 mt-0.5 truncate">
+                        Only when {FIELD_LABEL[rule.condition.field] ?? rule.condition.field}{" "}
+                        {OPERATOR_LABEL[rule.condition.operator] ?? rule.condition.operator}{" "}
+                        &quot;{String(rule.condition.value)}&quot;
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="default">

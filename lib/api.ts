@@ -963,6 +963,41 @@ export type AutomationAction =
 // already exports a plain list of these.
 export type AutomationChannel = "whatsapp" | "instagram" | "email" | "voice" | "web";
 
+export type AutomationOperator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "greater_than"
+  | "less_than"
+  | "greater_than_or_equal"
+  | "less_than_or_equal";
+
+// The real, per-trigger_type field allowlist a condition's `field` is
+// checked against server-side (shared/care/post_call_actions.py's own
+// CONDITION_FIELDS - kept in sync with it by hand, same as
+// WEBHOOK_EVENT_TYPES below already is with WebhookEventType).
+export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
+  "call.completed": ["duration_seconds", "outcome", "sentiment", "escalated", "topic"],
+  "call.voicemail": ["campaign_objective"],
+  "call.no_answer": ["campaign_objective"],
+  "message.received": ["text"],
+  "flow.completed": ["flow_id"],
+  "appointment.booked": ["starts_at", "intake_channel"],
+  "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
+  "escalation.raised": ["reason"],
+  "queue_token.issued": ["shift", "queue_number"],
+  "competitor.mentioned": ["severity", "title", "body"],
+  "churn_risk.detected": ["severity", "title", "body"],
+  "demo.requested": ["severity", "title", "body"],
+  "pricing_question.asked": ["severity", "title", "body"],
+};
+
+export type AutomationCondition = {
+  field: string;
+  operator: AutomationOperator;
+  value: string | number | boolean;
+};
+
 export type AutomationRule = {
   id: string;
   trigger_type: AutomationTrigger;
@@ -979,6 +1014,10 @@ export type AutomationRule = {
   // in mind doesn't also fire on every utterance of a live voice call -
   // message.received fires identically for both (and Instagram, email).
   channel?: AutomationChannel | null;
+  // null/omitted = the step always runs, today's original behaviour. Set
+  // so the rule only fires when its one condition holds - see
+  // CONDITION_FIELDS above for what `field` may be, per trigger_type.
+  condition?: AutomationCondition | null;
 };
 
 // Old names kept as aliases - PostCallRulesTab (the /voice page's own,
@@ -996,6 +1035,7 @@ export const postCallRules = {
     action_config: Record<string, string>;
     is_active?: boolean;
     channel?: AutomationChannel | null;
+    condition?: AutomationCondition | null;
   }) => api.post<AutomationRule>("/post-call-rules", data),
 
   update: (
@@ -1006,6 +1046,7 @@ export const postCallRules = {
       action_config: Record<string, string>;
       is_active: boolean;
       channel?: AutomationChannel | null;
+      condition?: AutomationCondition | null;
     },
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
