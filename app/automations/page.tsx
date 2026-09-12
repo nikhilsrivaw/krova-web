@@ -182,10 +182,15 @@ export default function AutomationsPage() {
   // complete, valid AutomationStepConfig. The one being actively edited
   // lives in the draft fields below instead, keyed by `openIndex`.
   const [steps, setSteps] = useState<AutomationStepConfig[]>([]);
-  // Which card is expanded for editing - an index into `steps` (editing
-  // that existing step) or exactly `steps.length` (composing a new one
-  // to append). null = every card collapsed, nothing being edited.
+  // Which position on the flow is expanded for editing - an index into
+  // `steps`. null = every node collapsed, nothing being edited. Two
+  // meanings depending on `isNewStep`: editing the existing step at that
+  // index (isNewStep false), or composing a brand new step to be
+  // inserted AT that index - any gap in the chain, not only the end
+  // (isNewStep true) - matching the "+" sits on the connecting line
+  // itself" pattern Zapier/n8n/Make all use for inserting mid-chain.
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [isNewStep, setIsNewStep] = useState(false);
 
   // The currently-open card's own fields.
   const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
@@ -265,6 +270,7 @@ export default function AutomationsPage() {
     setChannel("");
     setSteps([]);
     setOpenIndex(null);
+    setIsNewStep(false);
     loadDraft(undefined);
     setSaveError(null);
   };
@@ -280,6 +286,7 @@ export default function AutomationsPage() {
     setChannel(rule.channel ?? "");
     setSteps(rule.steps);
     setOpenIndex(null);
+    setIsNewStep(false);
     loadDraft(undefined);
     setSaveError(null);
     setBuilderOpen(true);
@@ -356,15 +363,21 @@ export default function AutomationsPage() {
     return { action_type: action, action_config: config, condition, delay_seconds: delaySeconds };
   };
 
-  const handleAddStepClick = () => {
+  // Opens a blank card to compose a brand new step, inserted at `at`
+  // (0..steps.length) once "Done" is clicked - any gap in the chain, not
+  // only the end, mirroring the "+ sits on the connecting line" pattern
+  // every real linear/flow builder (Zapier, n8n, Make) uses for this.
+  const handleInsertAt = (at: number) => {
     if (openIndex !== null) return; // one card open at a time
-    setOpenIndex(steps.length);
+    setOpenIndex(at);
+    setIsNewStep(true);
     loadDraft(undefined);
   };
 
   const handleOpenStep = (i: number) => {
     if (openIndex !== null) return;
     setOpenIndex(i);
+    setIsNewStep(false);
     loadDraft(steps[i]);
   };
 
@@ -372,23 +385,27 @@ export default function AutomationsPage() {
     const built = buildStep();
     if (!built || openIndex === null) return;
     setSteps((prev) => {
-      const next = [...prev];
-      if (openIndex < next.length) next[openIndex] = built;
-      else next.push(built);
-      return next;
+      if (isNewStep) {
+        const next = [...prev];
+        next.splice(openIndex, 0, built);
+        return next;
+      }
+      return prev.map((s, i) => (i === openIndex ? built : s));
     });
     setOpenIndex(null);
+    setIsNewStep(false);
     loadDraft(undefined);
   };
 
   const handleCancelStepEdit = () => {
     setOpenIndex(null);
+    setIsNewStep(false);
     loadDraft(undefined);
   };
 
   const removeStep = (index: number) => {
     setSteps((prev) => prev.filter((_, i) => i !== index));
-    if (openIndex === index) { setOpenIndex(null); loadDraft(undefined); }
+    if (openIndex === index) { setOpenIndex(null); setIsNewStep(false); loadDraft(undefined); }
     else if (openIndex !== null && openIndex > index) setOpenIndex(openIndex - 1);
   };
 
@@ -764,21 +781,66 @@ export default function AutomationsPage() {
     </div>
   );
 
-  // A collapsed step card - icon, summary, condition/delay badges, and
-  // its own edit/reorder/delete controls. Disabled (greyed, inert)
-  // whenever a different card is open, so only one is ever edited at once.
+  // One row of the flow: a node icon sitting on the connecting line (left
+  // rail) plus its content to the right. The rail column is what makes
+  // the whole stack read as one continuous line threading through every
+  // node, Zapier-editor style, rather than a bordered list.
+  const renderRailRow = (icon: React.ReactNode, iconTone: string, content: React.ReactNode, key: React.Key) => (
+    <div key={key} className="relative z-10 flex items-start gap-3">
+      <div className={`shrink-0 w-7 h-7 rounded-full border flex items-center justify-center ${iconTone}`}>
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1 pt-0.5">{content}</div>
+    </div>
+  );
+
+  // Renders gap position `at` (before the first step, between two
+  // steps, or after the last one) - either the "+" that sits directly on
+  // the connecting line to insert a new step exactly there (the one
+  // visual detail every real linear/flow builder shares in common:
+  // Zapier's own Zap editor, n8n, Make - confirmed by research before
+  // building this), or, if a new step is actively being composed for
+  // this exact gap, the open form in its place. Uniform for every gap,
+  // including before the very first step.
+  const renderGap = (at: number) => {
+    if (openIndex === at && isNewStep) {
+      return renderRailRow(
+        <Plus className="w-3 h-3" />,
+        "bg-cyan-500/15 border-cyan-500/40 text-cyan-400",
+        <div className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
+          <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">New step</p>
+          {renderStepForm()}
+        </div>,
+        `insert-form-${at}`,
+      );
+    }
+    if (openIndex !== null) return <div key={`gap-${at}`} className="h-3" />;
+    return (
+      <div key={`gap-${at}`} className="relative z-10 flex items-center h-6 -my-1">
+        <button
+          type="button"
+          onClick={() => handleInsertAt(at)}
+          title="Insert a step here"
+          className="shrink-0 w-5 h-5 ml-1 rounded-full bg-black/60 border border-white/20 hover:border-cyan-500 hover:bg-cyan-500/20 text-os-text-dim hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  };
+
+  // A collapsed step's own content (right side of its rail row) -
+  // summary, condition/delay badges, and its edit/reorder/delete
+  // controls. Disabled (greyed, inert) whenever a different node is
+  // open, so only one is ever edited at once.
   const renderCollapsedCard = (step: AutomationStepConfig, index: number, total: number) => {
-    const Icon = ACTION_ICON[step.action_type] ?? Zap;
     const locked = openIndex !== null;
     const summary = stepSummary(step, publishedFlows);
     return (
-      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-black/30 border border-white/[0.08]">
-        <div className="shrink-0 w-6 h-6 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-os-text-dim">
-          <Icon className="w-3 h-3" />
-        </div>
+      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08]">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-white truncate">
-            {total > 1 && <span className="text-os-text-dim">{index + 1}. </span>}
+            {total > 1 && <span className="text-os-text-dim">Step {index + 1}: </span>}
             {ACTION_LABEL[step.action_type] ?? step.action_type}
             {summary && <span className="text-os-text-dim"> - {summary}</span>}
           </p>
@@ -826,7 +888,7 @@ export default function AutomationsPage() {
           <button
             type="button"
             onClick={() => removeStep(index)}
-            disabled={locked && openIndex !== index}
+            disabled={locked}
             className="p-1 rounded-lg bg-white/[0.04] hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-red-400 transition-all cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />
@@ -874,79 +936,91 @@ export default function AutomationsPage() {
                 <p className="text-[11px] text-cyan-400/80">Editing an existing rule</p>
               )}
 
-              {/* Trigger header card */}
-              <div className="flex items-start gap-2.5">
-                <div className="shrink-0 w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <Zap className="w-3 h-3" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When</label>
-                    <select
-                      value={trigger}
-                      onChange={(e) => {
-                        const next = e.target.value as AutomationTrigger;
-                        setTrigger(next);
-                        // A channel chosen for an ambiguous trigger is meaningless
-                        // once switched to one that's only ever one channel anyway
-                        // (the picker disappears too) - don't silently carry it over.
-                        if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
-                      }}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                    >
-                      {(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => (
-                        <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && (
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">From channel</label>
-                      <select
-                        value={channel}
-                        onChange={(e) => setChannel(e.target.value as AutomationChannel | "")}
-                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                      >
-                        <option value="">Any channel</option>
-                        {(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => (
-                          <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
-                        ))}
-                      </select>
-                    </div>
+              {/*
+                The flow itself: one continuous vertical line (positioned
+                to pass through every node's center) with the trigger and
+                each step's icon sitting on top of it, breaking it into
+                segments - the same visual vocabulary Zapier's own Zap
+                editor, n8n, and Make all use for this, confirmed by
+                research before building this rather than guessed at.
+              */}
+              <div className="relative">
+                <div className="absolute left-[13px] top-3 bottom-3 w-0.5 bg-white/10" />
+                <div className="space-y-1">
+                  {renderRailRow(
+                    <Zap className="w-3 h-3" />,
+                    "bg-cyan-500/15 border-cyan-500/30 text-cyan-400",
+                    <div className="space-y-2 pb-1">
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When</label>
+                        <select
+                          value={trigger}
+                          onChange={(e) => {
+                            const next = e.target.value as AutomationTrigger;
+                            setTrigger(next);
+                            // A channel chosen for an ambiguous trigger is meaningless
+                            // once switched to one that's only ever one channel anyway
+                            // (the picker disappears too) - don't silently carry it over.
+                            if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
+                          }}
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                        >
+                          {(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => (
+                            <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && (
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">From channel</label>
+                          <select
+                            value={channel}
+                            onChange={(e) => setChannel(e.target.value as AutomationChannel | "")}
+                            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                          >
+                            <option value="">Any channel</option>
+                            {(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => (
+                              <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>,
+                    "trigger",
                   )}
+
+                  {/* Every gap (before step 1, between any two steps, after
+                      the last one) shows either the "+" insert point, or -
+                      if a new step is being composed for exactly this gap -
+                      the open form in its place. Uniform for every position,
+                      including before the very first step. */}
+                  {renderGap(0)}
+
+                  {steps.map((step, i) => {
+                    const Icon = ACTION_ICON[step.action_type] ?? Zap;
+                    const isOpenHere = openIndex === i && !isNewStep;
+                    return (
+                      <React.Fragment key={i}>
+                        {isOpenHere
+                          ? renderRailRow(
+                              <Icon className="w-3 h-3" />,
+                              "bg-cyan-500/15 border-cyan-500/40 text-cyan-400",
+                              <div className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
+                                {renderStepForm()}
+                              </div>,
+                              `step-${i}`,
+                            )
+                          : renderRailRow(
+                              <Icon className="w-3 h-3" />,
+                              "bg-white/[0.06] border-white/[0.1] text-os-text-dim",
+                              renderCollapsedCard(step, i, steps.length),
+                              `step-${i}`,
+                            )}
+                        {renderGap(i + 1)}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
-              </div>
-
-              {/* Step stack, connected by a vertical line under the trigger card */}
-              <div className="ml-3 pl-4 border-l-2 border-white/[0.08] space-y-2.5">
-                {steps.map((step, i) =>
-                  openIndex === i ? (
-                    <div key={i} className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
-                      {renderStepForm()}
-                    </div>
-                  ) : (
-                    <div key={i}>{renderCollapsedCard(step, i, steps.length)}</div>
-                  ),
-                )}
-
-                {openIndex === steps.length && (
-                  <div className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
-                    <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
-                      Step {steps.length + 1}
-                    </p>
-                    {renderStepForm()}
-                  </div>
-                )}
-
-                {openIndex === null && (
-                  <button
-                    type="button"
-                    onClick={handleAddStepClick}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-dashed border-white/[0.15] transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> {steps.length > 0 ? "Add another step" : "Add a step"}
-                  </button>
-                )}
               </div>
 
               {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
