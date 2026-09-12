@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Zap, Trash2, Plus } from "lucide-react";
+import {
+  Zap, Trash2, Plus, Pencil, Check, X, ChevronUp, ChevronDown,
+  MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail,
+  Filter, Clock,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -79,6 +84,16 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   send_email: "Send an email",
 };
 
+const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
+  whatsapp_followup: MessageSquare,
+  create_escalation_task: AlertTriangle,
+  add_tag: Tag,
+  send_flow: Workflow,
+  place_call: Phone,
+  send_sms: MessageCircle,
+  send_email: Mail,
+};
+
 // Human labels for the real, per-trigger_type condition fields
 // (CONDITION_FIELDS, lib/api.ts - mirrors shared/care/post_call_actions.py's
 // own allowlist). Only fields actually reachable from some trigger appear.
@@ -135,26 +150,45 @@ const NUMBER_OPERATORS: AutomationOperator[] = [
 ];
 const BOOLEAN_OPERATORS: AutomationOperator[] = ["equals"];
 
+const DELAY_UNIT_SECONDS: Record<"minutes" | "hours" | "days", number> = {
+  minutes: 60, hours: 3600, days: 86400,
+};
+
+const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[]): string => {
+  if (step.action_type === "send_flow") {
+    const flow = publishedFlows.find((f) => f.id === step.action_config.flow_id);
+    return `Flow: ${flow?.name || step.action_config.flow_id}`;
+  }
+  if (step.action_type === "send_email") {
+    return step.action_config.subject || "";
+  }
+  return step.action_config.message || step.action_config.reason || step.action_config.tag || "";
+};
+
 export default function AutomationsPage() {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [isCreating, setIsCreating] = useState(false);
+  // The builder: used both for "New rule" (editingRuleId null) and
+  // "Edit" on an existing one (editingRuleId set) - same card-stack UI
+  // either way, only what Save does at the end differs.
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [trigger, setTrigger] = useState<AutomationTrigger>("message.received");
-  // Steps already staged for the rule being created (position order).
-  // The fields below (action/textConfig/condition*/delay*) describe the
-  // ONE step currently being built - "+ Add another step" pushes it in
-  // here and clears them for the next one; "Save rule" saves this list
-  // plus whatever's currently filled in, so the common single-step case
-  // needs no extra click.
-  const [steps, setSteps] = useState<AutomationStepConfig[]>([]);
-  const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
-  // "" = any channel (the default, unfiltered) - a real dropdown value,
-  // not left implicit, since leaving it invisible is exactly what let a
-  // WhatsApp-authored rule fire on every utterance of a live voice call.
   const [channel, setChannel] = useState<AutomationChannel | "">("");
+  // Steps already committed into the stack (position order) - each is a
+  // complete, valid AutomationStepConfig. The one being actively edited
+  // lives in the draft fields below instead, keyed by `openIndex`.
+  const [steps, setSteps] = useState<AutomationStepConfig[]>([]);
+  // Which card is expanded for editing - an index into `steps` (editing
+  // that existing step) or exactly `steps.length` (composing a new one
+  // to append). null = every card collapsed, nothing being edited.
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  // The currently-open card's own fields.
+  const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
   const [conditionEnabled, setConditionEnabled] = useState(false);
   const [conditionField, setConditionField] = useState("");
   const [conditionOperator, setConditionOperator] = useState<AutomationOperator>("equals");
@@ -167,6 +201,7 @@ export default function AutomationsPage() {
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
   const [flowCta, setFlowCta] = useState("Open");
+
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -196,36 +231,64 @@ export default function AutomationsPage() {
     return screens?.[0]?.id || "";
   })();
 
-  // Clears only the "current step being built" fields - not trigger/
-  // channel (rule-level, shared across every step) and not `steps`
-  // itself (the already-staged ones stay put).
-  const resetStepDraft = () => {
-    setAction("whatsapp_followup");
-    setConditionEnabled(false);
-    setConditionField("");
-    setConditionOperator("equals");
-    setConditionValue("");
-    setDelayEnabled(false);
-    setDelayValue("5");
-    setDelayUnit("minutes");
-    setTextConfig("");
-    setEmailSubject("");
-    setFlowId("");
-    setFlowBody("Please fill this in:");
-    setFlowCta("Open");
+  // Loads a step's saved fields into the draft inputs for editing, or
+  // resets to blank defaults for composing a brand new step.
+  const loadDraft = (step: AutomationStepConfig | undefined) => {
+    const config = step?.action_config ?? {};
+    setAction(step?.action_type ?? "whatsapp_followup");
+    setTextConfig(config.message || config.reason || config.tag || config.body || "");
+    setEmailSubject(config.subject || "");
+    setFlowId(step?.action_type === "send_flow" ? config.flow_id || "" : "");
+    setFlowBody(step?.action_type === "send_flow" ? config.body || "Please fill this in:" : "Please fill this in:");
+    setFlowCta(step?.action_type === "send_flow" ? config.cta || "Open" : "Open");
+    setConditionEnabled(!!step?.condition);
+    setConditionField(step?.condition?.field ?? "");
+    setConditionOperator(step?.condition?.operator ?? "equals");
+    setConditionValue(step?.condition ? String(step.condition.value) : "");
+    setDelayEnabled(!!step?.delay_seconds);
+    if (step?.delay_seconds) {
+      // Coarsest unit that divides evenly, matching formatDelay's own logic.
+      const s = step.delay_seconds;
+      if (s % 86400 === 0) { setDelayValue(String(s / 86400)); setDelayUnit("days"); }
+      else if (s % 3600 === 0) { setDelayValue(String(s / 3600)); setDelayUnit("hours"); }
+      else { setDelayValue(String(Math.max(1, Math.round(s / 60)))); setDelayUnit("minutes"); }
+    } else {
+      setDelayValue("5");
+      setDelayUnit("minutes");
+    }
   };
 
-  const resetForm = () => {
+  const closeBuilder = () => {
+    setBuilderOpen(false);
+    setEditingRuleId(null);
     setTrigger("message.received");
     setChannel("");
     setSteps([]);
-    resetStepDraft();
+    setOpenIndex(null);
+    loadDraft(undefined);
     setSaveError(null);
   };
 
-  const DELAY_UNIT_SECONDS: Record<"minutes" | "hours" | "days", number> = {
-    minutes: 60, hours: 3600, days: 86400,
+  const openForCreate = () => {
+    closeBuilder();
+    setBuilderOpen(true);
   };
+
+  const openForEdit = (rule: AutomationRule) => {
+    setEditingRuleId(rule.id);
+    setTrigger(rule.trigger_type);
+    setChannel(rule.channel ?? "");
+    setSteps(rule.steps);
+    setOpenIndex(null);
+    loadDraft(undefined);
+    setSaveError(null);
+    setBuilderOpen(true);
+  };
+
+  const availableFields = CONDITION_FIELDS[trigger] ?? [];
+  const conditionFieldType = FIELD_TYPE[conditionField] ?? "text";
+  const conditionOperators =
+    conditionFieldType === "number" ? NUMBER_OPERATORS : conditionFieldType === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
 
   const buildDelaySeconds = (): number | null | undefined => {
     // undefined = invalid state (enabled but incomplete/non-positive) ->
@@ -235,11 +298,6 @@ export default function AutomationsPage() {
     if (!Number.isFinite(n) || n <= 0) return undefined;
     return Math.round(n * DELAY_UNIT_SECONDS[delayUnit]);
   };
-
-  const availableFields = CONDITION_FIELDS[trigger] ?? [];
-  const conditionFieldType = FIELD_TYPE[conditionField] ?? "text";
-  const conditionOperators =
-    conditionFieldType === "number" ? NUMBER_OPERATORS : conditionFieldType === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
 
   const buildCondition = (): AutomationCondition | null | undefined => {
     // undefined = invalid state (enabled but incomplete) -> block save,
@@ -285,11 +343,10 @@ export default function AutomationsPage() {
     return null;
   };
 
-  // Combines the current step-builder fields into one step object.
-  // null = nothing entered for this step (no action config filled) -
-  // not an error, just "no more steps to add". undefined = actively
-  // invalid (a condition or delay was started but left incomplete) ->
-  // blocks saving/adding rather than silently dropping it.
+  // Combines the current card's fields into one step object. null = this
+  // card is empty (no action config filled) - not an error on its own,
+  // but a card must be complete to close via "Done". undefined = actively
+  // invalid (a condition or delay was started but left incomplete).
   const buildStep = (): AutomationStepConfig | null | undefined => {
     const condition = buildCondition();
     const delaySeconds = buildDelaySeconds();
@@ -299,42 +356,73 @@ export default function AutomationsPage() {
     return { action_type: action, action_config: config, condition, delay_seconds: delaySeconds };
   };
 
-  // The full step list this rule would save right now: everything
-  // already staged in `steps`, plus the current step-builder fields if
-  // they form a complete step. undefined = block saving entirely (either
-  // an actively invalid draft, or nothing valid to save at all).
-  const buildFinalSteps = (): AutomationStepConfig[] | undefined => {
-    const draft = buildStep();
-    if (draft === undefined) return undefined;
-    const combined = draft ? [...steps, draft] : steps;
-    return combined.length > 0 ? combined : undefined;
+  const handleAddStepClick = () => {
+    if (openIndex !== null) return; // one card open at a time
+    setOpenIndex(steps.length);
+    loadDraft(undefined);
   };
 
-  const handleAddStep = () => {
-    const draft = buildStep();
-    if (!draft) return;
-    setSteps((prev) => [...prev, draft]);
-    resetStepDraft();
+  const handleOpenStep = (i: number) => {
+    if (openIndex !== null) return;
+    setOpenIndex(i);
+    loadDraft(steps[i]);
+  };
+
+  const handleDoneStep = () => {
+    const built = buildStep();
+    if (!built || openIndex === null) return;
+    setSteps((prev) => {
+      const next = [...prev];
+      if (openIndex < next.length) next[openIndex] = built;
+      else next.push(built);
+      return next;
+    });
+    setOpenIndex(null);
+    loadDraft(undefined);
+  };
+
+  const handleCancelStepEdit = () => {
+    setOpenIndex(null);
+    loadDraft(undefined);
   };
 
   const removeStep = (index: number) => {
     setSteps((prev) => prev.filter((_, i) => i !== index));
+    if (openIndex === index) { setOpenIndex(null); loadDraft(undefined); }
+    else if (openIndex !== null && openIndex > index) setOpenIndex(openIndex - 1);
   };
 
-  const handleCreate = async () => {
-    const finalSteps = buildFinalSteps();
-    if (!finalSteps) return;
+  const moveStep = (index: number, direction: -1 | 1) => {
+    setSteps((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    if (steps.length === 0 || openIndex !== null) return;
     setIsSaving(true);
     setSaveError(null);
     try {
-      const created = await postCallRules.create({
-        trigger_type: trigger, channel: channel || null, steps: finalSteps,
-      });
-      setRules((prev) => [...prev, created]);
-      resetForm();
-      setIsCreating(false);
+      if (editingRuleId) {
+        // Preserve the rule's own active/paused state - this save is about
+        // its trigger/channel/steps, not a silent reactivation of a paused rule.
+        const original = rules.find((r) => r.id === editingRuleId);
+        const updated = await postCallRules.update(editingRuleId, {
+          trigger_type: trigger, channel: channel || null, steps,
+          is_active: original?.is_active ?? true,
+        });
+        setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)));
+      } else {
+        const created = await postCallRules.create({ trigger_type: trigger, channel: channel || null, steps });
+        setRules((prev) => [...prev, created]);
+      }
+      closeBuilder();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not create this automation.");
+      setSaveError(err instanceof Error ? err.message : "Could not save this automation.");
     } finally {
       setIsSaving(false);
     }
@@ -356,17 +444,7 @@ export default function AutomationsPage() {
   const handleDelete = async (id: string) => {
     await postCallRules.remove(id);
     setRules((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const stepSummary = (step: AutomationStepConfig): string => {
-    if (step.action_type === "send_flow") {
-      const flow = publishedFlows.find((f) => f.id === step.action_config.flow_id);
-      return `Flow: ${flow?.name || step.action_config.flow_id}`;
-    }
-    if (step.action_type === "send_email") {
-      return step.action_config.subject || "";
-    }
-    return step.action_config.message || step.action_config.reason || step.action_config.tag || "";
+    if (editingRuleId === id) closeBuilder();
   };
 
   const stepConditionDelaySuffix = (step: AutomationStepConfig): string => {
@@ -380,10 +458,388 @@ export default function AutomationsPage() {
     return parts.join(", ");
   };
 
+  // The step-config form shared by every open card, whether editing an
+  // existing step or composing a new one - identical fields either way.
+  const renderStepForm = () => (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Then</label>
+        <select
+          value={action}
+          onChange={(e) => {
+            setAction(e.target.value as AutomationAction);
+            setTextConfig("");
+            setEmailSubject("");
+          }}
+          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+        >
+          {(Object.keys(ACTION_LABEL) as AutomationAction[]).map((a) => (
+            <option key={a} value={a}>{ACTION_LABEL[a]}</option>
+          ))}
+        </select>
+      </div>
+
+      {availableFields.length > 0 && (
+        <div>
+          <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={conditionEnabled}
+              onChange={(e) => {
+                setConditionEnabled(e.target.checked);
+                if (!e.target.checked) { setConditionField(""); setConditionValue(""); }
+              }}
+              className="cursor-pointer"
+            />
+            <Filter className="w-3 h-3" /> Only when...
+          </label>
+          {conditionEnabled && (
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={conditionField}
+                onChange={(e) => {
+                  setConditionField(e.target.value);
+                  setConditionOperator("equals");
+                  setConditionValue("");
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+              >
+                <option value="">Choose a field...</option>
+                {availableFields.map((f) => (
+                  <option key={f} value={f}>{FIELD_LABEL[f] ?? f}</option>
+                ))}
+              </select>
+              <select
+                value={conditionOperator}
+                onChange={(e) => setConditionOperator(e.target.value as AutomationOperator)}
+                disabled={!conditionField}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+              >
+                {conditionOperators.map((op) => (
+                  <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
+                ))}
+              </select>
+              {conditionFieldType === "boolean" ? (
+                <select
+                  value={conditionValue}
+                  onChange={(e) => setConditionValue(e.target.value)}
+                  disabled={!conditionField}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                >
+                  <option value="">Choose...</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              ) : (
+                <input
+                  type={conditionFieldType === "number" ? "number" : "text"}
+                  value={conditionValue}
+                  onChange={(e) => setConditionValue(e.target.value)}
+                  disabled={!conditionField}
+                  placeholder="value"
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div>
+        <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={delayEnabled}
+            onChange={(e) => setDelayEnabled(e.target.checked)}
+            className="cursor-pointer"
+          />
+          <Clock className="w-3 h-3" /> Wait before doing this
+        </label>
+        {delayEnabled && (
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="number"
+              min="1"
+              value={delayValue}
+              onChange={(e) => setDelayValue(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            />
+            <select
+              value={delayUnit}
+              onChange={(e) => setDelayUnit(e.target.value as "minutes" | "hours" | "days")}
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {action === "whatsapp_followup" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
+          <p className="text-[11px] text-os-text-dim mb-2">
+            Sent via your approved &quot;post_call_followup&quot; WhatsApp template.
+          </p>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Thanks for reaching out - we'll get right back to you."
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
+          {trigger === "call.completed" && (
+            <p className="text-[11px] text-os-text-dim mt-1.5">
+              Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about this call.
+            </p>
+          )}
+        </div>
+      )}
+
+      {action === "create_escalation_task" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Task description</label>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Follow up with this customer."
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
+        </div>
+      )}
+
+      {action === "add_tag" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Tag</label>
+          <input
+            type="text"
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            placeholder="e.g. interested, follow-up"
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          />
+        </div>
+      )}
+
+      {action === "send_flow" && (
+        <div className="space-y-2.5">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Flow</label>
+            {publishedFlows.length === 0 ? (
+              <p className="text-[11px] text-amber-400">
+                No published flows yet - publish one from the Flows page first.
+              </p>
+            ) : (
+              <select
+                value={flowId}
+                onChange={(e) => setFlowId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+              >
+                <option value="">Choose a flow...</option>
+                {publishedFlows.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message body</label>
+              <input
+                type="text"
+                value={flowBody}
+                onChange={(e) => setFlowBody(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Button text</label>
+              <input
+                type="text"
+                maxLength={20}
+                value={flowCta}
+                onChange={(e) => setFlowCta(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-os-text-dim">
+            Only sends inside the 24-hour reply window, same as sending a flow by hand - a rule can&apos;t
+            reach someone outside it either.
+          </p>
+          {selectedFlow && usesLiveData(selectedFlow) && (
+            <p className="text-[11px] text-amber-400">
+              This flow shows live data - make sure &quot;Enable live data&quot; is on for it (Flows page),
+              or it won&apos;t work when this rule fires.
+            </p>
+          )}
+        </div>
+      )}
+
+      {action === "place_call" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Reason for the call</label>
+          <p className="text-[11px] text-os-text-dim mb-2">
+            A brief, not a script - the AI drafts the actual opening line from this once the call connects.
+          </p>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Remind them about their outstanding balance and offer to help them pay."
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
+          <p className="text-[11px] text-os-text-dim mt-1.5">
+            Only works once a voice number is connected (Voice Agent page) - a rule can&apos;t place a call
+            for a business with no number.
+          </p>
+        </div>
+      )}
+
+      {action === "send_sms" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Just checking in - let us know if you need anything."
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
+          <p className="text-[11px] text-os-text-dim mt-1.5">
+            Sent from your connected voice number (Voice Agent page) - needs one connected.
+          </p>
+        </div>
+      )}
+
+      {action === "send_email" && (
+        <div className="space-y-2.5">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Subject</label>
+            <input
+              type="text"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="Following up on your visit"
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Body</label>
+            <textarea
+              value={textConfig}
+              onChange={(e) => setTextConfig(e.target.value)}
+              rows={3}
+              placeholder="Thanks for reaching out - we'll get right back to you."
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+            />
+          </div>
+          <p className="text-[11px] text-os-text-dim">
+            Needs a verified sending email connected (Settings page) and the customer&apos;s own email on file -
+            a rule can&apos;t reach someone with no email address recorded.
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleDoneStep}
+          disabled={!buildStep()}
+          className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <Check className="w-3.5 h-3.5" /> Done
+        </button>
+        <button
+          type="button"
+          onClick={handleCancelStepEdit}
+          className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <X className="w-3.5 h-3.5" /> Cancel
+        </button>
+      </div>
+    </div>
+  );
+
+  // A collapsed step card - icon, summary, condition/delay badges, and
+  // its own edit/reorder/delete controls. Disabled (greyed, inert)
+  // whenever a different card is open, so only one is ever edited at once.
+  const renderCollapsedCard = (step: AutomationStepConfig, index: number, total: number) => {
+    const Icon = ACTION_ICON[step.action_type] ?? Zap;
+    const locked = openIndex !== null;
+    const summary = stepSummary(step, publishedFlows);
+    return (
+      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-black/30 border border-white/[0.08]">
+        <div className="shrink-0 w-6 h-6 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-os-text-dim">
+          <Icon className="w-3 h-3" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-white truncate">
+            {total > 1 && <span className="text-os-text-dim">{index + 1}. </span>}
+            {ACTION_LABEL[step.action_type] ?? step.action_type}
+            {summary && <span className="text-os-text-dim"> - {summary}</span>}
+          </p>
+          {(step.condition || step.delay_seconds) && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {step.condition && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
+                  <Filter className="w-2.5 h-2.5" />
+                  {FIELD_LABEL[step.condition.field] ?? step.condition.field} {OPERATOR_LABEL[step.condition.operator]} &quot;{String(step.condition.value)}&quot;
+                </span>
+              )}
+              {!!step.delay_seconds && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px]">
+                  <Clock className="w-2.5 h-2.5" /> waits {formatDelay(step.delay_seconds)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => moveStep(index, -1)}
+            disabled={locked || index === 0}
+            className="p-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
+          >
+            <ChevronUp className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => moveStep(index, 1)}
+            disabled={locked || index === total - 1}
+            className="p-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenStep(index)}
+            disabled={locked}
+            className="p-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => removeStep(index)}
+            disabled={locked && openIndex !== index}
+            className="p-1 rounded-lg bg-white/[0.04] hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-red-400 transition-all cursor-pointer"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AppLayout
       title="Automations"
-      subtitle="When something real happens in a conversation, do something about it automatically - no canvas, real signals only."
+      subtitle="When something real happens in a conversation, do something about it automatically - build a step at a time."
     >
       <div className="space-y-6 max-w-4xl mx-auto">
         {loadError && (
@@ -399,407 +855,114 @@ export default function AutomationsPage() {
               <div>
                 <h3 className="text-sm font-bold text-white">Rules</h3>
                 <p className="text-xs text-os-text-dim">
-                  Pick a trigger and an action - runs automatically from the moment it happens.
+                  Pick a trigger, then stack as many steps as you need - each with its own condition and wait.
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => {
-                if (isCreating) resetForm();
-                setIsCreating((v) => !v);
-              }}
+              onClick={() => (builderOpen ? closeBuilder() : openForCreate())}
               className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> New rule
             </button>
           </div>
 
-          {isCreating && (
+          {builderOpen && (
             <div className="p-4 rounded-xl bg-black/30 border border-white/[0.08] space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When</label>
-                  <select
-                    value={trigger}
-                    onChange={(e) => {
-                      const next = e.target.value as AutomationTrigger;
-                      setTrigger(next);
-                      // A channel chosen for an ambiguous trigger is meaningless
-                      // once switched to one that's only ever one channel anyway
-                      // (the picker disappears too) - don't silently carry it over.
-                      if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
-                      // A condition field belongs to the OLD trigger's own
-                      // allowlist (CONDITION_FIELDS) - carrying it over to a
-                      // different trigger could silently point at a field
-                      // that trigger never even provides.
-                      setConditionField("");
-                      setConditionValue("");
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  >
-                    {(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => (
-                      <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
-                    {steps.length > 0 ? `Then (step ${steps.length + 1})` : "Then"}
-                  </label>
-                  <select
-                    value={action}
-                    onChange={(e) => {
-                      setAction(e.target.value as AutomationAction);
-                      setTextConfig("");
-                      setEmailSubject("");
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  >
-                    {(Object.keys(ACTION_LABEL) as AutomationAction[]).map((a) => (
-                      <option key={a} value={a}>{ACTION_LABEL[a]}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">From channel</label>
-                  <p className="text-[11px] text-os-text-dim mb-2">
-                    This can happen on more than one channel - choose one, or leave it as any so the rule fires everywhere.
-                  </p>
-                  <select
-                    value={channel}
-                    onChange={(e) => setChannel(e.target.value as AutomationChannel | "")}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  >
-                    <option value="">Any channel</option>
-                    {(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => (
-                      <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
-                    ))}
-                  </select>
-                </div>
+              {editingRuleId && (
+                <p className="text-[11px] text-cyan-400/80">Editing an existing rule</p>
               )}
 
-              {steps.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
-                    Steps already added
-                  </label>
-                  {steps.map((s, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-black/30 border border-white/[0.08]"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-xs text-white truncate">
-                          {i + 1}. {ACTION_LABEL[s.action_type]}
-                          {stepSummary(s) && <span className="text-os-text-dim"> - {stepSummary(s)}</span>}
-                        </p>
-                        {stepConditionDelaySuffix(s) && (
-                          <p className="text-[11px] text-cyan-400/80 truncate">{stepConditionDelaySuffix(s)}</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeStep(i)}
-                        className="p-1 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 border border-white/[0.08] transition-all cursor-pointer shrink-0"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+              {/* Trigger header card */}
+              <div className="flex items-start gap-2.5">
+                <div className="shrink-0 w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <Zap className="w-3 h-3" />
                 </div>
-              )}
-
-              {availableFields.length > 0 && (
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={conditionEnabled}
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When</label>
+                    <select
+                      value={trigger}
                       onChange={(e) => {
-                        setConditionEnabled(e.target.checked);
-                        if (!e.target.checked) { setConditionField(""); setConditionValue(""); }
+                        const next = e.target.value as AutomationTrigger;
+                        setTrigger(next);
+                        // A channel chosen for an ambiguous trigger is meaningless
+                        // once switched to one that's only ever one channel anyway
+                        // (the picker disappears too) - don't silently carry it over.
+                        if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
                       }}
-                      className="cursor-pointer"
-                    />
-                    Only when...
-                  </label>
-                  {conditionEnabled && (
-                    <div className="grid grid-cols-3 gap-2">
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                    >
+                      {(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => (
+                        <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && (
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">From channel</label>
                       <select
-                        value={conditionField}
-                        onChange={(e) => {
-                          setConditionField(e.target.value);
-                          setConditionOperator("equals");
-                          setConditionValue("");
-                        }}
+                        value={channel}
+                        onChange={(e) => setChannel(e.target.value as AutomationChannel | "")}
                         className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                       >
-                        <option value="">Choose a field...</option>
-                        {availableFields.map((f) => (
-                          <option key={f} value={f}>{FIELD_LABEL[f] ?? f}</option>
+                        <option value="">Any channel</option>
+                        {(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => (
+                          <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
                         ))}
                       </select>
-                      <select
-                        value={conditionOperator}
-                        onChange={(e) => setConditionOperator(e.target.value as AutomationOperator)}
-                        disabled={!conditionField}
-                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
-                      >
-                        {conditionOperators.map((op) => (
-                          <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
-                        ))}
-                      </select>
-                      {conditionFieldType === "boolean" ? (
-                        <select
-                          value={conditionValue}
-                          onChange={(e) => setConditionValue(e.target.value)}
-                          disabled={!conditionField}
-                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
-                        >
-                          <option value="">Choose...</option>
-                          <option value="true">Yes</option>
-                          <option value="false">No</option>
-                        </select>
-                      ) : (
-                        <input
-                          type={conditionFieldType === "number" ? "number" : "text"}
-                          value={conditionValue}
-                          onChange={(e) => setConditionValue(e.target.value)}
-                          disabled={!conditionField}
-                          placeholder="value"
-                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-40"
-                        />
-                      )}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
 
-              <div>
-                <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={delayEnabled}
-                    onChange={(e) => setDelayEnabled(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                  Wait before doing this
-                </label>
-                {delayEnabled && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={delayValue}
-                      onChange={(e) => setDelayValue(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
-                    />
-                    <select
-                      value={delayUnit}
-                      onChange={(e) => setDelayUnit(e.target.value as "minutes" | "hours" | "days")}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                    >
-                      <option value="minutes">Minutes</option>
-                      <option value="hours">Hours</option>
-                      <option value="days">Days</option>
-                    </select>
+              {/* Step stack, connected by a vertical line under the trigger card */}
+              <div className="ml-3 pl-4 border-l-2 border-white/[0.08] space-y-2.5">
+                {steps.map((step, i) =>
+                  openIndex === i ? (
+                    <div key={i} className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
+                      {renderStepForm()}
+                    </div>
+                  ) : (
+                    <div key={i}>{renderCollapsedCard(step, i, steps.length)}</div>
+                  ),
+                )}
+
+                {openIndex === steps.length && (
+                  <div className="p-3 rounded-lg bg-black/40 border border-cyan-500/20">
+                    <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
+                      Step {steps.length + 1}
+                    </p>
+                    {renderStepForm()}
                   </div>
+                )}
+
+                {openIndex === null && (
+                  <button
+                    type="button"
+                    onClick={handleAddStepClick}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-dashed border-white/[0.15] transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {steps.length > 0 ? "Add another step" : "Add a step"}
+                  </button>
                 )}
               </div>
 
-              {action === "whatsapp_followup" && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
-                  <p className="text-[11px] text-os-text-dim mb-2">
-                    Sent via your approved &quot;post_call_followup&quot; WhatsApp template.
-                  </p>
-                  <textarea
-                    value={textConfig}
-                    onChange={(e) => setTextConfig(e.target.value)}
-                    rows={2}
-                    placeholder="Thanks for reaching out - we'll get right back to you."
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-                  />
-                  {trigger === "call.completed" && (
-                    <p className="text-[11px] text-os-text-dim mt-1.5">
-                      Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about this call.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {action === "create_escalation_task" && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Task description</label>
-                  <textarea
-                    value={textConfig}
-                    onChange={(e) => setTextConfig(e.target.value)}
-                    rows={2}
-                    placeholder="Follow up with this customer."
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-                  />
-                </div>
-              )}
-
-              {action === "add_tag" && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Tag</label>
-                  <input
-                    type="text"
-                    value={textConfig}
-                    onChange={(e) => setTextConfig(e.target.value)}
-                    placeholder="e.g. interested, follow-up"
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
-                  />
-                </div>
-              )}
-
-              {action === "send_flow" && (
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Flow</label>
-                    {publishedFlows.length === 0 ? (
-                      <p className="text-[11px] text-amber-400">
-                        No published flows yet - publish one from the Flows page first.
-                      </p>
-                    ) : (
-                      <select
-                        value={flowId}
-                        onChange={(e) => setFlowId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                      >
-                        <option value="">Choose a flow...</option>
-                        {publishedFlows.map((f) => (
-                          <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message body</label>
-                      <input
-                        type="text"
-                        value={flowBody}
-                        onChange={(e) => setFlowBody(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Button text</label>
-                      <input
-                        type="text"
-                        maxLength={20}
-                        value={flowCta}
-                        onChange={(e) => setFlowCta(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-os-text-dim">
-                    Only sends inside the 24-hour reply window, same as sending a flow by hand - a rule can&apos;t
-                    reach someone outside it either.
-                  </p>
-                  {selectedFlow && usesLiveData(selectedFlow) && (
-                    <p className="text-[11px] text-amber-400">
-                      This flow shows live data - make sure &quot;Enable live data&quot; is on for it (Flows page),
-                      or it won&apos;t work when this rule fires.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {action === "place_call" && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Reason for the call</label>
-                  <p className="text-[11px] text-os-text-dim mb-2">
-                    A brief, not a script - the AI drafts the actual opening line from this once the call connects.
-                  </p>
-                  <textarea
-                    value={textConfig}
-                    onChange={(e) => setTextConfig(e.target.value)}
-                    rows={2}
-                    placeholder="Remind them about their outstanding balance and offer to help them pay."
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-                  />
-                  <p className="text-[11px] text-os-text-dim mt-1.5">
-                    Only works once a voice number is connected (Voice Agent page) - a rule can&apos;t place a call
-                    for a business with no number.
-                  </p>
-                </div>
-              )}
-
-              {action === "send_sms" && (
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
-                  <textarea
-                    value={textConfig}
-                    onChange={(e) => setTextConfig(e.target.value)}
-                    rows={2}
-                    placeholder="Just checking in - let us know if you need anything."
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-                  />
-                  <p className="text-[11px] text-os-text-dim mt-1.5">
-                    Sent from your connected voice number (Voice Agent page) - needs one connected.
-                  </p>
-                </div>
-              )}
-
-              {action === "send_email" && (
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Subject</label>
-                    <input
-                      type="text"
-                      value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
-                      placeholder="Following up on your visit"
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Body</label>
-                    <textarea
-                      value={textConfig}
-                      onChange={(e) => setTextConfig(e.target.value)}
-                      rows={3}
-                      placeholder="Thanks for reaching out - we'll get right back to you."
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-                    />
-                  </div>
-                  <p className="text-[11px] text-os-text-dim">
-                    Needs a verified sending email connected (Settings page) and the customer&apos;s own email on file -
-                    a rule can&apos;t reach someone with no email address recorded.
-                  </p>
-                </div>
-              )}
-
               {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={handleAddStep}
-                  disabled={!buildStep()}
-                  className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add another step
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={isSaving || !buildFinalSteps()}
+                  onClick={handleSave}
+                  disabled={isSaving || steps.length === 0 || openIndex !== null}
                   className="px-4 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer"
                 >
-                  {isSaving ? "Saving…" : "Save rule"}
+                  {isSaving ? "Saving…" : editingRuleId ? "Save changes" : "Save rule"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { resetForm(); setIsCreating(false); }}
+                  onClick={closeBuilder}
                   className="px-4 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
                 >
                   Cancel
@@ -810,7 +973,7 @@ export default function AutomationsPage() {
 
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
-          ) : rules.length === 0 && !isCreating ? (
+          ) : rules.length === 0 && !builderOpen ? (
             <EmptyState
               icon={Zap}
               title="No automations yet"
@@ -834,7 +997,9 @@ export default function AutomationsPage() {
                           <p className="text-[11px] text-white/90 truncate">
                             {rule.steps.length > 1 && <span className="text-os-text-dim">{i + 1}. </span>}
                             {ACTION_LABEL[step.action_type] ?? step.action_type}
-                            {stepSummary(step) && <span className="text-os-text-dim"> - {stepSummary(step)}</span>}
+                            {stepSummary(step, publishedFlows) && (
+                              <span className="text-os-text-dim"> - {stepSummary(step, publishedFlows)}</span>
+                            )}
                           </p>
                           {stepConditionDelaySuffix(step) && (
                             <p className="text-[11px] text-cyan-400/80 truncate">{stepConditionDelaySuffix(step)}</p>
@@ -850,6 +1015,13 @@ export default function AutomationsPage() {
                     <Badge variant={rule.is_active ? "emerald" : "amber"} dot>
                       {rule.is_active ? "Active" : "Paused"}
                     </Badge>
+                    <button
+                      type="button"
+                      onClick={() => openForEdit(rule)}
+                      className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white border border-white/[0.08] transition-all cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleToggle(rule)}
