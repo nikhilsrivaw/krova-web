@@ -24,7 +24,7 @@
  * cosmetic effect only. Pan/zoom/fit are real and fully working.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -38,6 +38,7 @@ import {
   EdgeLabelRenderer,
   getSmoothStepPath,
   useReactFlow,
+  useUpdateNodeInternals,
   type Node,
   type Edge,
   type NodeProps,
@@ -58,6 +59,36 @@ import type {
 // open step never visually overlaps the node to its right.
 const NODE_SPACING_X = 360;
 
+/**
+ * Every node here has genuinely dynamic content - a select changing
+ * action type, a checkbox revealing a condition/delay row, a textarea
+ * wrapping. React Flow only re-measures a node's own bounding box at
+ * mount by default; `useUpdateNodeInternals` plus a ResizeObserver on
+ * the node's own root keeps its internal record current on every
+ * content-driven resize too, not only at mount - the documented fix for
+ * dynamically-sized nodes, and worth keeping even though it turned out
+ * not to be this bug's actual cause (see each node's own `!pointer-
+ * events-auto` class for that one - found by driving the canvas with
+ * Playwright and inspecting computed styles, not guessed: with
+ * nodesDraggable/nodesConnectable/elementsSelectable all false on
+ * <ReactFlow>, it sets `pointer-events: none` on every node wrapper as
+ * its own optimization - "nothing to interact with at the node level,
+ * let clicks fall through to the pane" - which silently ate every click
+ * on every button/input/select inside every node's own custom content).
+ */
+function useAutoResize(nodeId: string) {
+  const ref = useRef<HTMLDivElement>(null);
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => updateNodeInternals(nodeId));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [nodeId, updateNodeInternals]);
+  return ref;
+}
+
 // ── Trigger node ─────────────────────────────────────────────────────────
 
 type TriggerNodeData = {
@@ -70,10 +101,11 @@ type TriggerNodeData = {
   onChannelChange: (c: AutomationChannel | "") => void;
 };
 
-function TriggerNode({ data }: NodeProps) {
+function TriggerNode({ id, data }: NodeProps) {
   const d = data as unknown as TriggerNodeData;
+  const ref = useAutoResize(id);
   return (
-    <div className="w-64 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/30 shadow-lg shadow-black/40 nodrag">
+    <div ref={ref} className="!pointer-events-auto w-64 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/30 shadow-lg shadow-black/40 nodrag">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
           <Zap className="w-3 h-3" />
@@ -130,12 +162,13 @@ type StepNodeData = {
   title: string;
 };
 
-function StepNode({ data }: NodeProps) {
+function StepNode({ id, data }: NodeProps) {
   const d = data as unknown as StepNodeData;
+  const ref = useAutoResize(id);
 
   if (d.mode === "editing") {
     return (
-      <div className="w-80 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/40 shadow-lg shadow-black/40 nodrag nowheel">
+      <div ref={ref} className="!pointer-events-auto w-80 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/40 shadow-lg shadow-black/40 nodrag nowheel">
         <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">{d.title}</p>
         {d.renderForm?.()}
         <Handle type="target" position={Position.Left} className="!bg-cyan-500 !border-cyan-300" />
@@ -146,7 +179,7 @@ function StepNode({ data }: NodeProps) {
 
   const Icon = d.step ? d.actionIcon[d.step.action_type] : Zap;
   return (
-    <div className="w-64 p-3 rounded-xl bg-[#0b0f14] border border-white/[0.12] shadow-lg shadow-black/40 nodrag">
+    <div ref={ref} className="!pointer-events-auto w-64 p-3 rounded-xl bg-[#0b0f14] border border-white/[0.12] shadow-lg shadow-black/40 nodrag">
       <div className="flex items-start gap-2">
         <div className="w-6 h-6 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-os-text-dim shrink-0">
           <Icon className="w-3 h-3" />
