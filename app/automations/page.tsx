@@ -12,8 +12,33 @@ import {
   type AutomationRule,
   type AutomationTrigger,
   type AutomationAction,
+  type AutomationChannel,
   type WhatsAppFlow,
 } from "@/lib/api";
+
+const CHANNEL_LABEL: Record<AutomationChannel, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  email: "Email",
+  voice: "Voice",
+  web: "Website chat",
+};
+
+// Triggers that can only ever fire from one specific channel - a picker
+// there would be redundant (call.* is always voice, flow.completed is
+// always whatsapp, since WhatsApp Flows don't exist on any other
+// channel). Every other trigger genuinely can come from more than one
+// channel (message.received fires identically for WhatsApp, Instagram,
+// email, and every utterance of a live voice call), which is exactly
+// what makes the picker necessary there.
+const CHANNEL_AMBIGUOUS_TRIGGERS = new Set<AutomationTrigger>([
+  "message.received",
+  "appointment.booked",
+  "appointment.cancelled",
+  "escalation.raised",
+  "queue_token.issued",
+  "competitor.mentioned",
+]);
 
 /** Same check as components/whatsapp/FlowsPanel.tsx and app/campaigns/page.tsx's own usesLiveData. */
 function usesLiveData(flow: WhatsAppFlow): boolean {
@@ -53,6 +78,10 @@ export default function AutomationsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [trigger, setTrigger] = useState<AutomationTrigger>("message.received");
   const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
+  // "" = any channel (the default, unfiltered) - a real dropdown value,
+  // not left implicit, since leaving it invisible is exactly what let a
+  // WhatsApp-authored rule fire on every utterance of a live voice call.
+  const [channel, setChannel] = useState<AutomationChannel | "">("");
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
@@ -89,6 +118,7 @@ export default function AutomationsPage() {
   const resetForm = () => {
     setTrigger("message.received");
     setAction("whatsapp_followup");
+    setChannel("");
     setTextConfig("");
     setFlowId("");
     setFlowBody("Please fill this in:");
@@ -119,7 +149,10 @@ export default function AutomationsPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      const created = await postCallRules.create({ trigger_type: trigger, action_type: action, action_config: config });
+      const created = await postCallRules.create({
+        trigger_type: trigger, action_type: action, action_config: config,
+        channel: channel || null,
+      });
       setRules((prev) => [...prev, created]);
       resetForm();
       setIsCreating(false);
@@ -131,11 +164,15 @@ export default function AutomationsPage() {
   };
 
   const handleToggle = async (rule: AutomationRule) => {
+    // PATCH replaces the whole rule server-side, not a partial merge - omitting
+    // channel here would silently reset an existing channel filter to "any"
+    // every time a rule is toggled on/off.
     const updated = await postCallRules.update(rule.id, {
       trigger_type: rule.trigger_type,
       action_type: rule.action_type,
       action_config: rule.action_config,
       is_active: !rule.is_active,
+      channel: rule.channel ?? null,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
   };
@@ -195,7 +232,14 @@ export default function AutomationsPage() {
                   <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When</label>
                   <select
                     value={trigger}
-                    onChange={(e) => setTrigger(e.target.value as AutomationTrigger)}
+                    onChange={(e) => {
+                      const next = e.target.value as AutomationTrigger;
+                      setTrigger(next);
+                      // A channel chosen for an ambiguous trigger is meaningless
+                      // once switched to one that's only ever one channel anyway
+                      // (the picker disappears too) - don't silently carry it over.
+                      if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
+                    }}
                     className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                   >
                     {(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => (
@@ -219,6 +263,25 @@ export default function AutomationsPage() {
                   </select>
                 </div>
               </div>
+
+              {CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && (
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">From channel</label>
+                  <p className="text-[11px] text-os-text-dim mb-2">
+                    This can happen on more than one channel - choose one, or leave it as any so the rule fires everywhere.
+                  </p>
+                  <select
+                    value={channel}
+                    onChange={(e) => setChannel(e.target.value as AutomationChannel | "")}
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  >
+                    <option value="">Any channel</option>
+                    {(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => (
+                      <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {action === "whatsapp_followup" && (
                 <div>
@@ -369,6 +432,9 @@ export default function AutomationsPage() {
                     <p className="text-[11px] text-os-text-dim mt-0.5 truncate">{ruleSummary(rule)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="default">
+                      {rule.channel ? CHANNEL_LABEL[rule.channel] : "Any channel"}
+                    </Badge>
                     <Badge variant={rule.is_active ? "emerald" : "amber"} dot>
                       {rule.is_active ? "Active" : "Paused"}
                     </Badge>

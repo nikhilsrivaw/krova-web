@@ -947,6 +947,12 @@ export type AutomationTrigger =
 
 export type AutomationAction = "whatsapp_followup" | "create_escalation_task" | "add_tag" | "send_flow";
 
+// The real channels a trigger can actually come from - matches the
+// backend's own Channel enum (shared/db/models/channel.py). Kept here
+// rather than reused from elsewhere since nothing else in lib/api.ts
+// already exports a plain list of these.
+export type AutomationChannel = "whatsapp" | "instagram" | "email" | "voice" | "web";
+
 export type AutomationRule = {
   id: string;
   trigger_type: AutomationTrigger;
@@ -957,6 +963,11 @@ export type AutomationRule = {
    */
   action_config: Record<string, string>;
   is_active: boolean;
+  // null/omitted = fires for any channel - the original, unfiltered
+  // behaviour. Set to one channel so a rule authored with e.g. WhatsApp
+  // in mind doesn't also fire on every utterance of a live voice call -
+  // message.received fires identically for both (and Instagram, email).
+  channel?: AutomationChannel | null;
 };
 
 // Old names kept as aliases - PostCallRulesTab (the /voice page's own,
@@ -973,6 +984,7 @@ export const postCallRules = {
     action_type: AutomationAction;
     action_config: Record<string, string>;
     is_active?: boolean;
+    channel?: AutomationChannel | null;
   }) => api.post<AutomationRule>("/post-call-rules", data),
 
   update: (
@@ -982,6 +994,7 @@ export const postCallRules = {
       action_type: AutomationAction;
       action_config: Record<string, string>;
       is_active: boolean;
+      channel?: AutomationChannel | null;
     },
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
