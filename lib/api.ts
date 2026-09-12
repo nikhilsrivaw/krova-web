@@ -1018,6 +1018,9 @@ export type AutomationRule = {
   // so the rule only fires when its one condition holds - see
   // CONDITION_FIELDS above for what `field` may be, per trigger_type.
   condition?: AutomationCondition | null;
+  // null/omitted = runs immediately, today's original behaviour. Set so
+  // the rule waits this many seconds after the trigger before it fires.
+  delay_seconds?: number | null;
 };
 
 // Old names kept as aliases - PostCallRulesTab (the /voice page's own,
@@ -1036,6 +1039,7 @@ export const postCallRules = {
     is_active?: boolean;
     channel?: AutomationChannel | null;
     condition?: AutomationCondition | null;
+    delay_seconds?: number | null;
   }) => api.post<AutomationRule>("/post-call-rules", data),
 
   update: (
@@ -1047,6 +1051,7 @@ export const postCallRules = {
       is_active: boolean;
       channel?: AutomationChannel | null;
       condition?: AutomationCondition | null;
+      delay_seconds?: number | null;
     },
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 

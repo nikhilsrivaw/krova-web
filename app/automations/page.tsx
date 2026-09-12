@@ -118,6 +118,16 @@ const OPERATOR_LABEL: Record<AutomationOperator, string> = {
   less_than_or_equal: "is at most",
 };
 
+// Best-effort human phrasing of a step's stored delay_seconds - picks the
+// coarsest unit that divides evenly, otherwise falls back to seconds so a
+// value entered oddly (e.g. via the API directly) still displays honestly.
+function formatDelay(seconds: number): string {
+  if (seconds % 86400 === 0) return `${seconds / 86400} day${seconds / 86400 === 1 ? "" : "s"}`;
+  if (seconds % 3600 === 0) return `${seconds / 3600} hour${seconds / 3600 === 1 ? "" : "s"}`;
+  if (seconds % 60 === 0) return `${seconds / 60} minute${seconds / 60 === 1 ? "" : "s"}`;
+  return `${seconds} second${seconds === 1 ? "" : "s"}`;
+}
+
 const TEXT_OPERATORS: AutomationOperator[] = ["equals", "not_equals", "contains"];
 const NUMBER_OPERATORS: AutomationOperator[] = [
   "equals", "not_equals", "greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal",
@@ -141,6 +151,9 @@ export default function AutomationsPage() {
   const [conditionField, setConditionField] = useState("");
   const [conditionOperator, setConditionOperator] = useState<AutomationOperator>("equals");
   const [conditionValue, setConditionValue] = useState("");
+  const [delayEnabled, setDelayEnabled] = useState(false);
+  const [delayValue, setDelayValue] = useState("5");
+  const [delayUnit, setDelayUnit] = useState<"minutes" | "hours" | "days">("minutes");
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
   const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
   const [flowId, setFlowId] = useState("");
@@ -183,12 +196,28 @@ export default function AutomationsPage() {
     setConditionField("");
     setConditionOperator("equals");
     setConditionValue("");
+    setDelayEnabled(false);
+    setDelayValue("5");
+    setDelayUnit("minutes");
     setTextConfig("");
     setEmailSubject("");
     setFlowId("");
     setFlowBody("Please fill this in:");
     setFlowCta("Open");
     setSaveError(null);
+  };
+
+  const DELAY_UNIT_SECONDS: Record<"minutes" | "hours" | "days", number> = {
+    minutes: 60, hours: 3600, days: 86400,
+  };
+
+  const buildDelaySeconds = (): number | null | undefined => {
+    // undefined = invalid state (enabled but incomplete/non-positive) ->
+    // block save, same contract as buildConfig()/buildCondition().
+    if (!delayEnabled) return null;
+    const n = Number(delayValue);
+    if (!Number.isFinite(n) || n <= 0) return undefined;
+    return Math.round(n * DELAY_UNIT_SECONDS[delayUnit]);
   };
 
   const availableFields = CONDITION_FIELDS[trigger] ?? [];
@@ -243,13 +272,14 @@ export default function AutomationsPage() {
   const handleCreate = async () => {
     const config = buildConfig();
     const condition = buildCondition();
-    if (!config || condition === undefined) return;
+    const delaySeconds = buildDelaySeconds();
+    if (!config || condition === undefined || delaySeconds === undefined) return;
     setIsSaving(true);
     setSaveError(null);
     try {
       const created = await postCallRules.create({
         trigger_type: trigger, action_type: action, action_config: config,
-        channel: channel || null, condition,
+        channel: channel || null, condition, delay_seconds: delaySeconds,
       });
       setRules((prev) => [...prev, created]);
       resetForm();
@@ -263,8 +293,8 @@ export default function AutomationsPage() {
 
   const handleToggle = async (rule: AutomationRule) => {
     // PATCH replaces the whole rule server-side, not a partial merge - omitting
-    // channel or condition here would silently reset either back to "any"/none
-    // every time a rule is toggled on/off.
+    // channel, condition, or delay_seconds here would silently reset any of
+    // them back to "any"/none/immediate every time a rule is toggled on/off.
     const updated = await postCallRules.update(rule.id, {
       trigger_type: rule.trigger_type,
       action_type: rule.action_type,
@@ -272,6 +302,7 @@ export default function AutomationsPage() {
       is_active: !rule.is_active,
       channel: rule.channel ?? null,
       condition: rule.condition ?? null,
+      delay_seconds: rule.delay_seconds ?? null,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
   };
@@ -458,6 +489,38 @@ export default function AutomationsPage() {
                 </div>
               )}
 
+              <div>
+                <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={delayEnabled}
+                    onChange={(e) => setDelayEnabled(e.target.checked)}
+                    className="cursor-pointer"
+                  />
+                  Wait before doing this
+                </label>
+                {delayEnabled && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={delayValue}
+                      onChange={(e) => setDelayValue(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+                    />
+                    <select
+                      value={delayUnit}
+                      onChange={(e) => setDelayUnit(e.target.value as "minutes" | "hours" | "days")}
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
               {action === "whatsapp_followup" && (
                 <div>
                   <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
@@ -631,7 +694,9 @@ export default function AutomationsPage() {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={isSaving || !buildConfig() || buildCondition() === undefined}
+                  disabled={
+                    isSaving || !buildConfig() || buildCondition() === undefined || buildDelaySeconds() === undefined
+                  }
                   className="px-4 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer"
                 >
                   {isSaving ? "Saving…" : "Save rule"}
@@ -675,6 +740,11 @@ export default function AutomationsPage() {
                         Only when {FIELD_LABEL[rule.condition.field] ?? rule.condition.field}{" "}
                         {OPERATOR_LABEL[rule.condition.operator] ?? rule.condition.operator}{" "}
                         &quot;{String(rule.condition.value)}&quot;
+                      </p>
+                    )}
+                    {!!rule.delay_seconds && (
+                      <p className="text-[11px] text-amber-400/80 mt-0.5 truncate">
+                        Waits {formatDelay(rule.delay_seconds)} first
                       </p>
                     )}
                   </div>
