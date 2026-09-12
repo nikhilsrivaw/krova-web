@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@tailwindcss/postcss": "^4.2.2",
+    "@xyflow/react": "^12.11.6",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.546.0",
