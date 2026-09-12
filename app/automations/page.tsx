@@ -60,6 +60,9 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "call.completed": "A call finishes",
   "call.voicemail": "A call goes to voicemail",
   "call.no_answer": "A call goes unanswered",
+  "churn_risk.detected": "A customer signals they might churn",
+  "demo.requested": "A customer asks for a demo",
+  "pricing_question.asked": "A customer asks about pricing",
 };
 
 const ACTION_LABEL: Record<AutomationAction, string> = {
@@ -67,6 +70,9 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   create_escalation_task: "Create a task for the team",
   add_tag: "Tag the customer",
   send_flow: "Send a WhatsApp Flow",
+  place_call: "Call the customer",
+  send_sms: "Send an SMS",
+  send_email: "Send an email",
 };
 
 export default function AutomationsPage() {
@@ -82,7 +88,8 @@ export default function AutomationsPage() {
   // not left implicit, since leaving it invisible is exactly what let a
   // WhatsApp-authored rule fire on every utterance of a live voice call.
   const [channel, setChannel] = useState<AutomationChannel | "">("");
-  const [textConfig, setTextConfig] = useState(""); // message / reason / tag
+  const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
+  const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
   const [flowCta, setFlowCta] = useState("Open");
@@ -120,6 +127,7 @@ export default function AutomationsPage() {
     setAction("whatsapp_followup");
     setChannel("");
     setTextConfig("");
+    setEmailSubject("");
     setFlowId("");
     setFlowBody("Please fill this in:");
     setFlowCta("Open");
@@ -139,6 +147,17 @@ export default function AutomationsPage() {
     if (action === "send_flow") {
       if (!selectedFlow || !flowBody.trim() || !flowScreen) return null;
       return { flow_id: selectedFlow.id, body: flowBody.trim(), screen: flowScreen, cta: flowCta.trim() || "Open" };
+    }
+    if (action === "place_call") {
+      return textConfig.trim() ? { reason: textConfig.trim() } : null;
+    }
+    if (action === "send_sms") {
+      return textConfig.trim() ? { message: textConfig.trim() } : null;
+    }
+    if (action === "send_email") {
+      return emailSubject.trim() && textConfig.trim()
+        ? { subject: emailSubject.trim(), body: textConfig.trim() }
+        : null;
     }
     return null;
   };
@@ -186,6 +205,9 @@ export default function AutomationsPage() {
     if (rule.action_type === "send_flow") {
       const flow = publishedFlows.find((f) => f.id === rule.action_config.flow_id);
       return `Flow: ${flow?.name || rule.action_config.flow_id}`;
+    }
+    if (rule.action_type === "send_email") {
+      return rule.action_config.subject || "";
     }
     return rule.action_config.message || rule.action_config.reason || rule.action_config.tag || "";
   };
@@ -254,6 +276,7 @@ export default function AutomationsPage() {
                     onChange={(e) => {
                       setAction(e.target.value as AutomationAction);
                       setTextConfig("");
+                      setEmailSubject("");
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
                   >
@@ -382,6 +405,71 @@ export default function AutomationsPage() {
                       or it won&apos;t work when this rule fires.
                     </p>
                   )}
+                </div>
+              )}
+
+              {action === "place_call" && (
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Reason for the call</label>
+                  <p className="text-[11px] text-os-text-dim mb-2">
+                    A brief, not a script - the AI drafts the actual opening line from this once the call connects.
+                  </p>
+                  <textarea
+                    value={textConfig}
+                    onChange={(e) => setTextConfig(e.target.value)}
+                    rows={2}
+                    placeholder="Remind them about their outstanding balance and offer to help them pay."
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+                  />
+                  <p className="text-[11px] text-os-text-dim mt-1.5">
+                    Only works once a voice number is connected (Voice Agent page) - a rule can&apos;t place a call
+                    for a business with no number.
+                  </p>
+                </div>
+              )}
+
+              {action === "send_sms" && (
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
+                  <textarea
+                    value={textConfig}
+                    onChange={(e) => setTextConfig(e.target.value)}
+                    rows={2}
+                    placeholder="Just checking in - let us know if you need anything."
+                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+                  />
+                  <p className="text-[11px] text-os-text-dim mt-1.5">
+                    Sent from your connected voice number (Voice Agent page) - needs one connected.
+                  </p>
+                </div>
+              )}
+
+              {action === "send_email" && (
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Subject</label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      placeholder="Following up on your visit"
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Body</label>
+                    <textarea
+                      value={textConfig}
+                      onChange={(e) => setTextConfig(e.target.value)}
+                      rows={3}
+                      placeholder="Thanks for reaching out - we'll get right back to you."
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+                    />
+                  </div>
+                  <p className="text-[11px] text-os-text-dim">
+                    Needs a verified sending email connected (Settings page) and the customer&apos;s own email on file -
+                    a rule can&apos;t reach someone with no email address recorded.
+                  </p>
                 </div>
               )}
 

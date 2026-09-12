@@ -943,9 +943,19 @@ export type AutomationTrigger =
   | "appointment.cancelled"
   | "escalation.raised"
   | "queue_token.issued"
-  | "competitor.mentioned";
+  | "competitor.mentioned"
+  | "churn_risk.detected"
+  | "demo.requested"
+  | "pricing_question.asked";
 
-export type AutomationAction = "whatsapp_followup" | "create_escalation_task" | "add_tag" | "send_flow";
+export type AutomationAction =
+  | "whatsapp_followup"
+  | "create_escalation_task"
+  | "add_tag"
+  | "send_flow"
+  | "place_call"
+  | "send_sms"
+  | "send_email";
 
 // The real channels a trigger can actually come from - matches the
 // backend's own Channel enum (shared/db/models/channel.py). Kept here
@@ -960,6 +970,7 @@ export type AutomationRule = {
   /**
    * whatsapp_followup: {message}. create_escalation_task: {reason}.
    * add_tag: {tag}. send_flow: {flow_id, body, screen, cta}.
+   * place_call: {reason}. send_sms: {message}. send_email: {subject, body}.
    */
   action_config: Record<string, string>;
   is_active: boolean;
@@ -2223,6 +2234,14 @@ export const WEBHOOK_EVENT_TYPES = [
   // whatsapp/webhook.py's flow_reply handling), the backend already
   // accepted it, this list just never got it added.
   "flow.completed",
+  // Real-time product-feedback signals (shared/ai/signals.py), gated to
+  // businesses whose vertical declares product_feedback (today only
+  // "startup") - the same real-time dispatch competitor.mentioned above
+  // already used, extended to two more signal kinds worth acting on
+  // instantly rather than just showing on the Signals page.
+  "churn_risk.detected",
+  "demo.requested",
+  "pricing_question.asked",
 ] as const;
 
 export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;
