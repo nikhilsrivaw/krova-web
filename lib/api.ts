@@ -228,6 +228,7 @@ export const escalations = {
   list: (acknowledged = false) =>
     api.get<EscalationRow[]>(`/escalations?acknowledged=${acknowledged}`),
   acknowledge: (id: string) => api.post<EscalationRow>(`/escalations/${id}/acknowledge`),
+  count: () => api.get<{ open: number }>("/escalations/count"),
 };
 
 export type ContactImportRowResult = {

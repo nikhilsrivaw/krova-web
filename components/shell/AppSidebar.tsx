@@ -29,7 +29,7 @@ import {
   FileCheck2,
   Siren,
 } from "lucide-react";
-import { approvals, type AutonomyLevel, type Capability } from "@/lib/api";
+import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { AutonomyPill } from "../ui/AutonomyPill";
 
@@ -50,6 +50,7 @@ export function AppSidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [openEscalationCount, setOpenEscalationCount] = useState<number>(0);
 
   useEffect(() => {
     let mounted = true;
@@ -58,6 +59,26 @@ export function AppSidebar({
         const res = await approvals.count();
         if (mounted && res && typeof res.pending === "number") {
           setPendingCount(res.pending);
+        }
+      } catch {
+        // quiet fallback
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const res = await escalations.count();
+        if (mounted && res && typeof res.open === "number") {
+          setOpenEscalationCount(res.open);
         }
       } catch {
         // quiet fallback
@@ -158,6 +179,8 @@ export function AppSidebar({
       href: "/escalations",
       icon: Siren,
       accent: "text-brass-bright",
+      badge: openEscalationCount > 0 ? openEscalationCount : undefined,
+      badgeColor: "bg-rose-500 text-white font-mono font-bold",
       shortcut: "G E",
     },
     {
