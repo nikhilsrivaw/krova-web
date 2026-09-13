@@ -51,6 +51,22 @@ const CHANNEL_AMBIGUOUS_TRIGGERS = new Set<AutomationTrigger>([
   "competitor.mentioned",
 ]);
 
+// The booking lifecycle, end to end - a call comes in wanting something
+// (call.completed), gets handed to a Flow (flow.completed), which books or
+// un-books a real slot (appointment.booked/cancelled) or issues a walk-in
+// token (queue_token.issued). Everything else (message.received,
+// escalation.raised, competitor.mentioned, churn/demo/pricing signals) is
+// general-purpose, not scheduling-specific - kept out of this set rather
+// than guessed in, since a rule built on one of those could be about
+// anything.
+const SCHEDULING_TRIGGERS = new Set<AutomationTrigger>([
+  "call.completed",
+  "flow.completed",
+  "appointment.booked",
+  "appointment.cancelled",
+  "queue_token.issued",
+]);
+
 /** Same check as components/whatsapp/FlowsPanel.tsx and app/campaigns/page.tsx's own usesLiveData. */
 function usesLiveData(flow: WhatsAppFlow): boolean {
   try {
@@ -169,7 +185,15 @@ const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[])
 };
 
 export default function AutomationsPage() {
+  // "Rules" = everything else, "Scheduling" = the booking-lifecycle subset
+  // (SCHEDULING_TRIGGERS) - two filtered views over the same rules and the
+  // same builder, not a separate feature or a separate table.
+  const [automationsTab, setAutomationsTab] = useState<"rules" | "scheduling">("rules");
+
   const [rules, setRules] = useState<AutomationRule[]>([]);
+  const visibleRules = rules.filter((r) =>
+    automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(r.trigger_type) : !SCHEDULING_TRIGGERS.has(r.trigger_type)
+  );
   const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,6 +314,7 @@ export default function AutomationsPage() {
 
   const openForCreate = () => {
     closeBuilder();
+    if (automationsTab === "scheduling") setTrigger("call.completed");
     setBuilderOpen(true);
   };
 
@@ -891,15 +916,37 @@ export default function AutomationsPage() {
         )}
 
         <GlassCard className="p-6 space-y-4">
+          <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
+            {(["rules", "scheduling"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  if (builderOpen) closeBuilder();
+                  setAutomationsTab(tab);
+                }}
+                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-all ${
+                  automationsTab === tab ? "bg-cyan-500/20 text-cyan-400" : "text-os-text-dim hover:text-white"
+                }`}
+              >
+                {tab === "rules" ? "Rules" : "Scheduling"}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
                 <Zap className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Rules</h3>
+                <h3 className="text-sm font-bold text-white">
+                  {automationsTab === "scheduling" ? "Scheduling automations" : "Rules"}
+                </h3>
                 <p className="text-xs text-os-text-dim">
-                  Pick a trigger, then stack as many steps as you need - each with its own condition and wait.
+                  {automationsTab === "scheduling"
+                    ? "The booking lifecycle - a call comes in, gets handed to a Flow, books a slot or issues a token. Same rule-builder, scoped to these triggers."
+                    : "Pick a trigger, then stack as many steps as you need - each with its own condition and wait."}
                 </p>
               </div>
             </div>
@@ -925,7 +972,9 @@ export default function AutomationsPage() {
                 channel={channel}
                 showChannel={CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger)}
                 channelTouched={channelTouched}
-                triggerOptions={(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => ({ value: t, label: TRIGGER_LABEL[t] }))}
+                triggerOptions={(Object.keys(TRIGGER_LABEL) as AutomationTrigger[])
+                  .filter((t) => (automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(t) : true))
+                  .map((t) => ({ value: t, label: TRIGGER_LABEL[t] }))}
                 channelOptions={(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => ({ value: c, label: CHANNEL_LABEL[c] }))}
                 onTriggerChange={(next) => {
                   setTrigger(next);
@@ -982,15 +1031,19 @@ export default function AutomationsPage() {
 
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
-          ) : rules.length === 0 && !builderOpen ? (
+          ) : visibleRules.length === 0 && !builderOpen ? (
             <EmptyState
               icon={Zap}
-              title="No automations yet"
-              description="Set up a rule for a message arriving, a Flow completing, an appointment booked, and more."
+              title={automationsTab === "scheduling" ? "No scheduling automations yet" : "No automations yet"}
+              description={
+                automationsTab === "scheduling"
+                  ? "Set up a rule for a call finishing, a booking Flow completing, an appointment booked or cancelled, or a queue token issued."
+                  : "Set up a rule for a message arriving, an escalation, a competitor mention, and more."
+              }
             />
           ) : (
             <div className="space-y-2">
-              {rules.map((rule) => (
+              {visibleRules.map((rule) => (
                 <div key={rule.id} className="p-3.5 rounded-xl bg-black/20 border border-white/[0.06]">
                   {rule.name && (
                     <p className="text-xs font-semibold text-white mb-2">{rule.name}</p>
