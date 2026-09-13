@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff } from "lucide-react";
+import Link from "next/link";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff, Zap } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { signals as signalsApi, ledger, type Signal, type SignalKind, type SignalSeverity, type CustomerSummary } from "@/lib/api";
+import { signals as signalsApi, ledger, type Signal, type SignalKind, type SignalSeverity, type CustomerSummary, type AutomationTrigger } from "@/lib/api";
 
 const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "rose" | "indigo" | "amber" | "purple" | "emerald" }> = {
   bug: { label: "Bug", icon: Bug, badge: "rose" },
@@ -30,6 +31,29 @@ const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
   critical: "rose",
   warning: "amber",
   info: "default",
+};
+
+// Only the kinds that can actually drive an Automations rule get a
+// mapping - account_health/escalation_rate are business-level (no
+// customer_id ever), so shared/care/signal_dispatch.py never sends them
+// to apply_rules; deliberately absent here so the button below simply
+// never renders for those two cards, correctly reflecting that they can't
+// have a rule (they're still real, still shown, just webhook-only - see
+// Settings' outbound-webhook picker instead).
+const SIGNAL_KIND_TO_TRIGGER: Partial<Record<SignalKind, AutomationTrigger>> = {
+  bug: "bug.detected",
+  feature_request: "feature_request.detected",
+  complaint: "complaint.detected",
+  churn_risk: "churn_risk.detected",
+  praise: "praise.detected",
+  overdue_followup: "overdue_followup.detected",
+  report_not_collected: "report_not_collected.detected",
+  intent_leakage: "intent_leakage.detected",
+  overdue_refund: "overdue_refund.detected",
+  rto_risk: "rto_risk.detected",
+  demo_request: "demo.requested",
+  pricing_question: "pricing_question.asked",
+  competitor_mention: "competitor.mentioned",
 };
 
 export default function SignalsPage() {
@@ -208,6 +232,16 @@ export default function SignalsPage() {
                       <Github className="w-3.5 h-3.5" />
                       {filingId === s.id ? "Filing..." : "File issue"}
                     </button>
+                  )}
+                  {SIGNAL_KIND_TO_TRIGGER[s.kind] && (
+                    <Link
+                      href={`/automations?trigger=${SIGNAL_KIND_TO_TRIGGER[s.kind]}`}
+                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-os-text-dim hover:text-white hover:bg-white/[0.06] border border-white/[0.08] transition-colors text-[11px] font-semibold"
+                      title="Build a rule for signals like this"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Create an automation
+                    </Link>
                   )}
                   <button
                     type="button"

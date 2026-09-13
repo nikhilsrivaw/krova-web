@@ -16,6 +16,7 @@ import { FlowCanvas } from "@/components/automations/FlowCanvas";
 import {
   postCallRules,
   flows as flowsApi,
+  account,
   CONDITION_FIELDS,
   type AutomationRule,
   type AutomationStepConfig,
@@ -25,6 +26,7 @@ import {
   type AutomationCondition,
   type AutomationOperator,
   type WhatsAppFlow,
+  type Capability,
 } from "@/lib/api";
 
 const CHANNEL_LABEL: Record<AutomationChannel, string> = {
@@ -90,6 +92,38 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "churn_risk.detected": "A customer signals they might churn",
   "demo.requested": "A customer asks for a demo",
   "pricing_question.asked": "A customer asks about pricing",
+  "bug.detected": "A customer reports a bug",
+  "feature_request.detected": "A customer requests a feature",
+  "complaint.detected": "A customer complains",
+  "praise.detected": "A customer praises you",
+  "overdue_followup.detected": "A follow-up becomes overdue",
+  "report_not_collected.detected": "A report isn't collected in time",
+  "overdue_refund.detected": "A promised refund becomes overdue",
+  "intent_leakage.detected": "A customer shows signs of buying elsewhere",
+  "rto_risk.detected": "An order is at risk of return-to-origin",
+};
+
+// Which of a business's own capabilities a trigger actually needs to ever
+// fire - not every trigger here is a Signal, but every Signal-derived one
+// is capability-gated at the backend (shared/ai/signals.py's extraction,
+// shared/ai/recall_insights.py's/shared/care/intent_leakage.py's sweeps),
+// so offering it to a business without that capability would be a real
+// silent trap: a rule that saves cleanly and never fires, with no warning
+// anywhere. Absent from this map = universal, exactly like today.
+const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[]>> = {
+  "competitor.mentioned": ["product_feedback"],
+  "churn_risk.detected": ["product_feedback"],
+  "demo.requested": ["product_feedback"],
+  "pricing_question.asked": ["product_feedback"],
+  "bug.detected": ["product_feedback"],
+  "feature_request.detected": ["product_feedback"],
+  "complaint.detected": ["product_feedback"],
+  "praise.detected": ["product_feedback"],
+  "overdue_followup.detected": ["care_recall"],
+  "report_not_collected.detected": ["care_recall"],
+  "overdue_refund.detected": ["order_sync"],
+  "intent_leakage.detected": ["order_sync"],
+  "rto_risk.detected": ["order_sync"],
 };
 
 const ACTION_LABEL: Record<AutomationAction, string> = {
@@ -195,6 +229,13 @@ export default function AutomationsPage() {
     automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(r.trigger_type) : !SCHEDULING_TRIGGERS.has(r.trigger_type)
   );
   const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
+  // This page fetches its own copy - AppLayout loads the same
+  // account.profile() call for the sidebar, but doesn't share it via
+  // context/props (confirmed by reading AppLayout.tsx directly). Starts
+  // empty and stays empty on any load failure - fail closed, so a gated
+  // trigger never briefly (or permanently, on a real error) looks
+  // available when it might not be.
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -247,7 +288,9 @@ export default function AutomationsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [rulesRes, flowsRes] = await Promise.allSettled([postCallRules.list(), flowsApi.list()]);
+    const [rulesRes, flowsRes, profileRes] = await Promise.allSettled([
+      postCallRules.list(), flowsApi.list(), account.profile(),
+    ]);
     if (rulesRes.status === "fulfilled") {
       setRules(rulesRes.value);
       setLoadError(null);
@@ -257,11 +300,34 @@ export default function AutomationsPage() {
     if (flowsRes.status === "fulfilled") {
       setPublishedFlows(flowsRes.value.filter((f) => f.status === "PUBLISHED"));
     }
+    // Best-effort - a failed profile fetch just means every capability-
+    // gated trigger stays hidden (fail closed) rather than blocking the
+    // whole page.
+    if (profileRes.status === "fulfilled") {
+      setCapabilities(profileRes.value.capabilities || []);
+    }
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Read once on mount so another page can deep-link straight into a
+  // ready-to-configure rule (the Signals page's own "Create an automation"
+  // button, /automations?trigger=bug.detected) - mirrors the /whatsapp
+  // ?tab= pattern already built this session. Only opens the builder for
+  // a trigger this page actually knows about; an unrecognised value is
+  // silently ignored rather than opening a broken/blank builder.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("trigger");
+    if (!requested || !(requested in TRIGGER_LABEL)) return;
+    const t = requested as AutomationTrigger;
+    setAutomationsTab(SCHEDULING_TRIGGERS.has(t) ? "scheduling" : "rules");
+    setTrigger(t);
+    setChannel("");
+    setChannelTouched(false);
+    setBuilderOpen(true);
   }, []);
 
   const selectedFlow = publishedFlows.find((f) => f.id === flowId) || null;
@@ -330,6 +396,19 @@ export default function AutomationsPage() {
     loadDraft(undefined);
     setSaveError(null);
     setBuilderOpen(true);
+  };
+
+  // A trigger is offered when it isn't capability-gated at all, OR the
+  // business has one of the required capabilities, OR it's the trigger
+  // already selected - the last clause is what keeps openForEdit on a
+  // pre-existing rule (saved before this gating existed, or whose
+  // business's capabilities changed since) from breaking: this closes off
+  // NEW bad choices, it doesn't retroactively invalidate an old one.
+  const triggerAllowed = (t: AutomationTrigger): boolean => {
+    const required = TRIGGER_REQUIRED_CAPABILITY[t];
+    if (!required) return true;
+    if (t === trigger) return true;
+    return required.some((cap) => capabilities.includes(cap));
   };
 
   const availableFields = CONDITION_FIELDS[trigger] ?? [];
@@ -974,6 +1053,7 @@ export default function AutomationsPage() {
                 channelTouched={channelTouched}
                 triggerOptions={(Object.keys(TRIGGER_LABEL) as AutomationTrigger[])
                   .filter((t) => (automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(t) : true))
+                  .filter(triggerAllowed)
                   .map((t) => ({ value: t, label: TRIGGER_LABEL[t] }))}
                 channelOptions={(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => ({ value: c, label: CHANNEL_LABEL[c] }))}
                 onTriggerChange={(next) => {

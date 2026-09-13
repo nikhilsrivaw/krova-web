@@ -946,7 +946,22 @@ export type AutomationTrigger =
   | "competitor.mentioned"
   | "churn_risk.detected"
   | "demo.requested"
-  | "pricing_question.asked";
+  | "pricing_question.asked"
+  // The rest of Signals' AI-extracted kinds (product_feedback-gated, same
+  // as the four above) - see shared/care/signal_dispatch.py.
+  | "bug.detected"
+  | "feature_request.detected"
+  | "complaint.detected"
+  | "praise.detected"
+  // Deterministic-sweep signal kinds, customer-scoped.
+  | "overdue_followup.detected"
+  | "report_not_collected.detected"
+  | "overdue_refund.detected"
+  | "intent_leakage.detected"
+  | "rto_risk.detected";
+// escalation_rate.detected / account_health.detected deliberately absent -
+// business-level signals with no customer_id, so a rule on either could
+// never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
 
 export type AutomationAction =
   | "whatsapp_followup"
@@ -990,6 +1005,15 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "churn_risk.detected": ["severity", "title", "body"],
   "demo.requested": ["severity", "title", "body"],
   "pricing_question.asked": ["severity", "title", "body"],
+  "bug.detected": ["severity", "title", "body"],
+  "feature_request.detected": ["severity", "title", "body"],
+  "complaint.detected": ["severity", "title", "body"],
+  "praise.detected": ["severity", "title", "body"],
+  "overdue_followup.detected": ["severity", "title", "body"],
+  "report_not_collected.detected": ["severity", "title", "body"],
+  "overdue_refund.detected": ["severity", "title", "body"],
+  "intent_leakage.detected": ["severity", "title", "body"],
+  "rto_risk.detected": ["severity", "title", "body"],
 };
 
 export type AutomationCondition = {
@@ -2297,6 +2321,24 @@ export const WEBHOOK_EVENT_TYPES = [
   "churn_risk.detected",
   "demo.requested",
   "pricing_question.asked",
+  // The rest of the Signals feature's kinds, wired for real-time dispatch
+  // in the same pass that closed the Automations silent-trap bug (see
+  // shared/care/signal_dispatch.py) - all subscribable here regardless of
+  // whether they can also drive an Automations rule.
+  "bug.detected",
+  "feature_request.detected",
+  "complaint.detected",
+  "praise.detected",
+  "overdue_followup.detected",
+  "report_not_collected.detected",
+  "overdue_refund.detected",
+  "intent_leakage.detected",
+  "rto_risk.detected",
+  // Business-level signals (no customer_id) - can never drive an
+  // Automations rule (every action needs a customer), so a webhook
+  // subscription is the only way to act on either of these.
+  "escalation_rate.detected",
+  "account_health.detected",
 ] as const;
 
 export const WEBHOOK_FORMATS = ["raw", "slack", "teams"] as const;
