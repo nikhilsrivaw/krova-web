@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail,
@@ -178,8 +179,16 @@ export default function AutomationsPage() {
   // either way, only what Save does at the end differs.
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleName, setRuleName] = useState("");
   const [trigger, setTrigger] = useState<AutomationTrigger>("message.received");
   const [channel, setChannel] = useState<AutomationChannel | "">("");
+  // Has the business actively made a channel choice for this rule yet
+  // (including deliberately picking "any channel")? true for an existing
+  // rule being edited (its prior choice, even unset, was already made -
+  // this isn't retroactive), false for a brand-new rule until they touch
+  // the picker - see FlowCanvas's TriggerNode for why this isn't just
+  // `channel !== ""`.
+  const [channelTouched, setChannelTouched] = useState(false);
   // Steps already committed into the stack (position order) - each is a
   // complete, valid AutomationStepConfig. The one being actively edited
   // lives in the draft fields below instead, keyed by `openIndex`.
@@ -268,8 +277,10 @@ export default function AutomationsPage() {
   const closeBuilder = () => {
     setBuilderOpen(false);
     setEditingRuleId(null);
+    setRuleName("");
     setTrigger("message.received");
     setChannel("");
+    setChannelTouched(false);
     setSteps([]);
     setOpenIndex(null);
     setIsNewStep(false);
@@ -284,8 +295,10 @@ export default function AutomationsPage() {
 
   const openForEdit = (rule: AutomationRule) => {
     setEditingRuleId(rule.id);
+    setRuleName(rule.name ?? "");
     setTrigger(rule.trigger_type);
     setChannel(rule.channel ?? "");
+    setChannelTouched(true);
     setSteps(rule.steps);
     setOpenIndex(null);
     setIsNewStep(false);
@@ -421,22 +434,29 @@ export default function AutomationsPage() {
     });
   };
 
+  // A channel-ambiguous trigger needs an explicit decision before saving -
+  // see FlowCanvas's TriggerNode / channelTouched's own comment for why an
+  // untouched picker isn't just treated as "any channel" chosen.
+  const channelDecisionMissing = CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger) && !channelTouched;
+
   const handleSave = async () => {
-    if (steps.length === 0 || openIndex !== null) return;
+    if (steps.length === 0 || openIndex !== null || channelDecisionMissing) return;
     setIsSaving(true);
     setSaveError(null);
     try {
       if (editingRuleId) {
         // Preserve the rule's own active/paused state - this save is about
-        // its trigger/channel/steps, not a silent reactivation of a paused rule.
+        // its name/trigger/channel/steps, not a silent reactivation of a paused rule.
         const original = rules.find((r) => r.id === editingRuleId);
         const updated = await postCallRules.update(editingRuleId, {
-          trigger_type: trigger, channel: channel || null, steps,
+          name: ruleName.trim() || null, trigger_type: trigger, channel: channel || null, steps,
           is_active: original?.is_active ?? true,
         });
         setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)));
       } else {
-        const created = await postCallRules.create({ trigger_type: trigger, channel: channel || null, steps });
+        const created = await postCallRules.create({
+          name: ruleName.trim() || null, trigger_type: trigger, channel: channel || null, steps,
+        });
         setRules((prev) => [...prev, created]);
       }
       closeBuilder();
@@ -449,9 +469,10 @@ export default function AutomationsPage() {
 
   const handleToggle = async (rule: AutomationRule) => {
     // PATCH replaces the whole rule server-side, not a partial merge -
-    // resend the rule's own steps/channel unchanged so toggling active/
-    // inactive doesn't silently wipe either.
+    // resend the rule's own name/steps/channel unchanged so toggling
+    // active/inactive doesn't silently wipe any of them.
     const updated = await postCallRules.update(rule.id, {
+      name: rule.name ?? null,
       trigger_type: rule.trigger_type,
       is_active: !rule.is_active,
       channel: rule.channel ?? null,
@@ -640,7 +661,11 @@ export default function AutomationsPage() {
             <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Flow</label>
             {publishedFlows.length === 0 ? (
               <p className="text-[11px] text-amber-400">
-                No published flows yet - publish one from the Flows page first.
+                No published flows yet -{" "}
+                <Link href="/whatsapp?tab=flows" className="underline hover:text-amber-300">
+                  build one on the Flows tab
+                </Link>
+                , then come back here.
               </p>
             ) : (
               <select
@@ -894,9 +919,12 @@ export default function AutomationsPage() {
               )}
 
               <FlowCanvas
+                ruleName={ruleName}
+                onRuleNameChange={setRuleName}
                 trigger={trigger}
                 channel={channel}
                 showChannel={CHANNEL_AMBIGUOUS_TRIGGERS.has(trigger)}
+                channelTouched={channelTouched}
                 triggerOptions={(Object.keys(TRIGGER_LABEL) as AutomationTrigger[]).map((t) => ({ value: t, label: TRIGGER_LABEL[t] }))}
                 channelOptions={(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => ({ value: c, label: CHANNEL_LABEL[c] }))}
                 onTriggerChange={(next) => {
@@ -904,9 +932,15 @@ export default function AutomationsPage() {
                   // A channel chosen for an ambiguous trigger is meaningless
                   // once switched to one that's only ever one channel anyway
                   // (the picker disappears too) - don't silently carry it over.
-                  if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) setChannel("");
+                  if (!CHANNEL_AMBIGUOUS_TRIGGERS.has(next)) {
+                    setChannel("");
+                    setChannelTouched(false);
+                  }
                 }}
-                onChannelChange={setChannel}
+                onChannelChange={(next) => {
+                  setChannel(next);
+                  setChannelTouched(true);
+                }}
                 steps={steps}
                 openIndex={openIndex}
                 isNewStep={isNewStep}
@@ -930,7 +964,7 @@ export default function AutomationsPage() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={isSaving || steps.length === 0 || openIndex !== null}
+                  disabled={isSaving || steps.length === 0 || openIndex !== null || channelDecisionMissing}
                   className="px-4 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-cyan-500/30 transition-all cursor-pointer"
                 >
                   {isSaving ? "Saving…" : editingRuleId ? "Save changes" : "Save rule"}
@@ -958,6 +992,9 @@ export default function AutomationsPage() {
             <div className="space-y-2">
               {rules.map((rule) => (
                 <div key={rule.id} className="p-3.5 rounded-xl bg-black/20 border border-white/[0.06]">
+                  {rule.name && (
+                    <p className="text-xs font-semibold text-white mb-2">{rule.name}</p>
+                  )}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Badge variant="default">

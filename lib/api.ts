@@ -1022,6 +1022,10 @@ export type AutomationStepConfig = {
 
 export type AutomationRule = {
   id: string;
+  // The business's own label for this rule ("New patient no-show
+  // recovery") - purely descriptive, never interpreted. null/omitted =
+  // not named yet, falls back to a trigger -> action summary in the UI.
+  name?: string | null;
   trigger_type: AutomationTrigger;
   is_active: boolean;
   // null/omitted = fires for any channel - the original, unfiltered
@@ -1042,6 +1046,7 @@ export const postCallRules = {
   list: () => api.get<AutomationRule[]>("/post-call-rules"),
 
   create: (data: {
+    name?: string | null;
     trigger_type: AutomationTrigger;
     is_active?: boolean;
     channel?: AutomationChannel | null;
@@ -1051,6 +1056,7 @@ export const postCallRules = {
   update: (
     id: string,
     data: {
+      name?: string | null;
       trigger_type: AutomationTrigger;
       is_active: boolean;
       channel?: AutomationChannel | null;

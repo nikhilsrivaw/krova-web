@@ -55,6 +55,17 @@ const TIER_LABELS: Record<string, string> = {
 
 export default function WhatsAppPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose" | "flows">("overview");
+
+  // Read once on mount so another page can deep-link straight to a tab
+  // (e.g. /whatsapp?tab=flows from the Automations builder's send_flow
+  // config) - not kept in sync afterwards, clicking a tab here still just
+  // sets local state, same as before.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "overview" || tab === "templates" || tab === "compose" || tab === "flows") {
+      setActiveTab(tab);
+    }
+  }, []);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);

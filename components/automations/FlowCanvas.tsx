@@ -92,9 +92,19 @@ function useAutoResize(nodeId: string) {
 // ── Trigger node ─────────────────────────────────────────────────────────
 
 type TriggerNodeData = {
+  ruleName: string;
+  onRuleNameChange: (name: string) => void;
   trigger: AutomationTrigger;
   channel: AutomationChannel | "";
   showChannel: boolean;
+  // Whether the business has actively made a channel choice for this
+  // trigger yet (including deliberately choosing "any channel") - distinct
+  // from `channel === ""` on its own, which is also what an untouched,
+  // never-decided picker looks like. See page.tsx's own channelTouched
+  // state for why this exists: a rule shaped for WhatsApp silently also
+  // firing mid-voice-call is a real, already-seen risk, so "not decided
+  // yet" gets a visible nudge instead of quietly resolving to "any".
+  channelTouched: boolean;
   triggerOptions: { value: AutomationTrigger; label: string }[];
   channelOptions: { value: AutomationChannel; label: string }[];
   onTriggerChange: (t: AutomationTrigger) => void;
@@ -112,6 +122,13 @@ function TriggerNode({ id, data }: NodeProps) {
         </div>
         <span className="text-[10px] uppercase tracking-wide text-os-text-dim">Trigger - When</span>
       </div>
+      <input
+        type="text"
+        value={d.ruleName}
+        onChange={(e) => d.onRuleNameChange(e.target.value)}
+        placeholder="Name this rule (optional)"
+        className="w-full mb-2 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white placeholder:text-os-text-dim/60 focus:border-cyan-500 focus:outline-none"
+      />
       <select
         value={d.trigger}
         onChange={(e) => d.onTriggerChange(e.target.value as AutomationTrigger)}
@@ -122,16 +139,25 @@ function TriggerNode({ id, data }: NodeProps) {
         ))}
       </select>
       {d.showChannel && (
-        <select
-          value={d.channel}
-          onChange={(e) => d.onChannelChange(e.target.value as AutomationChannel | "")}
-          className="w-full mt-2 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-cyan-500 focus:outline-none"
-        >
-          <option value="">Any channel</option>
-          {d.channelOptions.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+        <div className="mt-2">
+          <select
+            value={d.channel}
+            onChange={(e) => d.onChannelChange(e.target.value as AutomationChannel | "")}
+            className={`w-full px-2.5 py-1.5 rounded-lg bg-black/40 border text-[11px] text-white font-mono focus:outline-none ${
+              d.channelTouched ? "border-white/[0.12] focus:border-cyan-500" : "border-amber-500/50 focus:border-amber-400"
+            }`}
+          >
+            <option value="">Any channel (fires from all of them)</option>
+            {d.channelOptions.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+          {!d.channelTouched && (
+            <p className="mt-1 text-[10px] text-amber-400/90 leading-snug">
+              This trigger can fire from more than one channel - confirm which one(s) should trigger this rule before saving.
+            </p>
+          )}
+        </div>
       )}
       <Handle type="source" position={Position.Right} className="!bg-cyan-500 !border-cyan-300" />
     </div>
@@ -291,9 +317,12 @@ const edgeTypes = { insertable: InsertableEdge };
 // ── Public props ─────────────────────────────────────────────────────────
 
 export type FlowCanvasProps = {
+  ruleName: string;
+  onRuleNameChange: (name: string) => void;
   trigger: AutomationTrigger;
   channel: AutomationChannel | "";
   showChannel: boolean;
+  channelTouched: boolean;
   triggerOptions: { value: AutomationTrigger; label: string }[];
   channelOptions: { value: AutomationChannel; label: string }[];
   onTriggerChange: (t: AutomationTrigger) => void;
@@ -343,7 +372,9 @@ function CanvasInner(props: FlowCanvasProps) {
     const position = { x: idx * NODE_SPACING_X, y: 0 };
     if (item.kind === "trigger") {
       const data: TriggerNodeData = {
+        ruleName: props.ruleName, onRuleNameChange: props.onRuleNameChange,
         trigger: props.trigger, channel: props.channel, showChannel: props.showChannel,
+        channelTouched: props.channelTouched,
         triggerOptions: props.triggerOptions, channelOptions: props.channelOptions,
         onTriggerChange: props.onTriggerChange, onChannelChange: props.onChannelChange,
       };
