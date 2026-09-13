@@ -124,6 +124,7 @@ const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[
   "overdue_refund.detected": ["order_sync"],
   "intent_leakage.detected": ["order_sync"],
   "rto_risk.detected": ["order_sync"],
+  "queue_token.issued": ["opd_queue"],
 };
 
 const ACTION_LABEL: Record<AutomationAction, string> = {
