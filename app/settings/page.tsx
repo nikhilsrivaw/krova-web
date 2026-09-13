@@ -26,6 +26,7 @@ import {
   Download,
   Star,
   Github,
+  ShoppingBag,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -95,6 +96,9 @@ export default function SettingsPage() {
   const [datasetId, setDatasetId] = useState("");
   const [isSavingDataset, setIsSavingDataset] = useState(false);
   const [datasetSaved, setDatasetSaved] = useState(false);
+  const [catalogId, setCatalogId] = useState("");
+  const [isSavingCatalogId, setIsSavingCatalogId] = useState(false);
+  const [catalogIdSaved, setCatalogIdSaved] = useState(false);
 
   // Number verification and two-step PIN
   const [verifyMethod, setVerifyMethod] = useState<"SMS" | "VOICE">("SMS");
@@ -462,6 +466,21 @@ export default function SettingsPage() {
       // Non-critical field - a silent failure here is fine, no toast needed.
     } finally {
       setIsSavingDataset(false);
+    }
+  };
+
+  const handleSaveCatalogId = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCatalogId(true);
+    setCatalogIdSaved(false);
+    try {
+      await channels.setCatalogId(catalogId.trim() || null);
+      setCatalogIdSaved(true);
+      setTimeout(() => setCatalogIdSaved(false), 3000);
+    } catch {
+      // Non-critical field - a silent failure here is fine, no toast needed.
+    } finally {
+      setIsSavingCatalogId(false);
     }
   };
 
@@ -1720,6 +1739,40 @@ export default function SettingsPage() {
                   className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer shrink-0"
                 >
                   {isSavingDataset ? "Saving..." : datasetSaved ? "Saved!" : "Save"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
+
+        {/* SECTION 2e: PHOTO -> PRODUCT MATCH (stores only) */}
+        {waConnection && (
+          <form onSubmit={handleSaveCatalogId}>
+            <GlassCard className="p-6 space-y-3">
+              <div className="flex items-center gap-3 pb-2">
+                <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Photo → Product Match</h3>
+                  <p className="text-xs text-os-text-dim">
+                    When a customer sends a photo, match it against your real Meta Commerce
+                    Catalog and reply with the actual product, price and availability. Stores
+                    (Online store vertical) only - your own catalog ID, from Meta Commerce Manager.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)}
+                  placeholder="Catalog ID (from Meta Commerce Manager)"
+                  className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                />
+                <button
+                  type="submit" disabled={isSavingCatalogId}
+                  className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer shrink-0"
+                >
+                  {isSavingCatalogId ? "Saving..." : catalogIdSaved ? "Saved!" : "Save"}
                 </button>
               </div>
             </GlassCard>

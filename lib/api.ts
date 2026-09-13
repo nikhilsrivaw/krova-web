@@ -683,6 +683,11 @@ export const channels = {
   setAdTracking: (datasetId: string | null) =>
     api.post<{ dataset_id: string | null }>("/channels/whatsapp/ad-tracking", { dataset_id: datasetId }),
 
+  /** The business's own Meta Commerce Catalog id, used to match a customer's
+   * photo against their real product catalog. Pass null to clear it. */
+  setCatalogId: (catalogId: string | null) =>
+    api.post<{ catalog_id: string | null }>("/channels/whatsapp/catalog-id", { catalog_id: catalogId }),
+
   /** WhatsApp Payments (India) is Meta-native - a business sets this up
    * directly on their own Meta Business Suite and pastes back the id Meta
    * gives them. Krova only remembers it. */
@@ -1557,7 +1562,8 @@ export type Capability =
   | "product_feedback"
   | "care_recall"
   | "opd_queue"
-  | "tpa_claim_tracking";
+  | "tpa_claim_tracking"
+  | "photo_product_match";
 
 export type UserProfile = {
   user_id: string;
