@@ -219,6 +219,11 @@ export type EscalationRow = {
   customer_id: string | null;
   channel: string;
   reason: string;
+  // Stamped by a cold-path sweep a few minutes after creation, not at
+  // creation time - null until then. Display-only: never a condition
+  // field for escalation.raised (see CONDITION_FIELDS below), since it's
+  // never actually present in scope at the moment that trigger dispatches.
+  category: string | null;
   created_at: string;
   acknowledged_at: string | null;
   escalated_further_at: string | null;

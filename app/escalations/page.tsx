@@ -2,12 +2,31 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Siren, Check, Clock, Zap } from "lucide-react";
+import { Siren, Check, Clock, Zap, TrendingDown, MessageSquareWarning } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { escalations, ledger, type EscalationRow, type CustomerSummary } from "@/lib/api";
+import { escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
+
+const CATEGORY_LABEL: Record<string, string> = {
+  billing: "Billing",
+  booking: "Booking",
+  complaint: "Complaint",
+  technical: "Technical",
+  urgent: "Urgent",
+  other: "Other",
+};
+
+// Which of a customer's own open Signals is worth flagging right on their
+// escalation card - real context a staff member handling this should see
+// (churn_risk/complaint only; the other 13 kinds either aren't about this
+// customer specifically or aren't relevant to "should I be extra careful
+// here"), not every open signal they happen to have.
+const FLAGGED_SIGNAL_KINDS: Record<string, { label: string; icon: typeof TrendingDown }> = {
+  churn_risk: { label: "Churn risk", icon: TrendingDown },
+  complaint: { label: "Prior complaint", icon: MessageSquareWarning },
+};
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -23,6 +42,7 @@ export default function EscalationsPage() {
   const [viewMode, setViewMode] = useState<"open" | "acknowledged">("open");
   const [rows, setRows] = useState<EscalationRow[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [openSignals, setOpenSignals] = useState<{ customer_id: string | null; kind: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
@@ -32,13 +52,27 @@ export default function EscalationsPage() {
     return (id: string | null) => (id ? map.get(id) || id.slice(0, 8) : "Unknown user");
   }, [customers]);
 
+  // First matching open signal (churn_risk before complaint, if a
+  // customer somehow has both open at once) per customer - a lookup, not
+  // a new AI call, same "join against data that already exists" shape as
+  // customerName above.
+  const customerFlag = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of openSignals) {
+      if (!s.customer_id || !FLAGGED_SIGNAL_KINDS[s.kind] || map.has(s.customer_id)) continue;
+      map.set(s.customer_id, s.kind);
+    }
+    return (id: string | null) => (id ? map.get(id) : undefined);
+  }, [openSignals]);
+
   const load = async (mode: "open" | "acknowledged") => {
     setIsLoading(true);
     const results = await Promise.allSettled([
       escalations.list(mode === "acknowledged"),
       ledger.customers(),
+      signalsApi.list(),
     ]);
-    const [rowsRes, customersRes] = results;
+    const [rowsRes, customersRes, signalsRes] = results;
     if (rowsRes.status === "fulfilled") {
       setRows(rowsRes.value);
       setLoadError(null);
@@ -46,6 +80,7 @@ export default function EscalationsPage() {
       setLoadError(rowsRes.reason instanceof Error ? rowsRes.reason.message : "Could not load escalations.");
     }
     if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
+    if (signalsRes.status === "fulfilled") setOpenSignals(signalsRes.value);
     setIsLoading(false);
   };
 
@@ -131,14 +166,29 @@ export default function EscalationsPage() {
         )}
 
         <div className="space-y-3">
-          {rows.map((e) => (
+          {rows.map((e) => {
+            const flagKind = customerFlag(e.customer_id);
+            const Flag = flagKind ? FLAGGED_SIGNAL_KINDS[flagKind].icon : null;
+            return (
             <GlassCard key={e.id} className="p-4 flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="rose" dot>
                     {e.channel}
                   </Badge>
+                  {e.category && (
+                    <Badge variant="default">{CATEGORY_LABEL[e.category] || e.category}</Badge>
+                  )}
                   <span className="text-[11px] text-white font-semibold">{customerName(e.customer_id)}</span>
+                  {flagKind && Flag && (
+                    <span
+                      className="text-[10px] text-amber-400 font-mono flex items-center gap-1"
+                      title={`This customer has an open ${FLAGGED_SIGNAL_KINDS[flagKind].label} signal`}
+                    >
+                      <Flag className="w-3 h-3" />
+                      {FLAGGED_SIGNAL_KINDS[flagKind].label}
+                    </span>
+                  )}
                   <span className="text-[11px] text-os-text-dim font-mono flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {timeAgo(e.created_at)}
@@ -162,7 +212,8 @@ export default function EscalationsPage() {
                 </button>
               )}
             </GlassCard>
-          ))}
+            );
+          })}
         </div>
       </div>
     </AppLayout>

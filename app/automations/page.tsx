@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail,
-  Filter, Clock,
+  Filter, Clock, TrendingDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -223,6 +223,18 @@ export default function AutomationsPage() {
   // (SCHEDULING_TRIGGERS) - two filtered views over the same rules and the
   // same builder, not a separate feature or a separate table.
   const [automationsTab, setAutomationsTab] = useState<"rules" | "scheduling">("rules");
+  // Per-viewer convenience only (which businesses have already seen the
+  // starter-rule suggestion below) - not real state, never read back by
+  // anyone but this browser, so localStorage is the right tool here.
+  const [suggestionDismissed, setSuggestionDismissed] = useState(true);
+  useEffect(() => {
+    try {
+      setSuggestionDismissed(localStorage.getItem("krova.dismissed.churn-automation-suggestion") === "1");
+    } catch {
+      // Private window / blocked storage - just don't show the suggestion
+      // rather than risk it reappearing every load.
+    }
+  }, []);
 
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const visibleRules = rules.filter((r) =>
@@ -1106,6 +1118,43 @@ export default function AutomationsPage() {
                   Cancel
                 </button>
               </div>
+            </div>
+          )}
+
+          {automationsTab === "rules" && !suggestionDismissed && visibleRules.length === 0 && !builderOpen && !isLoading && (
+            <div className="p-4 rounded-xl bg-amber-500/[0.06] border border-amber-500/20 flex items-start gap-3">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+                <TrendingDown className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white">Turn a churn risk into an escalation, automatically</p>
+                <p className="text-[11px] text-os-text-dim mt-1">
+                  KROVA already detects when a customer signals they might churn (see Signals). Build a
+                  rule here - trigger &quot;A customer signals they might churn&quot;, action &quot;Create a task
+                  for the team&quot; - and a human gets pulled in before you lose them, no watching required.
+                </p>
+                <Link
+                  href="/automations?trigger=churn_risk.detected"
+                  className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-semibold text-amber-400 hover:text-amber-300"
+                >
+                  Try it <Zap className="w-3 h-3" />
+                </Link>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSuggestionDismissed(true);
+                  try {
+                    localStorage.setItem("krova.dismissed.churn-automation-suggestion", "1");
+                  } catch {
+                    // Fine either way - worst case it shows again next load.
+                  }
+                }}
+                className="shrink-0 p-1 rounded-lg text-os-text-dim hover:text-white cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
