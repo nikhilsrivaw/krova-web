@@ -977,7 +977,7 @@ export type AutomationOperator =
 // CONDITION_FIELDS - kept in sync with it by hand, same as
 // WEBHOOK_EVENT_TYPES below already is with WebhookEventType).
 export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
-  "call.completed": ["duration_seconds", "outcome", "sentiment", "escalated", "topic"],
+  "call.completed": ["duration_seconds", "outcome", "sentiment", "escalated", "topic", "requested_service"],
   "call.voicemail": ["campaign_objective"],
   "call.no_answer": ["campaign_objective"],
   "message.received": ["text"],

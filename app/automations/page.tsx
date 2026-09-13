@@ -104,6 +104,7 @@ const FIELD_LABEL: Record<string, string> = {
   sentiment: "Call sentiment",
   escalated: "Call was escalated",
   topic: "Call topic",
+  requested_service: "What the caller asked for",
   campaign_objective: "Campaign objective",
   text: "Message text",
   flow_id: "Flow",
@@ -599,7 +600,9 @@ export default function AutomationsPage() {
           />
           {trigger === "call.completed" && (
             <p className="text-[11px] text-os-text-dim mt-1.5">
-              Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about this call.
+              Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about
+              this call, or <code className="text-cyan-400">{"{{requested_service}}"}</code> for what the caller
+              specifically asked for (if the agent didn&apos;t book it on the call itself).
             </p>
           )}
         </div>
@@ -677,6 +680,12 @@ export default function AutomationsPage() {
             Only sends inside the 24-hour reply window, same as sending a flow by hand - a rule can&apos;t
             reach someone outside it either.
           </p>
+          {trigger === "call.completed" && (
+            <p className="text-[11px] text-os-text-dim">
+              Use <code className="text-cyan-400">{"{{requested_service}}"}</code> in the message body to
+              mention what the caller specifically asked for.
+            </p>
+          )}
           {selectedFlow && usesLiveData(selectedFlow) && (
             <p className="text-[11px] text-amber-400">
               This flow shows live data - make sure &quot;Enable live data&quot; is on for it (Flows page),
