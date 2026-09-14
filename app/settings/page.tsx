@@ -40,10 +40,12 @@ import {
   integrations,
   dataExport,
   queue as queueApi,
+  fetchVerticals,
   WEBHOOK_EVENT_TYPES,
   WEBHOOK_FORMATS,
   type UserProfile,
   type QueueSettings,
+  type Vertical,
   type AutonomyLevel,
   type ChannelConnection,
   type WhatsAppProfile,
@@ -58,16 +60,14 @@ import {
   type InstagramConversation,
 } from "@/lib/api";
 
-const VERTICALS = [
-  { key: "clinic", label: "Clinic & Healthcare", desc: "Patient appointments, doctor consultations, diagnostic tests" },
-  { key: "coaching", label: "Coaching Institute", desc: "Student inquiries, batch enrollments, test series fee collection" },
-  { key: "salon", label: "Salon & Spa Chain", desc: "Stylist bookings, service catalogs, appointment rescheduling" },
-  { key: "agency", label: "Agency & Consultancy", desc: "Retainer invoices, project milestone deliverables, scope approvals" },
-  { key: "general", label: "General Professional SMB", desc: "Standard business inquiries, quotes and invoice follow-ups" },
-];
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Real verticals from GET /auth/verticals (shared/verticals/templates/*.json)
+  // - was a hardcoded 5-item list here (coaching/salon/agency, which the
+  // backend 422s; missing ecommerce/law_firm/real_estate/restaurant/startup),
+  // same pattern /signup already uses correctly.
+  const [verticals, setVerticals] = useState<Vertical[]>([]);
   const [channelsList, setChannelsList] = useState<ChannelConnection[]>([]);
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
   const [vertical, setVertical] = useState<string>("clinic");
@@ -391,6 +391,10 @@ export default function SettingsPage() {
       setIsExportingConversations(false);
     }
   };
+
+  useEffect(() => {
+    fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -770,7 +774,7 @@ export default function SettingsPage() {
                 Select Industry Vertical:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {VERTICALS.map((v) => (
+                {verticals.map((v) => (
                   <div
                     key={v.key}
                     onClick={() => setVertical(v.key)}
@@ -781,7 +785,7 @@ export default function SettingsPage() {
                     }`}
                   >
                     <p className="text-xs font-bold text-white mb-0.5">{v.label}</p>
-                    <p className="text-[11px] leading-relaxed opacity-80">{v.desc}</p>
+                    <p className="text-[11px] leading-relaxed opacity-80">{v.summary}</p>
                   </div>
                 ))}
               </div>
