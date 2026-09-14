@@ -1717,11 +1717,22 @@ export const migration = {
     ),
 };
 
-// ── Scheduling (Clinics, Real Estate) ───────────────────────────────────────
+// ── Scheduling ───────────────────────────────────────────────────────────────
 // "Doctor" is the backend's table name, reused as-is for Real Estate's
 // agents - a person with recurring hours, a customer, a time, mechanically
-// identical either way. Vertical-facing copy ("Doctor" vs "Agent") is a
-// display-only choice made by the page that renders this, never the data.
+// identical either way. Vertical-facing copy ("Doctor" vs "Agent") is not a
+// hardcoded per-page choice - it's resolved server-side (SchedulingLabels)
+// across code defaults, the vertical's template, and the business's own
+// settings, the same three-tier pattern Queue's labels use.
+
+export type SchedulingLabels = {
+  provider: string;
+  provider_plural: string;
+  credential_label: string;
+  fee_label: string;
+  booking_noun: string;
+  booking_noun_plural: string;
+};
 
 export type Doctor = {
   id: string;
@@ -1759,6 +1770,8 @@ export type Appointment = {
 };
 
 export const scheduling = {
+  getLabels: () => api.get<SchedulingLabels>("/scheduling/labels"),
+
   listDoctors: () => api.get<Doctor[]>("/scheduling/doctors"),
 
   createDoctor: (data: {

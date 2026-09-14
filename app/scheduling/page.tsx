@@ -25,7 +25,24 @@ import {
   type Slot,
   type CustomerSummary,
   type Property,
+  type SchedulingLabels,
+  type Capability,
 } from "@/lib/api";
+
+// Held only until the real, server-resolved labels arrive (same transient
+// window the page already tolerated before this: providerLabel used to
+// default off a still-null `vertical`, i.e. "Doctor", for the same brief
+// moment). Neutral, not any one vertical's word.
+const DEFAULT_LABELS: SchedulingLabels = {
+  provider: "Provider",
+  provider_plural: "Providers",
+  credential_label: "Details",
+  fee_label: "Fee",
+  booking_noun: "booking",
+  booking_noun_plural: "bookings",
+};
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -49,6 +66,8 @@ const APPOINTMENT_BADGE: Record<Appointment["status"], "emerald" | "amber" | "ro
 
 export default function SchedulingPage() {
   const [vertical, setVertical] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [labels, setLabels] = useState<SchedulingLabels>(DEFAULT_LABELS);
   const [activeTab, setActiveTab] = useState<"providers" | "appointments">("providers");
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -88,9 +107,12 @@ export default function SchedulingPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  const hasPropertyListings = vertical === "real_estate";
-  const providerLabel = hasPropertyListings ? "Agent" : "Doctor";
-  const providerLabelPlural = hasPropertyListings ? "Agents" : "Doctors";
+  // A real structural feature (a linked Property row), not vocabulary - so
+  // it gates on the capability that actually governs it, not a vertical
+  // name, matching how every other capability-gated piece of UI works.
+  const hasPropertyListings = capabilities.includes("property_listings");
+  const providerLabel = labels.provider;
+  const providerLabelPlural = labels.provider_plural;
 
   const customerName = useMemo(() => {
     const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed customer"]));
@@ -110,14 +132,16 @@ export default function SchedulingPage() {
       scheduling.listDoctors(),
       scheduling.listAppointments(),
       ledger.customers(),
+      scheduling.getLabels(),
     ];
     const results = await Promise.allSettled(calls);
-    const [profileRes, doctorsRes, apptRes, customersRes] = results;
+    const [profileRes, doctorsRes, apptRes, customersRes, labelsRes] = results;
 
     if (profileRes.status === "fulfilled") {
-      const v = (profileRes.value as { vertical: string | null }).vertical;
-      setVertical(v);
-      if (v === "real_estate") {
+      const profile = profileRes.value as { vertical: string | null; capabilities: Capability[] };
+      setVertical(profile.vertical);
+      setCapabilities(profile.capabilities);
+      if (profile.capabilities.includes("property_listings")) {
         try {
           setPropertyList(await propertiesApi.list());
         } catch {
@@ -129,6 +153,7 @@ export default function SchedulingPage() {
     if (doctorsRes.status === "fulfilled") setDoctors(doctorsRes.value as Doctor[]);
     if (apptRes.status === "fulfilled") setAppointments(apptRes.value as Appointment[]);
     if (customersRes.status === "fulfilled") setCustomers(customersRes.value as CustomerSummary[]);
+    if (labelsRes.status === "fulfilled") setLabels(labelsRes.value as SchedulingLabels);
 
     const failed = results.find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
@@ -267,7 +292,7 @@ export default function SchedulingPage() {
   return (
     <AppLayout
       title="Scheduling"
-      subtitle={`Manage ${providerLabelPlural.toLowerCase()}, their hours, and the appointment book.`}
+      subtitle={`Manage ${providerLabelPlural.toLowerCase()}, their hours, and the calendar.`}
       actions={
         <div className="flex items-center gap-2">
           {doctors.some((d) => d.active) && (
@@ -277,7 +302,7 @@ export default function SchedulingPage() {
               className="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
               <CalendarClock className="w-3.5 h-3.5" />
-              Book Appointment
+              Book {capitalize(labels.booking_noun)}
             </button>
           )}
           <button
@@ -306,7 +331,7 @@ export default function SchedulingPage() {
         <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
           {[
             { key: "providers", label: `${providerLabelPlural} (${doctors.filter((d) => d.active).length})` },
-            { key: "appointments", label: `Appointments (${appointments.length})` },
+            { key: "appointments", label: `${capitalize(labels.booking_noun_plural)} (${appointments.length})` },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -391,7 +416,7 @@ export default function SchedulingPage() {
             ) : appointments.length === 0 ? (
               <EmptyState
                 icon={CalendarClock}
-                title="No appointments yet"
+                title={`No ${labels.booking_noun_plural} yet`}
                 description="Bookings made by voice, WhatsApp, or entered here directly will show up on this calendar."
               />
             ) : (
@@ -454,17 +479,17 @@ export default function SchedulingPage() {
             </div>
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                {hasPropertyListings ? "Registration / license no. (optional)" : "Qualifications (optional)"}
+                {labels.credential_label} (optional)
               </label>
               <input
                 type="text" value={providerQualifications} onChange={(e) => setProviderQualifications(e.target.value)}
-                placeholder={hasPropertyListings ? "e.g. RERA Agent Reg. No. A5210001234" : "e.g. MBBS, MD (Cardiology)"}
+                placeholder={hasPropertyListings ? "e.g. RERA Agent Reg. No. A5210001234" : vertical === "clinic" ? "e.g. MBBS, MD (Cardiology)" : undefined}
                 className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                Consultation fee, ₹ (optional)
+                {labels.fee_label}, ₹ (optional)
               </label>
               <input
                 type="number" min="0" step="1" value={providerFee} onChange={(e) => setProviderFee(e.target.value)}
@@ -546,7 +571,7 @@ export default function SchedulingPage() {
         <Modal
           isOpen={isBookModalOpen}
           onClose={() => setIsBookModalOpen(false)}
-          title="Book an appointment"
+          title={`Book ${capitalize(labels.booking_noun)}`}
           subtitle="Only real, currently open slots can be booked - the same check WhatsApp and voice go through."
           maxWidth="lg"
         >
