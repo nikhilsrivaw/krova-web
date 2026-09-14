@@ -101,6 +101,7 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "overdue_refund.detected": "A promised refund becomes overdue",
   "intent_leakage.detected": "A customer shows signs of buying elsewhere",
   "rto_risk.detected": "An order is at risk of return-to-origin",
+  "claim.status_changed": "A claim's status changes",
 };
 
 // Which of a business's own capabilities a trigger actually needs to ever
@@ -125,6 +126,7 @@ const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[
   "intent_leakage.detected": ["order_sync"],
   "rto_risk.detected": ["order_sync"],
   "queue_token.issued": ["opd_queue"],
+  "claim.status_changed": ["tpa_claim_tracking"],
 };
 
 const ACTION_LABEL: Record<AutomationAction, string> = {

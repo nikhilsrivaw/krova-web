@@ -969,7 +969,10 @@ export type AutomationTrigger =
   | "report_not_collected.detected"
   | "overdue_refund.detected"
   | "intent_leakage.detected"
-  | "rto_risk.detected";
+  | "rto_risk.detected"
+  // Direct status-comparison signal, tpa_claim_tracking capability - see
+  // services/api/routers/insurance_claims.py::update_claim.
+  | "claim.status_changed";
 // escalation_rate.detected / account_health.detected deliberately absent -
 // business-level signals with no customer_id, so a rule on either could
 // never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
@@ -1025,6 +1028,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "overdue_refund.detected": ["severity", "title", "body"],
   "intent_leakage.detected": ["severity", "title", "body"],
   "rto_risk.detected": ["severity", "title", "body"],
+  "claim.status_changed": ["severity", "title", "body"],
 };
 
 export type AutomationCondition = {
@@ -1863,7 +1867,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention" | "escalation_rate";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention" | "escalation_rate" | "claim_status_changed";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {

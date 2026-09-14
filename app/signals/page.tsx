@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff, Zap } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff, Zap, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -25,6 +25,7 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   pricing_question: { label: "Pricing Question", icon: Tag, badge: "purple" },
   competitor_mention: { label: "Competitor Mentioned", icon: Swords, badge: "rose" },
   escalation_rate: { label: "Escalation Rate", icon: PhoneOff, badge: "rose" },
+  claim_status_changed: { label: "Claim Status Changed", icon: ShieldCheck, badge: "indigo" },
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
@@ -54,6 +55,7 @@ const SIGNAL_KIND_TO_TRIGGER: Partial<Record<SignalKind, AutomationTrigger>> = {
   demo_request: "demo.requested",
   pricing_question: "pricing_question.asked",
   competitor_mention: "competitor.mentioned",
+  claim_status_changed: "claim.status_changed",
 };
 
 export default function SignalsPage() {
