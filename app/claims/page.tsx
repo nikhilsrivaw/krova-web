@@ -12,8 +12,19 @@ import {
   ledger,
   type InsuranceClaim,
   type ClaimStatus,
+  type ClaimLabels,
   type CustomerSummary,
 } from "@/lib/api";
+
+// Held only until the real, server-resolved labels arrive - same transient
+// window Queue/Scheduling's pages already tolerate. Neutral, not any one
+// vertical's word.
+const DEFAULT_LABELS: ClaimLabels = {
+  person: "customer",
+  party_label: "External Party",
+  party_noun: "reviewer",
+  reference_label: "Reference number",
+};
 
 const STATUS_BADGE: Record<ClaimStatus, "emerald" | "amber" | "default" | "rose"> = {
   submitted: "default",
@@ -39,6 +50,7 @@ export default function ClaimsPage() {
   const [allClaims, setAllClaims] = useState<InsuranceClaim[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [statusFilter, setStatusFilter] = useState<ClaimStatus | "all">("all");
+  const [labels, setLabels] = useState<ClaimLabels>(DEFAULT_LABELS);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -57,17 +69,19 @@ export default function ClaimsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const customerName = useMemo(() => {
-    const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed patient"]));
+    const unnamed = `Unnamed ${labels.person}`;
+    const map = new Map(customers.map((c) => [c.id, c.name || unnamed]));
     return (id: string) => map.get(id) || id.slice(0, 8);
-  }, [customers]);
+  }, [customers, labels]);
 
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const results = await Promise.allSettled([claimsApi.list(), ledger.customers()]);
-    const [claimsRes, customersRes] = results;
+    const results = await Promise.allSettled([claimsApi.list(), ledger.customers(), claimsApi.getLabels()]);
+    const [claimsRes, customersRes, labelsRes] = results;
     if (claimsRes.status === "fulfilled") setAllClaims(claimsRes.value);
     if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
+    if (labelsRes.status === "fulfilled") setLabels(labelsRes.value);
 
     const failed = results.find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
@@ -150,7 +164,7 @@ export default function ClaimsPage() {
   return (
     <AppLayout
       title="Claims"
-      subtitle="Every insurance/TPA claim, and where it actually stands - never a predicted outcome."
+      subtitle={`Every claim with a ${labels.party_label.toLowerCase()}, and where it actually stands - never a predicted outcome.`}
       actions={
         <button
           type="button"
@@ -200,7 +214,7 @@ export default function ClaimsPage() {
           <EmptyState
             icon={FileCheck2}
             title="No claims yet"
-            description="Log a claim so its status becomes something the AI can honestly answer, instead of escalating every time a patient asks."
+            description={`Log a claim so its status becomes something the AI can honestly answer, instead of escalating every time a ${labels.person} asks.`}
             action={{ label: "Log Claim", onClick: openCreateModal }}
           />
         ) : (
@@ -213,7 +227,7 @@ export default function ClaimsPage() {
               >
                 <div className="space-y-1 overflow-hidden">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white">{c.insurer_or_tpa_name || "Insurer/TPA not set"}</span>
+                    <span className="text-sm font-bold text-white">{c.insurer_or_tpa_name || `${labels.party_label} not set`}</span>
                     {c.claim_number && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-os-text-dim">
                         {c.claim_number}
@@ -223,7 +237,7 @@ export default function ClaimsPage() {
                   </div>
                   <p className="text-xs text-os-text-dim">
                     {customerName(c.customer_id)}
-                    {c.policy_number && ` · Policy ${c.policy_number}`}
+                    {c.policy_number && ` · ${labels.reference_label} ${c.policy_number}`}
                   </p>
                 </div>
                 {(c.claim_amount_paise != null || c.approved_amount_paise != null) && (
@@ -246,20 +260,20 @@ export default function ClaimsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!editingClaim && (
               <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Patient</label>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">{labels.person.charAt(0).toUpperCase()}{labels.person.slice(1)}</label>
                 <select required value={formCustomerId} onChange={(e) => setFormCustomerId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
-                  <option value="">Select a patient...</option>
+                  <option value="">Select a {labels.person}...</option>
                   {customers.map((c) => <option key={c.id} value={c.id}>{c.name || c.id.slice(0, 8)}</option>)}
                 </select>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Insurer / TPA</label>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">{labels.party_label}</label>
                 <input type="text" value={formInsurer} onChange={(e) => setFormInsurer(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Policy number</label>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">{labels.reference_label}</label>
                 <input type="text" value={formPolicyNumber} onChange={(e) => setFormPolicyNumber(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
               </div>
             </div>

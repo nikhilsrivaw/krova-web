@@ -1995,7 +1995,20 @@ export const queue = {
   }) => api.put<QueueSettings>("/queue/settings", data),
 };
 
-// ── TPA / Insurance Claims (Clinics) ──────────────────────────────────────────
+// ── Claims ───────────────────────────────────────────────────────────────────
+// A clinic tracking an insurance claim and a D2C store tracking a warranty/
+// replacement claim are the same lifecycle (submit -> external party
+// reviews -> approved/rejected/settled -> tell the customer). What a
+// business calls the parts of it (ClaimLabels) is resolved server-side
+// across code defaults, its vertical's template, and its own settings -
+// same three-tier pattern Queue/Scheduling's labels already use.
+
+export type ClaimLabels = {
+  person: string;
+  party_label: string;
+  party_noun: string;
+  reference_label: string;
+};
 
 export type ClaimStatus = "submitted" | "under_review" | "query_raised" | "approved" | "rejected" | "settled";
 
@@ -2014,6 +2027,8 @@ export type InsuranceClaim = {
 };
 
 export const claims = {
+  getLabels: () => api.get<ClaimLabels>("/insurance-claims/labels"),
+
   list: (params?: { customer_id?: string; status?: ClaimStatus }) => {
     const qs = new URLSearchParams();
     if (params?.customer_id) qs.set("customer_id", params.customer_id);
