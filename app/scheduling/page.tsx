@@ -8,6 +8,9 @@ import {
   Clock,
   User,
   Home,
+  X,
+  Repeat,
+  CalendarOff,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -21,6 +24,7 @@ import {
   properties as propertiesApi,
   type Doctor,
   type AvailabilityRule,
+  type AvailabilityException,
   type Appointment,
   type Slot,
   type CustomerSummary,
@@ -95,8 +99,18 @@ export default function SchedulingPage() {
   const [ruleDuration, setRuleDuration] = useState("30");
   const [isSavingRule, setIsSavingRule] = useState(false);
 
-  // Book modal
+  // Same modal's second section - dates a provider is out, on top of their
+  // weekly pattern above.
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
+  const [excDate, setExcDate] = useState("");
+  const [excReason, setExcReason] = useState("");
+  const [isSavingException, setIsSavingException] = useState(false);
+
+  // Book modal - also doubles as the Reschedule modal (same doctor/date/
+  // slot picker, already the correct source of real open slots) when
+  // reschedulingAppointment is set instead of null.
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [reschedulingAppointment, setReschedulingAppointment] = useState<Appointment | null>(null);
   const [bookDoctorId, setBookDoctorId] = useState("");
   const [bookCustomerId, setBookCustomerId] = useState("");
   const [bookPropertyId, setBookPropertyId] = useState("");
@@ -206,8 +220,16 @@ export default function SchedulingPage() {
   const openHoursModal = async (doctor: Doctor) => {
     setHoursDoctor(doctor);
     setRules([]);
+    setExceptions([]);
+    setExcDate(todayInIST());
+    setExcReason("");
     try {
-      setRules(await scheduling.listRules(doctor.id));
+      const [ruleRows, excRows] = await Promise.all([
+        scheduling.listRules(doctor.id),
+        scheduling.listExceptions(doctor.id),
+      ]);
+      setRules(ruleRows);
+      setExceptions(excRows);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not load hours.");
     }
@@ -243,7 +265,37 @@ export default function SchedulingPage() {
     }
   };
 
+  const handleAddException = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hoursDoctor || !excDate) return;
+    setIsSavingException(true);
+    setActionError(null);
+    try {
+      const created = await scheduling.createException(hoursDoctor.id, {
+        date: excDate,
+        reason: excReason || undefined,
+      });
+      setExceptions((prev) => [...prev, created].sort((a, b) => a.date.localeCompare(b.date)));
+      setExcReason("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not mark this date off.");
+    } finally {
+      setIsSavingException(false);
+    }
+  };
+
+  const handleDeleteException = async (exceptionId: string) => {
+    setActionError(null);
+    try {
+      await scheduling.deleteException(exceptionId);
+      setExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not undo this.");
+    }
+  };
+
   const openBookModal = () => {
+    setReschedulingAppointment(null);
     setBookDoctorId(doctors.find((d) => d.active)?.id || "");
     setBookCustomerId("");
     setBookPropertyId("");
@@ -252,6 +304,33 @@ export default function SchedulingPage() {
     setBookSlot("");
     setBookNotes("");
     setIsBookModalOpen(true);
+  };
+
+  const openRescheduleModal = (appointment: Appointment) => {
+    setReschedulingAppointment(appointment);
+    setBookDoctorId(appointment.doctor_id);
+    setBookCustomerId(appointment.customer_id);
+    setBookPropertyId(appointment.property_id || "");
+    setBookDate(todayInIST());
+    setOpenSlots([]);
+    setBookSlot("");
+    setBookNotes("");
+    setIsBookModalOpen(true);
+  };
+
+  const closeBookModal = () => {
+    setIsBookModalOpen(false);
+    setReschedulingAppointment(null);
+  };
+
+  const handleCancelAppointment = async (id: string) => {
+    setActionError(null);
+    try {
+      const updated = await scheduling.cancelAppointment(id);
+      setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not cancel this.");
+    }
   };
 
   useEffect(() => {
@@ -271,15 +350,22 @@ export default function SchedulingPage() {
     setIsBooking(true);
     setActionError(null);
     try {
-      const created = await scheduling.createAppointment({
-        doctor_id: bookDoctorId,
-        customer_id: bookCustomerId,
-        starts_at: bookSlot,
-        property_id: bookPropertyId || undefined,
-        notes: bookNotes || undefined,
-      });
-      setAppointments((prev) => [...prev, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
-      setIsBookModalOpen(false);
+      if (reschedulingAppointment) {
+        const updated = await scheduling.rescheduleAppointment(reschedulingAppointment.id, bookSlot);
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === updated.id ? updated : a)).sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
+        );
+      } else {
+        const created = await scheduling.createAppointment({
+          doctor_id: bookDoctorId,
+          customer_id: bookCustomerId,
+          starts_at: bookSlot,
+          property_id: bookPropertyId || undefined,
+          notes: bookNotes || undefined,
+        });
+        setAppointments((prev) => [...prev, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
+      }
+      closeBookModal();
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : "That slot may have just been taken - pick another.",
@@ -430,31 +516,57 @@ export default function SchedulingPage() {
                       {hasPropertyListings && <th className="text-left px-4 py-2.5">Property</th>}
                       <th className="text-left px-4 py-2.5">Channel</th>
                       <th className="text-left px-4 py-2.5">Status</th>
+                      <th className="text-right px-4 py-2.5">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {appointments.map((a) => (
-                      <tr key={a.id} className="border-t border-white/[0.05] hover:bg-white/[0.02]">
-                        <td className="px-4 py-3 text-white font-mono">
-                          {new Date(a.starts_at).toLocaleString("en-IN", {
-                            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                          })}
-                        </td>
-                        <td className="px-4 py-3 text-white/90">{a.doctor_name}</td>
-                        <td className="px-4 py-3 text-white/90">{customerName(a.customer_id)}</td>
-                        {hasPropertyListings && (
-                          <td className="px-4 py-3 text-os-text-dim">
-                            {propertyTitle(a.property_id) || "—"}
+                    {appointments.map((a) => {
+                      const isActionable = a.status === "requested" || a.status === "confirmed";
+                      return (
+                        <tr key={a.id} className="border-t border-white/[0.05] hover:bg-white/[0.02]">
+                          <td className="px-4 py-3 text-white font-mono">
+                            {new Date(a.starts_at).toLocaleString("en-IN", {
+                              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                            })}
                           </td>
-                        )}
-                        <td className="px-4 py-3 text-os-text-dim capitalize">{a.intake_channel}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant={APPOINTMENT_BADGE[a.status]} size="sm">
-                            {a.status.replace("_", " ")}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="px-4 py-3 text-white/90">{a.doctor_name}</td>
+                          <td className="px-4 py-3 text-white/90">{customerName(a.customer_id)}</td>
+                          {hasPropertyListings && (
+                            <td className="px-4 py-3 text-os-text-dim">
+                              {propertyTitle(a.property_id) || "—"}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-os-text-dim capitalize">{a.intake_channel}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant={APPOINTMENT_BADGE[a.status]} size="sm">
+                              {a.status.replace("_", " ")}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            {isActionable && (
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openRescheduleModal(a)}
+                                  title={`Reschedule this ${labels.booking_noun}`}
+                                  className="p-1.5 rounded-lg text-os-text-dim hover:text-brass-bright hover:bg-white/[0.06] cursor-pointer"
+                                >
+                                  <Repeat className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCancelAppointment(a.id)}
+                                  title={`Cancel this ${labels.booking_noun}`}
+                                  className="p-1.5 rounded-lg text-os-text-dim hover:text-thread-bright hover:bg-white/[0.06] cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -564,32 +676,80 @@ export default function SchedulingPage() {
                 </button>
               </div>
             </form>
+
+            <div className="pt-4 border-t border-white/[0.06] space-y-3">
+              <div className="flex items-center gap-2">
+                <CalendarOff className="w-3.5 h-3.5 text-brass" />
+                <h4 className="text-xs font-bold text-white">Dates off</h4>
+              </div>
+              {exceptions.length === 0 ? (
+                <p className="text-xs text-os-text-dim">No dates marked off - add one below.</p>
+              ) : (
+                <div className="space-y-2">
+                  {exceptions.map((exc) => (
+                    <div key={exc.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                      <span className="text-xs text-white">
+                        <strong>
+                          {new Date(`${exc.date}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </strong>
+                        {exc.reason && <span className="font-mono text-os-text-dim"> · {exc.reason}</span>}
+                      </span>
+                      <button type="button" onClick={() => handleDeleteException(exc.id)} className="text-os-text-dim hover:text-thread-bright">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <form onSubmit={handleAddException} className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-os-text-dim mb-1">Date</label>
+                  <input type="date" required value={excDate} onChange={(e) => setExcDate(e.target.value)} className="w-full px-2 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-os-text-dim mb-1">Reason (optional)</label>
+                  <input type="text" placeholder="e.g. On leave" value={excReason} onChange={(e) => setExcReason(e.target.value)} className="w-full px-2 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <button type="submit" disabled={isSavingException} className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer">
+                    {isSavingException ? "Adding..." : "Mark Off"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </Modal>
 
-        {/* Book Appointment Modal */}
+        {/* Book / Reschedule Appointment Modal - same slot-picker either way */}
         <Modal
           isOpen={isBookModalOpen}
-          onClose={() => setIsBookModalOpen(false)}
-          title={`Book ${capitalize(labels.booking_noun)}`}
+          onClose={closeBookModal}
+          title={reschedulingAppointment ? `Reschedule ${capitalize(labels.booking_noun)}` : `Book ${capitalize(labels.booking_noun)}`}
           subtitle="Only real, currently open slots can be booked - the same check WhatsApp and voice go through."
           maxWidth="lg"
         >
           <form onSubmit={handleBook} className="space-y-4">
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">{providerLabel}</label>
-              <select value={bookDoctorId} onChange={(e) => setBookDoctorId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
-                {doctors.filter((d) => d.active).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              <select disabled={!!reschedulingAppointment} value={bookDoctorId} onChange={(e) => setBookDoctorId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none disabled:opacity-60">
+                {doctors.filter((d) => d.active || d.id === bookDoctorId).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Customer</label>
-              <select required value={bookCustomerId} onChange={(e) => setBookCustomerId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
-                <option value="">Select a customer...</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name || c.id.slice(0, 8)}</option>)}
-              </select>
-            </div>
-            {hasPropertyListings && (
+            {reschedulingAppointment ? (
+              <p className="text-xs text-os-text-dim">
+                For {customerName(reschedulingAppointment.customer_id)} - pick a new time below.
+              </p>
+            ) : (
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Customer</label>
+                <select required value={bookCustomerId} onChange={(e) => setBookCustomerId(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none">
+                  <option value="">Select a customer...</option>
+                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name || c.id.slice(0, 8)}</option>)}
+                </select>
+              </div>
+            )}
+            {hasPropertyListings && !reschedulingAppointment && (
               <div>
                 <label className="block text-xs font-mono uppercase text-os-text-dim mb-1 flex items-center gap-1.5">
                   <Home className="w-3 h-3" /> Property (optional)
@@ -627,16 +787,24 @@ export default function SchedulingPage() {
                 </div>
               )}
             </div>
-            <div>
-              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Notes (optional)</label>
-              <textarea rows={2} value={bookNotes} onChange={(e) => setBookNotes(e.target.value)} className="w-full p-3 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
-            </div>
+            {!reschedulingAppointment && (
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Notes (optional)</label>
+                <textarea rows={2} value={bookNotes} onChange={(e) => setBookNotes(e.target.value)} className="w-full p-3 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
+              </div>
+            )}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setIsBookModalOpen(false)} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
+              <button type="button" onClick={closeBookModal} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
                 Cancel
               </button>
-              <button type="submit" disabled={!bookSlot || !bookCustomerId || isBooking} className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim disabled:opacity-50 shadow-md cursor-pointer">
-                {isBooking ? "Booking..." : "Book"}
+              <button
+                type="submit"
+                disabled={!bookSlot || (!reschedulingAppointment && !bookCustomerId) || isBooking}
+                className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim disabled:opacity-50 shadow-md cursor-pointer"
+              >
+                {isBooking
+                  ? reschedulingAppointment ? "Rescheduling..." : "Booking..."
+                  : reschedulingAppointment ? "Reschedule" : "Book"}
               </button>
             </div>
           </form>

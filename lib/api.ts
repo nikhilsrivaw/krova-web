@@ -1751,6 +1751,17 @@ export type AvailabilityRule = {
   slot_duration_minutes: number;
 };
 
+// A one-off override of the weekly pattern above for one specific date - a
+// provider out on leave, or in on a day they don't usually work.
+export type AvailabilityException = {
+  id: string;
+  date: string; // "YYYY-MM-DD"
+  is_unavailable: boolean;
+  start_time: string | null; // set only when is_unavailable is false
+  end_time: string | null;
+  reason: string | null;
+};
+
 export type Slot = { starts_at: string; ends_at: string };
 
 export type AppointmentStatus = "requested" | "confirmed" | "visited" | "no_show" | "cancelled";
@@ -1803,6 +1814,17 @@ export const scheduling = {
 
   deleteRule: (ruleId: string) => api.delete<void>(`/scheduling/availability-rules/${ruleId}`),
 
+  listExceptions: (doctorId: string) =>
+    api.get<AvailabilityException[]>(`/scheduling/doctors/${doctorId}/availability-exceptions`),
+
+  createException: (
+    doctorId: string,
+    data: { date: string; is_unavailable?: boolean; start_time?: string; end_time?: string; reason?: string },
+  ) => api.post<AvailabilityException>(`/scheduling/doctors/${doctorId}/availability-exceptions`, data),
+
+  deleteException: (exceptionId: string) =>
+    api.delete<void>(`/scheduling/availability-exceptions/${exceptionId}`),
+
   openSlots: (doctorId: string, onDate: string) =>
     api.get<Slot[]>(`/scheduling/doctors/${doctorId}/open-slots?on=${onDate}`),
 
@@ -1821,6 +1843,12 @@ export const scheduling = {
     property_id?: string;
     notes?: string;
   }) => api.post<Appointment>("/scheduling/appointments", data),
+
+  cancelAppointment: (id: string, reason?: string) =>
+    api.post<Appointment>(`/scheduling/appointments/${id}/cancel`, { reason }),
+
+  rescheduleAppointment: (id: string, starts_at: string) =>
+    api.post<Appointment>(`/scheduling/appointments/${id}/reschedule`, { starts_at }),
 };
 
 // ── Case Tracking (Law Firms) ───────────────────────────────────────────────
