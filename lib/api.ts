@@ -1585,6 +1585,9 @@ export type UserProfile = {
   // never actually issued.
   role: "owner" | "admin" | "agent" | null;
   google_review_url: string | null;
+  // Sent from /auth/me, like capabilities, because every page already fetches
+  // it. See QueueLabels below for how these resolve.
+  queue_labels: QueueLabels;
 };
 
 export const account = {
@@ -1890,15 +1893,36 @@ export const signals = {
     api.post<{ signal: Signal; github_issue_url: string; commitment_id: string }>(`/signals/${id}/file-github-issue`),
 };
 
-// ── OPD Queue (Clinics) ───────────────────────────────────────────────────────
+// ── Walk-in Queue ─────────────────────────────────────────────────────────────
 //
-// Indian OPD is a token/shift system (Morning/Evening/Emergency), not a
-// calendar slot - a shift must be opened by staff before anyone (staff,
-// kiosk, or the voice/WhatsApp agent) can issue a token into it. Emergency
-// is a fully separate token sequence, never an insertion into the regular
-// queue.
+// A token/shift system, not a calendar slot - a shift must be opened by staff
+// before anyone (staff, kiosk, or the voice/WhatsApp agent) can issue a token
+// into it. The third track is a fully separate sequence, never an insertion
+// into the regular queue.
+//
+// Built for Indian OPD, but the mechanism is just "a line you join without a
+// reservation" - a clinic calls it a token for a patient, a restaurant a table
+// for a guest. Any business can turn it on and set its own words for it
+// (QueueSettings below); nothing here is clinic-specific but the defaults a
+// clinic's vertical template supplies.
 
 export type Shift = "morning" | "evening" | "emergency";
+
+// What this business calls the parts of its queue. Resolved server-side across
+// code defaults, the vertical's template, and the business's own settings -
+// never a second copy of that resolution here.
+export type QueueLabels = {
+  person: string;
+  ticket: string;
+  serving: string;
+  shifts: Record<Shift, string>;
+};
+
+export type QueueSettings = {
+  enabled: boolean;
+  labels: QueueLabels;
+  turn_near_threshold: number;
+};
 export type QueueStatus = "waiting" | "in_consultation" | "done" | "skipped" | "cancelled";
 
 export type ShiftSession = {
@@ -1945,6 +1969,13 @@ export const queue = {
   getKioskConfig: () => api.get<{ enabled: boolean; token: string | null }>("/queue/kiosk"),
   enableKiosk: () => api.post<{ enabled: boolean; token: string | null }>("/queue/kiosk/enable"),
   disableKiosk: () => api.post<{ enabled: boolean; token: string | null }>("/queue/kiosk/disable"),
+
+  getSettings: () => api.get<QueueSettings>("/queue/settings"),
+  updateSettings: (data: {
+    enabled?: boolean;
+    labels?: Partial<Omit<QueueLabels, "shifts">> & { shifts?: Partial<Record<Shift, string>> };
+    turn_near_threshold?: number;
+  }) => api.put<QueueSettings>("/queue/settings", data),
 };
 
 // ── TPA / Insurance Claims (Clinics) ──────────────────────────────────────────

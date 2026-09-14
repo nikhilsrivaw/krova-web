@@ -2,7 +2,9 @@
 
 /**
  * The public self-service check-in kiosk. No AppLayout, no login - meant
- * for a tablet sitting at a clinic's front desk. Deliberately bypasses
+ * for a tablet sitting at a front desk. Every word a customer reads here
+ * is the business's own (status.labels), not this file's: a clinic's
+ * "token" is a restaurant's "table". Deliberately bypasses
  * lib/api.ts's request() (which demands a Bearer token and throws
  * NotAuthenticated) and hand-rolls fetch() the same way lib/auth.ts does
  * for pre-login calls - there is no generic "public request" helper in
@@ -17,14 +19,22 @@ import { API_BASE } from "@/lib/auth";
 
 type Shift = "morning" | "evening" | "emergency";
 
-const SHIFT_META: Record<Shift, { label: string; icon: typeof Sun }> = {
-  morning: { label: "Morning", icon: Sun },
-  evening: { label: "Evening", icon: Moon },
-  emergency: { label: "Emergency", icon: Siren },
+// Icons only - what each track is called comes from the server.
+const SHIFT_ICON: Record<Shift, typeof Sun> = {
+  morning: Sun,
+  evening: Moon,
+  emergency: Siren,
+};
+
+type QueueLabels = {
+  person: string;
+  ticket: string;
+  serving: string;
+  shifts: Record<Shift, string>;
 };
 
 type OpenShift = { shift: Shift; waiting_count: number };
-type StatusResponse = { business_name: string; open_shifts: OpenShift[] };
+type StatusResponse = { business_name: string; open_shifts: OpenShift[]; labels: QueueLabels };
 type CheckInResponse = { queue_number: number; shift: Shift; ahead_of_you: number };
 
 const STATUS_POLL_MS = 15000;
@@ -108,13 +118,13 @@ export default function KioskPage() {
       ) : screen.kind === "idle" ? (
         <div style={{ textAlign: "center", width: "100%", maxWidth: 480 }}>
           <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.5rem" }}>{status.business_name}</h1>
-          <p style={{ opacity: 0.6, marginBottom: "2rem" }}>Tap a shift to get your token</p>
+          <p style={{ opacity: 0.6, marginBottom: "2rem" }}>Tap a shift to get your {status.labels.ticket}</p>
           {status.open_shifts.length === 0 ? (
             <p style={{ fontSize: "1.1rem", opacity: 0.7 }}>No shift is open right now - please check with the front desk.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {status.open_shifts.map((s) => {
-                const Icon = SHIFT_META[s.shift].icon;
+                const Icon = SHIFT_ICON[s.shift];
                 return (
                   <button
                     key={s.shift}
@@ -127,7 +137,7 @@ export default function KioskPage() {
                   >
                     <span style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                       <Icon style={{ width: 24, height: 24 }} />
-                      {SHIFT_META[s.shift].label}
+                      {status.labels.shifts[s.shift]}
                     </span>
                     <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>{s.waiting_count} waiting</span>
                   </button>
@@ -139,7 +149,7 @@ export default function KioskPage() {
       ) : screen.kind === "form" ? (
         <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: "1rem" }}>
           <h2 style={{ fontSize: "1.5rem", fontWeight: 700, textAlign: "center", marginBottom: "0.5rem" }}>
-            {SHIFT_META[screen.shift].label} check-in
+            {status.labels.shifts[screen.shift]} check-in
           </h2>
           {submitError && (
             <p style={{ color: "#f87171", fontSize: "0.9rem", textAlign: "center" }}>{submitError}</p>
@@ -165,7 +175,7 @@ export default function KioskPage() {
             disabled={isSubmitting}
             style={{ padding: "1rem", borderRadius: "0.75rem", background: "#d4a24c", color: "#14151F", fontWeight: 700, fontSize: "1.1rem", border: "none", cursor: "pointer" }}
           >
-            {isSubmitting ? "Getting your token..." : "Get My Token"}
+            {isSubmitting ? `Getting your ${status.labels.ticket}...` : `Get My ${status.labels.ticket.charAt(0).toUpperCase()}${status.labels.ticket.slice(1)}`}
           </button>
           <button
             type="button"
@@ -178,7 +188,7 @@ export default function KioskPage() {
       ) : (
         <div style={{ textAlign: "center" }}>
           <p style={{ fontSize: "1.1rem", opacity: 0.6, marginBottom: "0.5rem" }}>
-            {SHIFT_META[screen.result.shift].label} token
+            {status.labels.shifts[screen.result.shift]} {status.labels.ticket}
           </p>
           <p style={{ fontSize: "6rem", fontWeight: 800, lineHeight: 1, marginBottom: "1rem" }}>
             #{screen.result.queue_number}
@@ -188,7 +198,7 @@ export default function KioskPage() {
               ? "You're next!"
               : `${screen.result.ahead_of_you} ${screen.result.ahead_of_you === 1 ? "person" : "people"} ahead of you`}
           </p>
-          <p style={{ opacity: 0.5, marginTop: "1rem" }}>We've sent your token on WhatsApp too.</p>
+          <p style={{ opacity: 0.5, marginTop: "1rem" }}>We&apos;ve sent your {status.labels.ticket} on WhatsApp too.</p>
         </div>
       )}
     </div>

@@ -27,6 +27,7 @@ import {
   Star,
   Github,
   ShoppingBag,
+  Users,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -38,9 +39,11 @@ import {
   waAccount,
   integrations,
   dataExport,
+  queue as queueApi,
   WEBHOOK_EVENT_TYPES,
   WEBHOOK_FORMATS,
   type UserProfile,
+  type QueueSettings,
   type AutonomyLevel,
   type ChannelConnection,
   type WhatsAppProfile,
@@ -75,6 +78,13 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The queue is not a vertical's property - any business can turn it on and
+  // set its own words for it. Held as the server resolved it, so the fields
+  // show what is actually in effect rather than only what was typed here.
+  const [queueSettings, setQueueSettings] = useState<QueueSettings | null>(null);
+  const [isSavingQueue, setIsSavingQueue] = useState(false);
+  const [queueSaved, setQueueSaved] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [isExportingCustomers, setIsExportingCustomers] = useState(false);
   const [isExportingConversations, setIsExportingConversations] = useState(false);
 
@@ -385,11 +395,14 @@ export default function SettingsPage() {
   useEffect(() => {
     let mounted = true;
     const loadSettings = async () => {
-      const [profRes, chRes] = await Promise.allSettled([
+      const [profRes, chRes, queueRes] = await Promise.allSettled([
         account.profile(),
         channels.list(),
+        queueApi.getSettings(),
       ]);
       if (!mounted) return;
+
+      if (queueRes.status === "fulfilled") setQueueSettings(queueRes.value);
 
       if (profRes.status === "fulfilled") {
         setProfile(profRes.value);
@@ -547,6 +560,30 @@ export default function SettingsPage() {
       setSaveError(err instanceof Error ? err.message : "Could not save changes.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveQueue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!queueSettings) return;
+    setIsSavingQueue(true);
+    setQueueError(null);
+    try {
+      const saved = await queueApi.updateSettings({
+        enabled: queueSettings.enabled,
+        labels: queueSettings.labels,
+        turn_near_threshold: queueSettings.turn_near_threshold,
+      });
+      // Replaced with what came back, not what was sent: a field left blank
+      // falls back through the defaults server-side, and the form should
+      // show the word that will actually appear.
+      setQueueSettings(saved);
+      setQueueSaved(true);
+      setTimeout(() => setQueueSaved(false), 3000);
+    } catch (err) {
+      setQueueError(err instanceof Error ? err.message : "Could not save queue settings.");
+    } finally {
+      setIsSavingQueue(false);
     }
   };
 
@@ -789,6 +826,142 @@ export default function SettingsPage() {
             </div>
           </GlassCard>
         </form>
+
+        {/* SECTION 1b: WALK-IN QUEUE */}
+        {queueSettings && (
+          <form onSubmit={handleSaveQueue}>
+            <GlassCard className="p-6 space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Walk-in Queue</h3>
+                    <p className="text-xs text-os-text-dim">
+                      A line people join without a booking. Turn it on and call it whatever you
+                      call it - a clinic&apos;s token for a patient, a restaurant&apos;s table for a guest.
+                    </p>
+                  </div>
+                </div>
+
+                {queueSaved && (
+                  <span className="text-xs font-mono text-seal-bright flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Saved!
+                  </span>
+                )}
+                {queueError && <span className="text-xs font-mono text-red-400">{queueError}</span>}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-white">Queue enabled</p>
+                  <p className="text-[11px] text-os-text-dim">
+                    Adds Queue to the sidebar and lets the agent issue places in the line.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQueueSettings({ ...queueSettings, enabled: !queueSettings.enabled })
+                  }
+                  className={`px-4 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer ${
+                    queueSettings.enabled
+                      ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                      : "bg-white/[0.06] text-os-text-dim hover:text-white"
+                  }`}
+                >
+                  {queueSettings.enabled ? "On" : "Off"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {([
+                  ["person", "A person in it", "customer"],
+                  ["ticket", "Their place", "number"],
+                  ["serving", "Being served now", "Being served"],
+                ] as const).map(([key, label, placeholder]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                      {label}:
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={40}
+                      placeholder={placeholder}
+                      value={queueSettings.labels[key]}
+                      onChange={(e) =>
+                        setQueueSettings({
+                          ...queueSettings,
+                          labels: { ...queueSettings.labels, [key]: e.target.value },
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {(["morning", "evening", "emergency"] as const).map((shift, i) => (
+                  <div key={shift}>
+                    <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                      Service track {i + 1}:
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={40}
+                      value={queueSettings.labels.shifts[shift]}
+                      onChange={(e) =>
+                        setQueueSettings({
+                          ...queueSettings,
+                          labels: {
+                            ...queueSettings.labels,
+                            shifts: { ...queueSettings.labels.shifts, [shift]: e.target.value },
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-os-text-dim -mt-2">
+                Three tracks, numbered separately from each other. The third is the one that jumps
+                the line. Leave any field blank to go back to the default.
+              </p>
+
+              <div className="max-w-xs">
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                  Warn them when this many are ahead:
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={queueSettings.turn_near_threshold}
+                  onChange={(e) =>
+                    setQueueSettings({
+                      ...queueSettings,
+                      turn_near_threshold: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-white/[0.06] flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSavingQueue}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingQueue ? "Saving Queue..." : "Save Queue Settings"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
 
         {/* SECTION 2: CONNECTED CHANNELS */}
         <GlassCard className="p-6 space-y-4">

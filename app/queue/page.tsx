@@ -12,6 +12,7 @@ import {
   ledger,
   type QueueEntry,
   type QueueStatus,
+  type QueueLabels,
   type Shift,
   type ShiftSession,
   type Doctor,
@@ -26,20 +27,15 @@ const STATUS_BADGE: Record<QueueStatus, "emerald" | "amber" | "default" | "rose"
   cancelled: "rose",
 };
 
-const STATUS_LABEL: Record<QueueStatus, string> = {
-  waiting: "Waiting",
-  in_consultation: "In Consultation",
-  done: "Done",
-  skipped: "Skipped",
-  cancelled: "Cancelled",
-};
-
 const SHIFTS: Shift[] = ["morning", "evening", "emergency"];
 
-const SHIFT_META: Record<Shift, { label: string; icon: typeof Sun }> = {
-  morning: { label: "Morning", icon: Sun },
-  evening: { label: "Evening", icon: Moon },
-  emergency: { label: "Emergency", icon: Siren },
+// Icons only. What each track is *called* is the business's own setting and
+// arrives from the server - a clinic's Morning/Evening/Emergency, a
+// restaurant's Lunch/Dinner/Bar. The icons suit both.
+const SHIFT_ICON: Record<Shift, typeof Sun> = {
+  morning: Sun,
+  evening: Moon,
+  emergency: Siren,
 };
 
 // Live-list polling, not a WebSocket - matches most of the internal app's
@@ -67,15 +63,28 @@ export default function QueuePage() {
   const [isKioskLoading, setIsKioskLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Resolved server-side across code defaults, the vertical's template and
+  // this business's own settings - never re-derived here.
+  const [labels, setLabels] = useState<QueueLabels | null>(null);
+
+  const statusLabel = useMemo<Record<QueueStatus, string>>(() => ({
+    waiting: "Waiting",
+    in_consultation: labels?.serving ?? "",
+    done: "Done",
+    skipped: "Skipped",
+    cancelled: "Cancelled",
+  }), [labels]);
+
   const openSessionFor = useMemo(() => {
     const map = new Map(shifts.filter((s) => !s.closed_at).map((s) => [s.shift, s]));
     return (shift: Shift) => map.get(shift) || null;
   }, [shifts]);
 
   const customerName = useMemo(() => {
-    const map = new Map(customers.map((c) => [c.id, c.name || "Unnamed patient"]));
+    const unnamed = `Unnamed ${labels?.person ?? "customer"}`;
+    const map = new Map(customers.map((c) => [c.id, c.name || unnamed]));
     return (id: string | null) => (id ? map.get(id) || "Walk-in" : "Walk-in");
-  }, [customers]);
+  }, [customers, labels]);
 
   const doctorName = useMemo(() => {
     const map = new Map(doctors.map((d) => [d.id, d.name]));
@@ -98,12 +107,14 @@ export default function QueuePage() {
       setIsLoading(true);
       const results = await Promise.allSettled([
         queueApi.list(), queueApi.listShifts(), scheduling.listDoctors(), ledger.customers(),
+        queueApi.getSettings(),
       ]);
-      const [queueRes, shiftsRes, doctorsRes, customersRes] = results;
+      const [queueRes, shiftsRes, doctorsRes, customersRes, settingsRes] = results;
       if (queueRes.status === "fulfilled") setEntries(queueRes.value);
       if (shiftsRes.status === "fulfilled") setShifts(shiftsRes.value);
       if (doctorsRes.status === "fulfilled") setDoctors(doctorsRes.value);
       if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
+      if (settingsRes.status === "fulfilled") setLabels(settingsRes.value.labels);
       const failed = results.find((r) => r.status === "rejected");
       if (failed && failed.status === "rejected") {
         setLoadError(failed.reason instanceof Error ? failed.reason.message : "Could not load the queue.");
@@ -153,7 +164,7 @@ export default function QueuePage() {
       setEntries((prev) => [...prev, created]);
       setCheckInCustomerId("");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not check this patient in.");
+      setActionError(err instanceof Error ? err.message : `Could not check this ${labels?.person ?? "customer"} in.`);
     } finally {
       setIsCheckingIn(false);
     }
@@ -216,10 +227,32 @@ export default function QueuePage() {
     }
   };
 
+  // Held until the business's own vocabulary has arrived. Rendering the
+  // defaults first and swapping them a moment later would flash the wrong
+  // words at whoever is standing at the front desk.
+  if (!labels) {
+    return (
+      <AppLayout title="Queue" subtitle="Who's waiting right now, and how many are ahead of them.">
+        <div className="space-y-3 max-w-4xl mx-auto">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </>
+          ) : (
+            <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              {loadError || "Could not load the queue."}
+            </div>
+          )}
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout
       title="Queue"
-      subtitle="Who's waiting right now, and how many are ahead of them - a shift token, not a booked slot."
+      subtitle={`Who's waiting right now, and how many are ahead of them - a place in the line, not a booked slot.`}
     >
       <div className="space-y-6 max-w-4xl mx-auto">
         {loadError && (
@@ -237,12 +270,12 @@ export default function QueuePage() {
           {SHIFTS.map((shift) => {
             const session = openSessionFor(shift);
             const isOpen = !!session;
-            const Icon = SHIFT_META[shift].icon;
+            const Icon = SHIFT_ICON[shift];
             return (
               <GlassCard key={shift} className={`p-4 ${isOpen ? "border-emerald-500/30" : ""}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className="w-4 h-4 text-brass" />
-                  <span className="text-xs font-bold text-white">{SHIFT_META[shift].label}</span>
+                  <span className="text-xs font-bold text-white">{labels.shifts[shift]}</span>
                 </div>
                 <button
                   type="button"
@@ -268,7 +301,7 @@ export default function QueuePage() {
           {kioskUrl ? (
             <div className="space-y-2">
               <p className="text-[11px] text-os-text-dim">
-                Open this link on a tablet at the front desk - patients check themselves in, no login needed.
+                Open this link on a tablet at the front desk - people check themselves in, no login needed.
               </p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white/80 truncate">
@@ -317,7 +350,7 @@ export default function QueuePage() {
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <UserPlus className="w-4 h-4 text-brass" />
-            <h4 className="text-xs font-bold text-white">Check in a patient</h4>
+            <h4 className="text-xs font-bold text-white">Check in a {labels.person}</h4>
           </div>
           {!anyShiftOpen ? (
             <p className="text-xs text-os-text-dim">Open a shift above before checking anyone in.</p>
@@ -331,7 +364,7 @@ export default function QueuePage() {
               >
                 <option value="">Select shift...</option>
                 {SHIFTS.filter((s) => openSessionFor(s)).map((s) => (
-                  <option key={s} value={s}>{SHIFT_META[s].label}</option>
+                  <option key={s} value={s}>{labels.shifts[s]}</option>
                 ))}
               </select>
               <select
@@ -339,7 +372,7 @@ export default function QueuePage() {
                 onChange={(e) => setCheckInCustomerId(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
               >
-                <option value="">Walk-in (no patient record)</option>
+                <option value="">Walk-in (no {labels.person} record)</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name || c.id.slice(0, 8)}</option>)}
               </select>
               {doctors.length > 0 && (
@@ -372,22 +405,22 @@ export default function QueuePage() {
           <EmptyState
             icon={Clock}
             title="Nobody in the queue today"
-            description="Open a shift and check a patient in above to start today's queue."
+            description={`Open a shift and check a ${labels.person} in above to start today's queue.`}
           />
         ) : (
           <>
             {active.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-[10px] font-mono uppercase text-os-text-dim">In Consultation</h4>
+                <h4 className="text-[10px] font-mono uppercase text-os-text-dim">{labels.serving}</h4>
                 {active.map((entry) => (
                   <GlassCard key={entry.id} className="p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg font-bold font-mono text-brass-bright">{SHIFT_META[entry.shift].label} #{entry.queue_number}</span>
+                      <span className="text-lg font-bold font-mono text-brass-bright">{labels.shifts[entry.shift]} #{entry.queue_number}</span>
                       <div>
                         <p className="text-sm font-semibold text-white">{customerName(entry.customer_id)}</p>
                         {doctorName(entry.doctor_id) && <p className="text-[10px] text-os-text-dim">{doctorName(entry.doctor_id)}</p>}
                       </div>
-                      <Badge variant={STATUS_BADGE[entry.status]} size="sm">{STATUS_LABEL[entry.status]}</Badge>
+                      <Badge variant={STATUS_BADGE[entry.status]} size="sm">{statusLabel[entry.status]}</Badge>
                     </div>
                     <button
                       type="button"
@@ -407,7 +440,7 @@ export default function QueuePage() {
                 {waiting.map((entry) => (
                   <GlassCard key={entry.id} className="p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg font-bold font-mono text-white">{SHIFT_META[entry.shift].label} #{entry.queue_number}</span>
+                      <span className="text-lg font-bold font-mono text-white">{labels.shifts[entry.shift]} #{entry.queue_number}</span>
                       <div>
                         <p className="text-sm font-semibold text-white">{customerName(entry.customer_id)}</p>
                         {doctorName(entry.doctor_id) && <p className="text-[10px] text-os-text-dim">{doctorName(entry.doctor_id)}</p>}
@@ -441,10 +474,10 @@ export default function QueuePage() {
                 {finished.map((entry) => (
                   <GlassCard key={entry.id} className="p-3 flex items-center justify-between gap-4 opacity-60">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-mono text-os-text-dim">{SHIFT_META[entry.shift].label} #{entry.queue_number}</span>
+                      <span className="text-sm font-mono text-os-text-dim">{labels.shifts[entry.shift]} #{entry.queue_number}</span>
                       <p className="text-xs text-white">{customerName(entry.customer_id)}</p>
                     </div>
-                    <Badge variant={STATUS_BADGE[entry.status]} size="sm">{STATUS_LABEL[entry.status]}</Badge>
+                    <Badge variant={STATUS_BADGE[entry.status]} size="sm">{statusLabel[entry.status]}</Badge>
                   </GlassCard>
                 ))}
               </div>
