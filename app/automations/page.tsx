@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
-  MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail,
+  MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail, Instagram,
   Filter, Clock, TrendingDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -137,6 +137,7 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   place_call: "Call the customer",
   send_sms: "Send an SMS",
   send_email: "Send an email",
+  instagram_followup: "Send an Instagram reply",
 };
 
 const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
@@ -147,6 +148,7 @@ const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   place_call: Phone,
   send_sms: MessageCircle,
   send_email: Mail,
+  instagram_followup: Instagram,
 };
 
 // Human labels for the real, per-trigger_type condition fields
@@ -476,6 +478,9 @@ export default function AutomationsPage() {
     if (action === "send_sms") {
       return textConfig.trim() ? { message: textConfig.trim() } : null;
     }
+    if (action === "instagram_followup") {
+      return textConfig.trim() ? { message: textConfig.trim() } : null;
+    }
     if (action === "send_email") {
       return emailSubject.trim() && textConfig.trim()
         ? { subject: emailSubject.trim(), body: textConfig.trim() }
@@ -745,6 +750,23 @@ export default function AutomationsPage() {
               specifically asked for (if the agent didn&apos;t book it on the call itself).
             </p>
           )}
+        </div>
+      )}
+
+      {action === "instagram_followup" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
+          <p className="text-[11px] text-os-text-dim mb-2">
+            Sent as a free-form Instagram DM to the customer&apos;s own Instagram id on file - no approved
+            template needed, unlike WhatsApp.
+          </p>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Hey! Thanks for reaching out - how can we help?"
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
         </div>
       )}
 
