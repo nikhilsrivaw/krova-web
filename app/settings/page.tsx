@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Settings,
   Shield,
@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   Activity,
   Megaphone,
-  Instagram,
   Calendar,
   Webhook,
   Trash2,
@@ -57,7 +56,6 @@ import {
   type GitHubConnection,
   type EmailConnection,
   type StripeConnectionInfo,
-  type InstagramConversation,
 } from "@/lib/api";
 
 
@@ -74,6 +72,7 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("Apex Medical Clinic");
   const [fullName, setFullName] = useState("Dr. Rajesh Sharma");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [proactiveDeadlineCalls, setProactiveDeadlineCalls] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -124,7 +123,6 @@ export default function SettingsPage() {
   const waConnection = channelsList.find((c) => c.channel === "whatsapp") || null;
   const voiceConnection = channelsList.find((c) => c.channel === "voice") || null;
   const emailConnection = channelsList.find((c) => c.channel === "email") || null;
-  const igConnection = channelsList.find((c) => c.channel === "instagram") || null;
 
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
   const [webhooksList, setWebhooksList] = useState<OutboundWebhookRow[]>([]);
@@ -157,22 +155,8 @@ export default function SettingsPage() {
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
 
-  // Feedback after the Instagram Business Login redirect lands back here -
-  // read directly from the URL rather than a Next.js hook, since this page
-  // is fully client-rendered and the round trip is a plain browser redirect.
-  useEffect(() => {
-    const result = new URLSearchParams(window.location.search).get("instagram");
-    if (!result) return;
-    const messages: Record<string, string> = {
-      connected: "Instagram connected.",
-      error: "Could not connect Instagram. Please try again.",
-      expired: "That connection attempt expired. Please try again.",
-    };
-    if (messages[result]) alert(messages[result]);
-    window.history.replaceState({}, "", window.location.pathname);
-  }, []);
-
-  // Same round-trip pattern as Instagram's own redirect handling above, for
+  // Same round-trip pattern Instagram's own redirect handling uses (now on
+  // app/instagram/page.tsx, since the connect flow redirects there), for
   // the Google Calendar OAuth callback.
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("calendar");
@@ -415,6 +399,7 @@ export default function SettingsPage() {
         setBusinessName(profRes.value.business_name || "");
         setFullName(profRes.value.full_name || "");
         setGoogleReviewUrl(profRes.value.google_review_url || "");
+        setProactiveDeadlineCalls(profRes.value.proactive_deadline_calls_enabled || false);
       } else {
         setLoadError(
           profRes.reason instanceof Error
@@ -556,6 +541,7 @@ export default function SettingsPage() {
         full_name: fullName,
         vertical,
         google_review_url: googleReviewUrl,
+        proactive_deadline_calls_enabled: proactiveDeadlineCalls,
       });
       await approvals.setAutonomy(autonomy);
       setSaveSuccess(true);
@@ -601,80 +587,6 @@ export default function SettingsPage() {
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not connect Gmail.");
-    }
-  };
-
-  const handleConnectInstagram = async () => {
-    try {
-      const res = await channels.instagramFbConnectUrl();
-      if (res?.url) {
-        // A real redirect, not a popup - Instagram Business Login is a
-        // classic OAuth round trip, unlike WhatsApp's Embedded Signup dialog.
-        window.location.href = res.url;
-      } else {
-        alert("Instagram isn't configured for this account yet.");
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not connect Instagram.");
-    }
-  };
-
-  const handleConnectInstagramLogin = async () => {
-    try {
-      const res = await channels.instagramConnectUrl();
-      if (res?.url) {
-        window.location.href = res.url;
-      } else {
-        alert("Instagram Login isn't configured for this account yet.");
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not connect Instagram.");
-    }
-  };
-
-  // Temporary - manual Instagram send test for the App Review screencast,
-  // since no general Instagram inbox/composer UI exists yet and the recipient
-  // IGSID has to be typed in by hand (no read path works pre-Advanced-Access
-  // to look it up automatically). Remove once a real Instagram inbox ships.
-  const [igSendTo, setIgSendTo] = useState("");
-  const [igSendBody, setIgSendBody] = useState("");
-  const [igSending, setIgSending] = useState(false);
-  const [igSendResult, setIgSendResult] = useState<string | null>(null);
-  const [igConversations, setIgConversations] = useState<InstagramConversation[]>([]);
-  const [igLoadingConversations, setIgLoadingConversations] = useState(false);
-  const [igConversationsError, setIgConversationsError] = useState<string | null>(null);
-
-  const loadIgConversations = useCallback(async () => {
-    setIgLoadingConversations(true);
-    setIgConversationsError(null);
-    try {
-      const rows = await channels.instagramConversations();
-      setIgConversations(rows ?? []);
-    } catch (err) {
-      setIgConversationsError(
-        err instanceof Error ? err.message : "Could not load conversations."
-      );
-    } finally {
-      setIgLoadingConversations(false);
-    }
-  }, []);
-
-  const handleSendInstagram = async () => {
-    if (!igSendTo.trim() || !igSendBody.trim()) return;
-    setIgSending(true);
-    setIgSendResult(null);
-    try {
-      const res = await channels.sendInstagramText(igSendTo.trim(), igSendBody.trim());
-      if (res?.sent) {
-        setIgSendResult(`Sent — message id ${res.message_id}`);
-        setIgSendBody("");
-      } else {
-        setIgSendResult("Send did not confirm");
-      }
-    } catch (err) {
-      setIgSendResult(err instanceof Error ? err.message : "Could not send message.");
-    } finally {
-      setIgSending(false);
     }
   };
 
@@ -824,6 +736,27 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Proactive Deadline Calls */}
+            <div className="pt-2 flex items-center justify-between gap-4 p-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <div>
+                <p className="text-xs font-bold text-white mb-0.5">Proactive Deadline Calls</p>
+                <p className="text-[11px] text-os-text-dim leading-relaxed">
+                  When a promise (payment, document, callback...) is close to its due date, place a real voice call to remind the customer instead of only a text nudge.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProactiveDeadlineCalls(!proactiveDeadlineCalls)}
+                className={`shrink-0 px-4 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer ${
+                  proactiveDeadlineCalls
+                    ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                    : "bg-white/[0.06] text-os-text-dim hover:text-white"
+                }`}
+              >
+                {proactiveDeadlineCalls ? "On" : "Off"}
+              </button>
             </div>
 
             <div className="pt-3 flex justify-end">
@@ -1074,197 +1007,10 @@ export default function SettingsPage() {
               <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
             )}
 
-            {/* Instagram */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
-                  <Instagram className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Instagram Business</h4>
-                  <p className="text-[11px] text-os-text-dim font-mono">
-                    {igConnection
-                      ? igConnection.handle || igConnection.display_name || "Connected"
-                      : "DMs and comments in the same unified timeline as WhatsApp."}
-                  </p>
-                </div>
-              </div>
-              {igConnection && igConnection.status === "active" ? (
-                <div className="flex items-center gap-2">
-                  <Badge variant="emerald" dot>Connected</Badge>
-                  {/* Reachable while connected on purpose: re-running the
-                      Meta login is how a business switches which Instagram
-                      account is linked, and how anyone demonstrates the
-                      grant flow without first tearing the connection down. */}
-                  <button
-                    type="button"
-                    onClick={handleConnectInstagram}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                  >
-                    Reconnect
-                  </button>
-                  {/* Instagram Business Login - a separate connect route
-                      from the Facebook Login button above (different Meta
-                      app, different token host). Kept as a distinct button
-                      rather than merged in, since which one a business
-                      should use is a real choice, not a detail to hide. */}
-                  <button
-                    type="button"
-                    onClick={handleConnectInstagramLogin}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                  >
-                    Reconnect via Instagram Login
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {igConnection && (
-                    // A row exists but isn't active (disconnected, expired,
-                    // etc.) - shown so reconnecting isn't a mystery when a
-                    // status badge silently vanishes and buttons appear.
-                    <Badge variant="amber" dot>{igConnection.status}</Badge>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleConnectInstagram}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                  >
-                    {igConnection ? "Reconnect Instagram" : "Connect Instagram"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConnectInstagramLogin}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                  >
-                    Connect via Instagram Login
-                  </button>
-                </div>
-              )}
-            </div>
-            {igConnection && (
-              <div className="p-4 rounded-xl bg-pink-500/[0.04] border border-pink-500/[0.15] grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Username</p>
-                  <p className="text-sm text-white font-mono font-semibold">
-                    {igConnection.handle || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Display name</p>
-                  <p className="text-sm text-white font-mono font-semibold">
-                    {igConnection.display_name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Account ID</p>
-                  <p className="text-sm text-white font-mono font-semibold">
-                    {igConnection.external_account_id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Connected since</p>
-                  <p className="text-sm text-white font-mono font-semibold">
-                    {igConnection.connected_at
-                      ? new Date(igConnection.connected_at).toLocaleString()
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-            )}
-            {igConnection && igConnection.status === "active" && (
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      Send an Instagram message
-                    </p>
-                    <p className="text-[11px] text-os-text-dim">
-                      Choose a person who has messaged{" "}
-                      {igConnection.handle || "this account"}, write a reply, and send it
-                      from here. It arrives in their Instagram inbox.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadIgConversations}
-                    disabled={igLoadingConversations}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                  >
-                    {igLoadingConversations ? "Loading…" : "Load conversations"}
-                  </button>
-                </div>
-
-                {igConversationsError && (
-                  <p className="text-[11px] text-red-400 font-mono">
-                    {igConversationsError}
-                  </p>
-                )}
-
-                {igConversations.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
-                      Recipient
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {igConversations.flatMap((conversation) =>
-                        conversation.participants.map((person) => {
-                          const selected = igSendTo === person.id;
-                          return (
-                            <button
-                              key={`${conversation.id}-${person.id}`}
-                              type="button"
-                              onClick={() => setIgSendTo(person.id)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
-                                selected
-                                  ? "bg-pink-500/[0.15] border-pink-500/[0.4] text-white"
-                                  : "bg-white/[0.04] border-white/[0.08] text-os-text-dim hover:text-white hover:bg-white/[0.07]"
-                              }`}
-                            >
-                              @{person.username || person.id}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
-                    Recipient ID
-                  </label>
-                  <input
-                    type="text"
-                    value={igSendTo}
-                    onChange={(e) => setIgSendTo(e.target.value)}
-                    placeholder="Pick someone above, or paste an Instagram-scoped ID"
-                    className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={igSendBody}
-                    onChange={(e) => setIgSendBody(e.target.value)}
-                    placeholder="Write your message…"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendInstagram}
-                    disabled={igSending || !igSendTo.trim() || !igSendBody.trim()}
-                    className="px-4 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
-                  >
-                    {igSending ? "Sending…" : "Send message"}
-                  </button>
-                </div>
-
-                {igSendResult && (
-                  <p className="text-[11px] text-os-text-dim font-mono">{igSendResult}</p>
-                )}
-              </div>
-            )}
+            {/* Instagram connection & sender have moved to their own page
+                (app/instagram/page.tsx) - see this settings page's own
+                channel cards for WhatsApp/Gmail/etc. above and below for
+                the ones still managed from here. */}
           </div>
         </GlassCard>
 

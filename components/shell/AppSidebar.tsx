@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   MessageSquare,
+  Instagram,
   PhoneCall,
   Users,
   BookOpen,
@@ -133,6 +134,13 @@ export function AppSidebar({
       icon: MessageSquare,
       accent: "text-seal-bright",
       shortcut: "G W",
+    },
+    {
+      label: "Instagram",
+      href: "/instagram",
+      icon: Instagram,
+      accent: "text-pink-400",
+      shortcut: "G N",
     },
     {
       label: "Voice Agent",

@@ -8,6 +8,7 @@ import {
   Inbox,
   CheckSquare,
   MessageSquare,
+  Instagram,
   PhoneCall,
   Layers,
   Users,
@@ -59,6 +60,13 @@ const COMMANDS = [
         href: "/whatsapp",
         icon: MessageSquare,
         shortcut: "G W",
+      },
+      {
+        title: "Go to Instagram",
+        subtitle: "Connection, DMs & comments",
+        href: "/instagram",
+        icon: Instagram,
+        shortcut: "G N",
       },
       {
         title: "Go to Voice Agent",
