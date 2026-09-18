@@ -6,19 +6,41 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { channels, type ChannelConnection, type InstagramConversation } from "@/lib/api";
+import {
+  channels,
+  type ChannelConnection,
+  type InstagramConversation,
+  type InstagramInsights,
+} from "@/lib/api";
+
+const INSTAGRAM_METRIC_LABELS: Record<string, string> = {
+  reach: "Reach",
+  follower_count: "New Followers",
+  profile_views: "Profile Views",
+  accounts_engaged: "Accounts Engaged",
+  total_interactions: "Total Interactions",
+  website_clicks: "Website Clicks",
+};
 
 export default function InstagramPage() {
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<InstagramInsights | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
       const list = await channels.list();
-      setConnection(list.find((c) => c.channel === "instagram") || null);
+      const conn = list.find((c) => c.channel === "instagram") || null;
+      setConnection(conn);
+      // A 409 here just means not connected yet - not worth surfacing as
+      // a page-level load error the way the connection list's own
+      // failure is.
+      if (conn?.status === "active") {
+        channels.instagramInsights().then(setInsights).catch(() => setInsights(null));
+      }
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Could not load Instagram data.");
     } finally {
@@ -222,6 +244,27 @@ export default function InstagramPage() {
                 </button>
               </div>
             </GlassCard>
+
+            {insights && (
+              <GlassCard className="p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Insights</h3>
+                  <p className="text-xs text-os-text-dim">
+                    Live from Meta, not stored twice - the last {insights.period_days} days.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
+                  {Object.entries(insights.values).map(([key, value]) => (
+                    <div key={key} className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                      <span className="text-os-text-dim text-[10px] block">
+                        {INSTAGRAM_METRIC_LABELS[key] || key}
+                      </span>
+                      <span className="text-lg font-bold text-white">{value.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
 
             {connection.status === "active" && (
               <GlassCard className="p-6 space-y-3">
