@@ -619,11 +619,18 @@ export default function SettingsPage() {
     }
   };
 
-  // The "Instagram API with Instagram Login" route has no entry point here
-  // for now. It connects against a separate Meta app whose messaging
-  // permission is not granted, so a connection made through it cannot send
-  // - offering it alongside the working route only invites picking the one
-  // that fails. The backend endpoint (channels.instagramConnectUrl) stays.
+  const handleConnectInstagramLogin = async () => {
+    try {
+      const res = await channels.instagramConnectUrl();
+      if (res?.url) {
+        window.location.href = res.url;
+      } else {
+        alert("Instagram Login isn't configured for this account yet.");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not connect Instagram.");
+    }
+  };
 
   // Temporary - manual Instagram send test for the App Review screencast,
   // since no general Instagram inbox/composer UI exists yet and the recipient
@@ -1096,6 +1103,18 @@ export default function SettingsPage() {
                   >
                     Reconnect
                   </button>
+                  {/* Instagram Business Login - a separate connect route
+                      from the Facebook Login button above (different Meta
+                      app, different token host). Kept as a distinct button
+                      rather than merged in, since which one a business
+                      should use is a real choice, not a detail to hide. */}
+                  <button
+                    type="button"
+                    onClick={handleConnectInstagramLogin}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Reconnect via Instagram Login
+                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -1111,6 +1130,13 @@ export default function SettingsPage() {
                     className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
                   >
                     {igConnection ? "Reconnect Instagram" : "Connect Instagram"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConnectInstagramLogin}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Connect via Instagram Login
                   </button>
                 </div>
               )}
