@@ -970,6 +970,7 @@ export type AutomationTrigger =
   | "call.no_answer"
   | "message.received"
   | "comment.received"
+  | "story_mention.received"
   | "flow.completed"
   | "appointment.booked"
   | "appointment.cancelled"
@@ -1034,6 +1035,10 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "call.no_answer": ["campaign_objective"],
   "message.received": ["text"],
   "comment.received": ["text"],
+  // No fields - a story mention carries no text to filter on, so a rule
+  // here is meant to run unconditionally (matches the backend's own
+  // CONDITION_FIELDS, which deliberately has no entry for this trigger).
+  "story_mention.received": [],
   "flow.completed": ["flow_id"],
   "appointment.booked": ["starts_at", "intake_channel"],
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],

@@ -81,6 +81,7 @@ function usesLiveData(flow: WhatsAppFlow): boolean {
 const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "message.received": "A customer sends a message",
   "comment.received": "A customer comments on a post",
+  "story_mention.received": "A customer mentions you in their story",
   "flow.completed": "A customer completes a WhatsApp Flow",
   "appointment.booked": "An appointment is booked",
   "appointment.cancelled": "An appointment is cancelled",
