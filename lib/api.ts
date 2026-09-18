@@ -652,6 +652,13 @@ export const channels = {
   instagramInsights: (days: number = 7) =>
     api.get<InstagramInsights>(`/messages/instagram/insights?days=${days}`),
 
+  publishInstagramPhoto: (file: File, caption: string) => {
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("caption", caption);
+    return api.post<PublishPhotoResult>("/messages/instagram/publish", formData, true);
+  },
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
@@ -733,6 +740,11 @@ export type InstagramConversation = {
 export type InstagramInsights = {
   period_days: number;
   values: Record<string, number>;
+};
+
+export type PublishPhotoResult = {
+  media_id: string;
+  image_url: string;
 };
 
 export const templates = {

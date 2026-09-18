@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Instagram, RefreshCw } from "lucide-react";
+import { Instagram, RefreshCw, ImagePlus } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -140,6 +140,30 @@ export default function InstagramPage() {
     }
   };
 
+  // Photo posts only for now - video/Reels need a second, polled step
+  // (Meta processes the upload after the container is created) that
+  // isn't built yet. See InstagramClient.publish_photo's own docstring.
+  const [publishFile, setPublishFile] = useState<File | null>(null);
+  const [publishCaption, setPublishCaption] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState<string | null>(null);
+
+  const handlePublish = async () => {
+    if (!publishFile) return;
+    setPublishing(true);
+    setPublishResult(null);
+    try {
+      const res = await channels.publishInstagramPhoto(publishFile, publishCaption.trim());
+      setPublishResult(`Published — media id ${res.media_id}`);
+      setPublishFile(null);
+      setPublishCaption("");
+    } catch (err) {
+      setPublishResult(err instanceof Error ? err.message : "Could not publish this photo.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <AppLayout title="Instagram" subtitle="Connection, DMs & Comments">
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -263,6 +287,50 @@ export default function InstagramPage() {
                     </div>
                   ))}
                 </div>
+              </GlassCard>
+            )}
+
+            {connection.status === "active" && (
+              <GlassCard className="p-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                    <ImagePlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Publish a photo</p>
+                    <p className="text-[11px] text-os-text-dim">
+                      Posts to {connection.handle || "this account"}&apos;s feed. Photos only for now - video/Reels are a separate, larger build.
+                    </p>
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={(e) => setPublishFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-os-text-dim file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border file:border-white/[0.08] file:bg-white/[0.04] file:text-white file:text-xs file:font-semibold file:cursor-pointer cursor-pointer"
+                />
+
+                <textarea
+                  value={publishCaption}
+                  onChange={(e) => setPublishCaption(e.target.value)}
+                  placeholder="Write a caption…"
+                  rows={2}
+                  className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                />
+
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  disabled={publishing || !publishFile}
+                  className="px-4 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
+                >
+                  {publishing ? "Publishing…" : "Publish"}
+                </button>
+
+                {publishResult && (
+                  <p className="text-[11px] text-os-text-dim font-mono">{publishResult}</p>
+                )}
               </GlassCard>
             )}
 
