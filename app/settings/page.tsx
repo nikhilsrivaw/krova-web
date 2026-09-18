@@ -72,7 +72,6 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("Apex Medical Clinic");
   const [fullName, setFullName] = useState("Dr. Rajesh Sharma");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
-  const [proactiveDeadlineCalls, setProactiveDeadlineCalls] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -399,7 +398,6 @@ export default function SettingsPage() {
         setBusinessName(profRes.value.business_name || "");
         setFullName(profRes.value.full_name || "");
         setGoogleReviewUrl(profRes.value.google_review_url || "");
-        setProactiveDeadlineCalls(profRes.value.proactive_deadline_calls_enabled || false);
       } else {
         setLoadError(
           profRes.reason instanceof Error
@@ -541,7 +539,6 @@ export default function SettingsPage() {
         full_name: fullName,
         vertical,
         google_review_url: googleReviewUrl,
-        proactive_deadline_calls_enabled: proactiveDeadlineCalls,
       });
       await approvals.setAutonomy(autonomy);
       setSaveSuccess(true);
@@ -736,27 +733,6 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Proactive Deadline Calls */}
-            <div className="pt-2 flex items-center justify-between gap-4 p-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02]">
-              <div>
-                <p className="text-xs font-bold text-white mb-0.5">Proactive Deadline Calls</p>
-                <p className="text-[11px] text-os-text-dim leading-relaxed">
-                  When a promise (payment, document, callback...) is close to its due date, place a real voice call to remind the customer instead of only a text nudge.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setProactiveDeadlineCalls(!proactiveDeadlineCalls)}
-                className={`shrink-0 px-4 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer ${
-                  proactiveDeadlineCalls
-                    ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                    : "bg-white/[0.06] text-os-text-dim hover:text-white"
-                }`}
-              >
-                {proactiveDeadlineCalls ? "On" : "Off"}
-              </button>
             </div>
 
             <div className="pt-3 flex justify-end">
