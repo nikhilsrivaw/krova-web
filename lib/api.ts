@@ -649,6 +649,9 @@ export const channels = {
   instagramConversations: () =>
     api.get<InstagramConversation[]>("/messages/instagram/conversations"),
 
+  instagramInsights: (days: number = 7) =>
+    api.get<InstagramInsights>(`/messages/instagram/insights?days=${days}`),
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
@@ -725,6 +728,11 @@ export type InstagramParticipant = {
 export type InstagramConversation = {
   id: string;
   participants: InstagramParticipant[];
+};
+
+export type InstagramInsights = {
+  period_days: number;
+  values: Record<string, number>;
 };
 
 export const templates = {

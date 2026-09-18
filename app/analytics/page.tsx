@@ -16,6 +16,7 @@ import {
   Mail,
   Zap,
   ArrowRight,
+  Instagram,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -24,13 +25,24 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/EmptyState";
 import {
   analytics,
+  channels,
   type ReceivablesAgeing,
   type KeptAnalytics,
   type ChannelActivity,
   type AgentPerformance,
   type TeamPerformance,
   type TrustReport,
+  type InstagramInsights,
 } from "@/lib/api";
+
+const INSTAGRAM_METRIC_LABELS: Record<string, string> = {
+  reach: "Reach",
+  follower_count: "New Followers",
+  profile_views: "Profile Views",
+  accounts_engaged: "Accounts Engaged",
+  total_interactions: "Total Interactions",
+  website_clicks: "Website Clicks",
+};
 
 export default function AnalyticsPage() {
   const [receivables, setReceivables] = useState<ReceivablesAgeing | null>(null);
@@ -39,6 +51,7 @@ export default function AnalyticsPage() {
   const [agentPerf, setAgentPerf] = useState<AgentPerformance | null>(null);
   const [teamPerf, setTeamPerf] = useState<TeamPerformance | null>(null);
   const [trustReport, setTrustReport] = useState<TrustReport | null>(null);
+  const [igInsights, setIgInsights] = useState<InstagramInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -46,13 +59,14 @@ export default function AnalyticsPage() {
   useEffect(() => {
     let mounted = true;
     const loadAnalytics = async () => {
-      const [recRes, keptRes, chRes, agRes, teamRes, trustRes] = await Promise.allSettled([
+      const [recRes, keptRes, chRes, agRes, teamRes, trustRes, igRes] = await Promise.allSettled([
         analytics.receivables(),
         analytics.kept(),
         analytics.channels(),
         analytics.agent(),
         analytics.team(),
         analytics.trustReport(),
+        channels.instagramInsights(),
       ]);
       if (!mounted) return;
 
@@ -62,6 +76,10 @@ export default function AnalyticsPage() {
       if (agRes.status === "fulfilled") setAgentPerf(agRes.value);
       if (teamRes.status === "fulfilled") setTeamPerf(teamRes.value);
       if (trustRes.status === "fulfilled") setTrustReport(trustRes.value);
+      // Rejected here almost always just means Instagram isn't connected
+      // (a 409) - not worth surfacing as a page-level load error the way
+      // the other widgets' failures are.
+      if (igRes.status === "fulfilled") setIgInsights(igRes.value);
 
       const failed = [recRes, keptRes, chRes, agRes].find((r) => r.status === "rejected");
       if (failed && failed.status === "rejected") {
@@ -202,6 +220,38 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             )}
+          </GlassCard>
+        )}
+
+        {/* SECTION 1a.5: INSTAGRAM INSIGHTS - only renders once an account
+            is connected; a 409 (not connected yet) is handled as a normal
+            unfulfilled promise above, not a page-level error. */}
+        {igInsights && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                  <Instagram className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Instagram Insights</h3>
+                  <p className="text-xs text-os-text-dim">
+                    Live from Meta, not stored twice - the last {igInsights.period_days} days.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
+              {Object.entries(igInsights.values).map(([key, value]) => (
+                <div key={key} className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                  <span className="text-os-text-dim text-[10px] block">
+                    {INSTAGRAM_METRIC_LABELS[key] || key}
+                  </span>
+                  <span className="text-lg font-bold text-white">{value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
           </GlassCard>
         )}
 
