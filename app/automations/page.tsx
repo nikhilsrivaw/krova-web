@@ -80,6 +80,7 @@ function usesLiveData(flow: WhatsAppFlow): boolean {
 
 const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "message.received": "A customer sends a message",
+  "comment.received": "A customer comments on a post",
   "flow.completed": "A customer completes a WhatsApp Flow",
   "appointment.booked": "An appointment is booked",
   "appointment.cancelled": "An appointment is cancelled",
@@ -138,6 +139,7 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   send_sms: "Send an SMS",
   send_email: "Send an email",
   instagram_followup: "Send an Instagram reply",
+  instagram_comment_reply: "Reply privately to a comment",
 };
 
 const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
@@ -149,6 +151,7 @@ const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   send_sms: MessageCircle,
   send_email: Mail,
   instagram_followup: Instagram,
+  instagram_comment_reply: Instagram,
 };
 
 // Human labels for the real, per-trigger_type condition fields
@@ -481,6 +484,9 @@ export default function AutomationsPage() {
     if (action === "instagram_followup") {
       return textConfig.trim() ? { message: textConfig.trim() } : null;
     }
+    if (action === "instagram_comment_reply") {
+      return textConfig.trim() ? { message: textConfig.trim() } : null;
+    }
     if (action === "send_email") {
       return emailSubject.trim() && textConfig.trim()
         ? { subject: emailSubject.trim(), body: textConfig.trim() }
@@ -765,6 +771,23 @@ export default function AutomationsPage() {
             onChange={(e) => setTextConfig(e.target.value)}
             rows={2}
             placeholder="Hey! Thanks for reaching out - how can we help?"
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+          />
+        </div>
+      )}
+
+      {action === "instagram_comment_reply" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Private reply to send</label>
+          <p className="text-[11px] text-os-text-dim mb-2">
+            Sent as a private reply to the comment itself, not a public reply under the post - Meta allows this
+            once per comment, within 7 days of it.
+          </p>
+          <textarea
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            rows={2}
+            placeholder="Thanks for the comment! Check your DMs 🙌"
             className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
           />
         </div>

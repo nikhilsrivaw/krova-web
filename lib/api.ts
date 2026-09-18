@@ -969,6 +969,7 @@ export type AutomationTrigger =
   | "call.voicemail"
   | "call.no_answer"
   | "message.received"
+  | "comment.received"
   | "flow.completed"
   | "appointment.booked"
   | "appointment.cancelled"
@@ -1005,7 +1006,8 @@ export type AutomationAction =
   | "place_call"
   | "send_sms"
   | "send_email"
-  | "instagram_followup";
+  | "instagram_followup"
+  | "instagram_comment_reply";
 
 // The real channels a trigger can actually come from - matches the
 // backend's own Channel enum (shared/db/models/channel.py). Kept here
@@ -1031,6 +1033,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "call.voicemail": ["campaign_objective"],
   "call.no_answer": ["campaign_objective"],
   "message.received": ["text"],
+  "comment.received": ["text"],
   "flow.completed": ["flow_id"],
   "appointment.booked": ["starts_at", "intake_channel"],
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
