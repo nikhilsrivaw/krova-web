@@ -971,6 +971,7 @@ export type AutomationTrigger =
   | "message.received"
   | "comment.received"
   | "story_mention.received"
+  | "story_reply.received"
   | "flow.completed"
   | "appointment.booked"
   | "appointment.cancelled"
@@ -1039,6 +1040,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   // here is meant to run unconditionally (matches the backend's own
   // CONDITION_FIELDS, which deliberately has no entry for this trigger).
   "story_mention.received": [],
+  "story_reply.received": ["text"],
   "flow.completed": ["flow_id"],
   "appointment.booked": ["starts_at", "intake_channel"],
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
