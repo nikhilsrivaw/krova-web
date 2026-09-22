@@ -789,6 +789,12 @@ export type Subaccount = {
   status: string;
 };
 
+export type ComplianceState = {
+  subaccount_auth_id: string;
+  has_end_user: boolean;
+  uploaded_document_type_ids: string[];
+};
+
 export type DocumentType = { id: string; name: string };
 
 export type ComplianceRequirement = {
@@ -842,6 +848,10 @@ export type CallLog = {
 
 export const voice = {
   createSubaccount: () => api.post<Subaccount>("/voice-onboarding/subaccount"),
+
+  /** Redraws the KYC wizard's own progress after a reload - see the backend endpoint's own docstring. 409s if no subaccount exists yet, same as every other compliance endpoint. */
+  complianceState: () =>
+    api.get<ComplianceState>("/voice-onboarding/compliance/state"),
 
   requirements: () =>
     api.get<ComplianceRequirement>("/voice-onboarding/compliance/requirements"),

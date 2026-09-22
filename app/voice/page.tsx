@@ -120,13 +120,16 @@ export default function VoicePage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [appRes, chRes, logsRes, agentRes, profileRes] = await Promise.allSettled([
-      voice.applicationStatus(),
-      channels.list(),
-      voice.logs(),
-      voice.agentSettings(),
-      account.profile(),
-    ]);
+    const [appRes, chRes, logsRes, agentRes, profileRes, stateRes, reqRes] =
+      await Promise.allSettled([
+        voice.applicationStatus(),
+        channels.list(),
+        voice.logs(),
+        voice.agentSettings(),
+        account.profile(),
+        voice.complianceState(),
+        voice.requirements(),
+      ]);
     if (profileRes.status === "fulfilled") setBusinessName(profileRes.value.business_name);
 
     if (appRes.status === "fulfilled") {
@@ -134,6 +137,17 @@ export default function VoicePage() {
       // An application existing at all implies the earlier steps succeeded.
       setHasEndUser(true);
     }
+    // Redraws the wizard's own progress after a reload, pre-application -
+    // without this, a business returning to a half-finished KYC flow saw
+    // every step (including already-uploaded documents) as not-yet-done,
+    // and retrying an upload hit Plivo's alias-uniqueness rule instead of
+    // just showing the step as already complete.
+    if (stateRes.status === "fulfilled") {
+      setSubaccount({ subaccount_auth_id: stateRes.value.subaccount_auth_id, status: "created" });
+      if (stateRes.value.has_end_user) setHasEndUser(true);
+      setUploadedDocTypeIds(new Set(stateRes.value.uploaded_document_type_ids));
+    }
+    if (reqRes.status === "fulfilled") setRequirement(reqRes.value);
     if (chRes.status === "fulfilled") {
       setVoiceConnections(chRes.value.filter((c) => c.channel === "voice"));
     }
@@ -149,9 +163,9 @@ export default function VoicePage() {
       setOwnerNumberDraft(agentRes.value.owner_phone || "");
       setPublicTrustPageDraft(agentRes.value.public_trust_page_enabled);
     }
-    // agentRes rejecting (409, no voice number yet) is expected and left
-    // as agentSettings === null - the tab shows its own explanatory state
-    // for that rather than surfacing it as an error banner.
+    // agentRes/stateRes/reqRes rejecting (409, nothing created yet) is
+    // expected and left at defaults - each tab shows its own explanatory
+    // state for that rather than surfacing it as an error banner.
     setIsLoading(false);
   };
 
