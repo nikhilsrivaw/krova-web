@@ -733,10 +733,14 @@ export default function VoicePage() {
                               </td>
                               <td className="py-3 px-3 font-mono">
                                 <span className="font-bold text-white block">{log.cost_display}</span>
+                                {/* Paise precision, not whole rupees - each of
+                                    these is tens of paise on a real call, so
+                                    the default rounding showed every one as
+                                    "₹0" regardless of what was charged. */}
                                 <span className="text-[10px] text-os-text-dim block">
-                                  STT: {formatPaise(log.cost_breakdown.sarvam_stt_paise ?? 0)} • TTS:{" "}
-                                  {formatPaise(log.cost_breakdown.sarvam_tts_paise ?? 0)} • Carrier:{" "}
-                                  {formatPaise(log.cost_breakdown.plivo_voice_paise ?? 0)}
+                                  STT: {formatPaise(log.cost_breakdown.sarvam_stt_paise ?? 0, false, 2)} • TTS:{" "}
+                                  {formatPaise(log.cost_breakdown.sarvam_tts_paise ?? 0, false, 2)} • Carrier:{" "}
+                                  {formatPaise(log.cost_breakdown.plivo_voice_paise ?? 0, false, 2)}
                                 </span>
                               </td>
                               <td className="py-3 px-3 font-mono text-os-text-dim text-[11px]">

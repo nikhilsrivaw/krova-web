@@ -2310,6 +2310,13 @@ export const properties = {
 export function formatPaise(
   paise: number | null | undefined,
   compact = false,
+  /**
+   * Whole rupees by default, which is right for ledger/revenue figures but
+   * wrong for anything inherently sub-rupee: a single voice call's STT, TTS
+   * and carrier costs are each tens of paise, so rounding made every one of
+   * them read "₹0" no matter what was actually charged. Pass 2 there.
+   */
+  fractionDigits = 0,
 ): string {
   if (paise === null || paise === undefined) return "₹0";
   const rupees = paise / 100;
@@ -2322,7 +2329,8 @@ export function formatPaise(
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(rupees);
 }
 
