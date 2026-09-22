@@ -1620,6 +1620,9 @@ export type UserProfile = {
   // never actually issued.
   role: "owner" | "admin" | "agent" | null;
   google_review_url: string | null;
+  // Whether shared/care/commitment_deadline_calls.py's proactive voice
+  // calls are on for this business - opt-in, off by default.
+  proactive_deadline_calls_enabled: boolean;
   // Sent from /auth/me, like capabilities, because every page already fetches
   // it. See QueueLabels below for how these resolve.
   queue_labels: QueueLabels;
@@ -1633,6 +1636,7 @@ export const account = {
     business_name?: string;
     vertical?: string;
     google_review_url?: string;
+    proactive_deadline_calls_enabled?: boolean;
   }) => api.post<UserProfile>("/auth/me", data),
 };
 
@@ -2322,6 +2326,7 @@ export async function fetchVerticals(): Promise<Vertical[]> {
         { key: "startup", label: "Startup or early-stage product", summary: "An early-stage company whose users report bugs, ask for features, and sometimes threaten to leave - support volume that outgrows a founder's own inbox fast." },
         { key: "ecommerce", label: "Online store", summary: "A store selling online, where customers ask where their order is, whether an item is in stock, and how to return something." },
         { key: "restaurant", label: "Restaurant or cafe", summary: "A restaurant handling table reservations, menu questions, delivery and party bookings." },
+        { key: "coaching", label: "Coaching or tuition centre", summary: "An exam-prep or skills coaching institute where students and parents ask about batches and fees, book a demo class, and need reminding about fee instalments." },
       ];
     }
     return res.json();
