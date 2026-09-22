@@ -32,6 +32,7 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   voice,
   channels,
+  account,
   formatPaise,
   type Subaccount,
   type ComplianceRequirement,
@@ -88,6 +89,11 @@ export default function VoicePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Some Plivo KYC document types (Registration Certificate) reject the
+  // upload unless business_name rides along with it - see lib/api.ts's
+  // uploadDocument. The business already told Krova its own name at
+  // signup, so this sends it automatically rather than asking again.
+  const [businessName, setBusinessName] = useState<string | null>(null);
 
   // Number Search & Purchase
   const [searchPattern, setSearchPattern] = useState("080");
@@ -114,12 +120,14 @@ export default function VoicePage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [appRes, chRes, logsRes, agentRes] = await Promise.allSettled([
+    const [appRes, chRes, logsRes, agentRes, profileRes] = await Promise.allSettled([
       voice.applicationStatus(),
       channels.list(),
       voice.logs(),
       voice.agentSettings(),
+      account.profile(),
     ]);
+    if (profileRes.status === "fulfilled") setBusinessName(profileRes.value.business_name);
 
     if (appRes.status === "fulfilled") {
       setApplication(appRes.value);
@@ -179,7 +187,12 @@ export default function VoicePage() {
 
   const handleUploadDocument = (docTypeId: string, docTypeName: string, file: File) =>
     run(`doc-${docTypeId}`, async () => {
-      await voice.uploadDocument({ document_type_id: docTypeId, alias: docTypeName, file });
+      await voice.uploadDocument({
+        document_type_id: docTypeId,
+        alias: docTypeName,
+        file,
+        business_name: businessName || undefined,
+      });
       setUploadedDocTypeIds((prev) => new Set(prev).add(docTypeId));
     });
 
