@@ -38,6 +38,7 @@ import {
   type ComplianceRequirement,
   type VoiceApplication,
   type VoiceNumber,
+  type OwnedNumber,
   type CallLog,
   type ChannelConnection,
   type AgentSettings,
@@ -85,6 +86,7 @@ export default function VoicePage() {
   const [uploadedDocTypeIds, setUploadedDocTypeIds] = useState<Set<string>>(new Set());
   const [application, setApplication] = useState<VoiceApplication | null>(null);
   const [voiceConnections, setVoiceConnections] = useState<ChannelConnection[]>([]);
+  const [ownedNumbers, setOwnedNumbers] = useState<OwnedNumber[]>([]);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -120,7 +122,7 @@ export default function VoicePage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [appRes, chRes, logsRes, agentRes, profileRes, stateRes, reqRes] =
+    const [appRes, chRes, logsRes, agentRes, profileRes, stateRes, reqRes, ownedRes] =
       await Promise.allSettled([
         voice.applicationStatus(),
         channels.list(),
@@ -129,8 +131,10 @@ export default function VoicePage() {
         account.profile(),
         voice.complianceState(),
         voice.requirements(),
+        voice.ownedNumbers(),
       ]);
     if (profileRes.status === "fulfilled") setBusinessName(profileRes.value.business_name);
+    if (ownedRes.status === "fulfilled") setOwnedNumbers(ownedRes.value);
 
     if (appRes.status === "fulfilled") {
       setApplication(appRes.value);
@@ -285,6 +289,7 @@ export default function VoicePage() {
     run(`release-${number}`, async () => {
       await voice.releaseNumber(number);
       setVoiceConnections((prev) => prev.filter((c) => c.external_account_id !== number));
+      setOwnedNumbers((prev) => prev.filter((n) => n.number !== number));
     });
 
   const documentTypesRemaining =
@@ -555,6 +560,53 @@ export default function VoicePage() {
                     </div>
                   )}
                 </GlassCard>
+
+                {ownedNumbers.some((n) => !n.is_connected) && (
+                  <GlassCard className="p-6 border-amber-500/30">
+                    <h4 className="text-sm font-bold text-white mb-1">
+                      Other Numbers on This Account
+                    </h4>
+                    <p className="text-xs text-os-text-dim mb-4">
+                      Bought from Plivo but not routed to your KROVA voice agent - usually
+                      left over from a purchase that didn't finish connecting. Release
+                      anything here you don't need to stop paying for it.
+                    </p>
+                    <div className="space-y-3">
+                      {ownedNumbers
+                        .filter((n) => !n.is_connected)
+                        .map((n) => (
+                          <div
+                            key={n.number}
+                            className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 flex items-center justify-between gap-4"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                                <Phone className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-bold font-mono text-white">
+                                  {n.number}
+                                </h5>
+                                {(n.city || n.region) && (
+                                  <p className="text-[11px] text-os-text-dim">
+                                    {[n.city, n.region].filter(Boolean).join(", ")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleReleaseNumber(n.number)}
+                              disabled={busy === `release-${n.number}`}
+                              className="text-xs text-os-text-dim hover:text-thread-bright transition-colors"
+                            >
+                              {busy === `release-${n.number}` ? "Releasing..." : "Release Number"}
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </GlassCard>
+                )}
 
                 {application?.status === "compliance_approved" && (
                   <GlassCard className="p-6">

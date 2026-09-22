@@ -812,6 +812,13 @@ export type VoiceApplication = {
   rejection_reason?: string | null;
 };
 
+export type OwnedNumber = {
+  number: string;
+  city: string | null;
+  region: string | null;
+  is_connected: boolean;
+};
+
 export type VoiceNumber = {
   number: string;
   city: string | null;
@@ -905,6 +912,9 @@ export const voice = {
 
   releaseNumber: (number: string) =>
     api.post<void>(`/voice-onboarding/numbers/${encodeURIComponent(number)}/release`),
+
+  /** Every number Plivo says this subaccount owns, not just the ones Krova's own ChannelConnection rows know about - see the backend endpoint's own docstring. */
+  ownedNumbers: () => api.get<OwnedNumber[]>("/voice-onboarding/numbers/owned"),
 
   logs: () => api.get<CallLog[]>("/voice-onboarding/logs"),
 
