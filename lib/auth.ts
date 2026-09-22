@@ -109,6 +109,49 @@ export async function register(input: {
   return body;
 }
 
+/**
+ * Where to send the browser for Google sign-in/sign-up.
+ *
+ * businessName/vertical are only meaningful from the signup form - they ride
+ * through Google's own round trip in a signed state param (see
+ * shared/auth/tokens.py's create_google_oauth_state) so the callback can
+ * create a new business if this turns out to be a new email. Omit both for
+ * a plain login page: an unrecognised email there sends the browser back to
+ * /signup instead of silently creating a business.
+ */
+export async function googleStart(
+  businessName?: string,
+  vertical?: string
+): Promise<string> {
+  const params = new URLSearchParams();
+  if (businessName) params.set("business_name", businessName);
+  if (vertical) params.set("vertical", vertical);
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/v1/auth/google/start${qs ? `?${qs}` : ""}`
+  );
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || "Could not start Google sign-in");
+  return body.authorize_url as string;
+}
+
+/**
+ * The last step after Google redirects back: trade the short-lived handoff
+ * code (in the URL, never the real tokens - see the backend module comment
+ * on create_google_handoff) for an actual session.
+ */
+export async function googleExchange(code: string): Promise<Session> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/google/exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || "Could not complete Google sign-in");
+  storeSession(body);
+  return body;
+}
+
 export async function signOut(): Promise<void> {
   const refresh = read(REFRESH_KEY);
   clearSession();

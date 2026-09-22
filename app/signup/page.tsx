@@ -1,24 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, AlertCircle, Mail, CheckCircle2 } from "lucide-react";
-import { register } from "@/lib/auth";
+import { googleStart, register } from "@/lib/auth";
 import { fetchVerticals, type Vertical } from "@/lib/api";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { AuthShell } from "@/components/spectrum/auth-shell";
 
+// Mirrors services/api/routers/auth.py's google_callback redirect codes.
+const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+  google_denied: "Google sign-up was cancelled.",
+  google_expired: "That sign-up attempt expired — please try again.",
+  google_failed: "Google sign-up failed — please try again.",
+  google_unverified_email: "That Google account's email isn't verified.",
+  google_no_account:
+    "No Krova account uses that Google email yet — fill in your business details below and continue with Google again.",
+};
+
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState(false);
   const [businessName, setBusinessName] = useState("");
@@ -30,6 +50,11 @@ export default function SignupPage() {
   useEffect(() => {
     fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
   }, []);
+
+  useEffect(() => {
+    const code = searchParams.get("error");
+    if (code) setError(GOOGLE_ERROR_MESSAGES[code] || "Could not sign up with Google.");
+  }, [searchParams]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +80,18 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = async () => {
-    // Google sign-up ran through Supabase OAuth, which we no longer use.
-    setError("Google sign-up isn't available yet — use your email and password.");
+    setError(null);
+    if (!businessName.trim()) {
+      setError("Enter your business name first, so Krova knows what to set up.");
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      window.location.href = await googleStart(businessName, vertical);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Google sign-up");
+      setGoogleLoading(false);
+    }
   };
 
   // Confirmation screen
@@ -152,40 +187,6 @@ export default function SignupPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleGoogleSignup}
-              className="os-button os-button-secondary w-full justify-center text-xs py-2.5 gap-3 relative"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M15.68 8.18c0-.57-.05-1.12-.14-1.64H8v3.1h4.3a3.67 3.67 0 01-1.59 2.41v2h2.57c1.5-1.38 2.4-3.42 2.4-5.87z" fill="#4285F4" />
-                <path d="M8 16c2.16 0 3.97-.72 5.29-1.94l-2.57-2a4.8 4.8 0 01-7.15-2.52H.96v2.07A8 8 0 008 16z" fill="#34A853" />
-                <path d="M3.57 9.54A4.8 4.8 0 013.32 8c0-.54.09-1.06.25-1.54V4.39H.96A8 8 0 000 8c0 1.29.31 2.51.96 3.61l2.61-2.07z" fill="#FBBC05" />
-                <path d="M8 3.2c1.22 0 2.31.42 3.17 1.24l2.37-2.37A8 8 0 00.96 4.39L3.57 6.46A4.77 4.77 0 018 3.2z" fill="#EA4335" />
-              </svg>
-              Continue with Google
-            </button>
-
-            <div className="flex items-center gap-3 relative">
-              <div className="flex-1 h-px bg-os-border" />
-              <span className="text-[10px] text-os-text-dim uppercase tracking-widest">or</span>
-              <div className="flex-1 h-px bg-os-border" />
-            </div>
-
-            <div className="space-y-1.5 relative">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Deepak Mehta"
-                required
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
-              />
-            </div>
-
             <div className="space-y-1.5 relative">
               <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
                 Business Name
@@ -222,6 +223,41 @@ export default function SignupPage() {
                 Krova uses this to set up your agent before your first
                 conversation. You can change it later.
               </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              disabled={googleLoading}
+              className="os-button os-button-secondary w-full justify-center text-xs py-2.5 gap-3 relative disabled:opacity-60"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M15.68 8.18c0-.57-.05-1.12-.14-1.64H8v3.1h4.3a3.67 3.67 0 01-1.59 2.41v2h2.57c1.5-1.38 2.4-3.42 2.4-5.87z" fill="#4285F4" />
+                <path d="M8 16c2.16 0 3.97-.72 5.29-1.94l-2.57-2a4.8 4.8 0 01-7.15-2.52H.96v2.07A8 8 0 008 16z" fill="#34A853" />
+                <path d="M3.57 9.54A4.8 4.8 0 013.32 8c0-.54.09-1.06.25-1.54V4.39H.96A8 8 0 000 8c0 1.29.31 2.51.96 3.61l2.61-2.07z" fill="#FBBC05" />
+                <path d="M8 3.2c1.22 0 2.31.42 3.17 1.24l2.37-2.37A8 8 0 00.96 4.39L3.57 6.46A4.77 4.77 0 018 3.2z" fill="#EA4335" />
+              </svg>
+              {googleLoading ? "Redirecting..." : "Continue with Google"}
+            </button>
+
+            <div className="flex items-center gap-3 relative">
+              <div className="flex-1 h-px bg-os-border" />
+              <span className="text-[10px] text-os-text-dim uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-os-border" />
+            </div>
+
+            <div className="space-y-1.5 relative">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Deepak Mehta"
+                required
+                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+              />
             </div>
 
             <div className="space-y-1.5 relative">

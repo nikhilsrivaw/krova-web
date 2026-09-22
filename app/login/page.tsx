@@ -1,23 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { signIn } from "@/lib/auth";
+import { googleStart, signIn } from "@/lib/auth";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { AuthShell } from "@/components/spectrum/auth-shell";
 
+// Mirrors services/api/routers/auth.py's google_callback redirect codes.
+const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+  google_denied: "Google sign-in was cancelled.",
+  google_expired: "That sign-in attempt expired — please try again.",
+  google_failed: "Google sign-in failed — please try again.",
+  google_unverified_email: "That Google account's email isn't verified.",
+  account_disabled: "This account has been disabled.",
+};
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const code = searchParams.get("error");
+    if (code) setError(GOOGLE_ERROR_MESSAGES[code] || "Could not sign in with Google.");
+  }, [searchParams]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,9 +57,14 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    // Google sign-in went through Supabase OAuth, which we no longer use.
-    // Krova issues its own tokens now; social login needs its own flow.
-    setError("Google sign-in isn't available yet — use your email and password.");
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      window.location.href = await googleStart();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Google sign-in");
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -73,7 +102,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="os-button os-button-secondary w-full justify-center text-xs py-2.5 gap-3 relative"
+              disabled={googleLoading}
+              className="os-button os-button-secondary w-full justify-center text-xs py-2.5 gap-3 relative disabled:opacity-60"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M15.68 8.18c0-.57-.05-1.12-.14-1.64H8v3.1h4.3a3.67 3.67 0 01-1.59 2.41v2h2.57c1.5-1.38 2.4-3.42 2.4-5.87z" fill="#4285F4" />
@@ -81,7 +111,7 @@ export default function LoginPage() {
                 <path d="M3.57 9.54A4.8 4.8 0 013.32 8c0-.54.09-1.06.25-1.54V4.39H.96A8 8 0 000 8c0 1.29.31 2.51.96 3.61l2.61-2.07z" fill="#FBBC05" />
                 <path d="M8 3.2c1.22 0 2.31.42 3.17 1.24l2.37-2.37A8 8 0 00.96 4.39L3.57 6.46A4.77 4.77 0 018 3.2z" fill="#EA4335" />
               </svg>
-              Continue with Google
+              {googleLoading ? "Redirecting..." : "Continue with Google"}
             </button>
 
             <div className="flex items-center gap-3 relative">
