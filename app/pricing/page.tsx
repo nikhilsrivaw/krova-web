@@ -34,11 +34,11 @@ const PLANS = [
     name: "Growth",
     tagline: "For growing businesses",
     price: { monthly: "₹1,999", annual: "₹1,599" },
-    desc: "All 4 channels, unlimited replies, full intelligence. The complete KROVA.",
+    desc: "All 3 channels, unlimited replies, full intelligence. The complete KROVA.",
     highlight: true,
     badge: "Most popular",
     features: [
-      { text: "All 4 channels (WhatsApp, IG, Gmail, Outlook)", included: true },
+      { text: "All 3 channels (WhatsApp, Instagram, Voice)", included: true },
       { text: "Up to 5,000 messages/month", included: true },
       { text: "Nightly AI analysis (10 PM IST)", included: true },
       { text: "Morning briefing + hot lead alerts", included: true },
@@ -74,7 +74,7 @@ const PLANS = [
 const FAQS = [
   {
     q: "What counts as a 'message'?",
-    a: "Any inbound or outbound message across your connected channels — WhatsApp, Instagram DMs, Gmail threads, or Outlook emails — counts as one message.",
+    a: "Any inbound or outbound message across your connected channels — WhatsApp, Instagram DMs, or a voice call turn — counts as one message.",
   },
   {
     q: "Can I switch plans later?",
@@ -86,7 +86,7 @@ const FAQS = [
   },
   {
     q: "What channels are supported?",
-    a: "WhatsApp Business API, Instagram Direct (via Meta), Gmail (via Google OAuth), and Outlook / Office 365 (via Microsoft OAuth). More channels coming.",
+    a: "WhatsApp Business API, Instagram Direct (via Meta), and voice calls (India, phone number provisioning included). More channels coming.",
   },
   {
     q: "Is my data secure?",

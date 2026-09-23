@@ -52,7 +52,7 @@ const LINKS: NavLink[] = [
       {
         icon: <Layout size={18} className="text-teal" />,
         title: "Unified Inbox",
-        description: "WhatsApp, IG, Gmail in one workspace.",
+        description: "WhatsApp, Instagram, Voice in one workspace.",
         href: "/workspace",
       },
       {

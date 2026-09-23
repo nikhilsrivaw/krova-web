@@ -19,13 +19,14 @@ import {
   Users,
   Moon,
   Inbox,
+  PhoneCall,
 } from "lucide-react";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { Ripple } from "@/components/magicui/ripple";
 import { Marquee } from "@/components/magicui/marquee";
-import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
+import { WhatsAppIcon, InstagramIcon } from "@/components/spectrum/brand-icons";
 import { InkUnderline } from "@/components/spectrum/ink-underline";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { HowItWorks } from "@/components/spectrum/how-it-works";
@@ -120,7 +121,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "What channels work today?",
-    a: "WhatsApp Business, Instagram DMs, Gmail, and Outlook. All four feed into one AI brain — no jumping between inboxes.",
+    a: "WhatsApp Business, Instagram DMs, and voice calls. All three feed into one AI brain — no jumping between inboxes.",
   },
   {
     q: "How secure is my customer data?",
@@ -128,7 +129,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Do I need a developer to set it up?",
-    a: "No. You connect your own WhatsApp Business account from Settings using the details in your Meta Business account. Email channels connect with a standard sign-in. Nothing needs to be installed.",
+    a: "No. You connect your own WhatsApp Business account from Settings using the details in your Meta Business account. Instagram and voice connect the same way. Nothing needs to be installed.",
   },
   {
     q: "What's the trial like?",
@@ -136,13 +137,12 @@ const FAQ_ITEMS = [
   },
 ];
 
-const CHANNELS_STRIP = ["WhatsApp Business", "Instagram DM", "Gmail", "Outlook", "Team Inbox"];
+const CHANNELS_STRIP = ["WhatsApp Business", "Instagram DM", "Voice Calls", "Team Inbox"];
 
 const MARQUEE_ITEMS = [
   { icon: <WhatsAppIcon size={18} />, label: "WhatsApp" },
   { icon: <InstagramIcon size={18} />, label: "Instagram" },
-  { icon: <GmailIcon size={18} />, label: "Gmail" },
-  { icon: <OutlookIcon size={18} />, label: "Outlook" },
+  { icon: <PhoneCall size={18} />, label: "Voice" },
   { icon: <Flame size={16} className="text-teal" />, label: "Hot leads" },
   { icon: <Snowflake size={16} className="text-teal" />, label: "Going cold" },
   { icon: <IndianRupee size={16} className="text-teal" />, label: "Revenue leaks" },

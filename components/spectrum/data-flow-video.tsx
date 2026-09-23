@@ -14,7 +14,7 @@ export function DataFlowVideo() {
           One message. The whole journey.
         </h2>
         <p className="text-os-text-dim max-w-xl leading-relaxed">
-          Watch a single WhatsApp, Instagram, Gmail or Outlook message travel into your
+          Watch a single WhatsApp, Instagram, or voice message travel into your
           unified inbox, through the AI brain overnight, and back to you as a morning brief.
         </p>
       </div>

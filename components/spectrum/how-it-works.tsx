@@ -3,14 +3,14 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";
-import { Sun, Sparkles } from "lucide-react";
-import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
+import { Sun, Sparkles, PhoneCall } from "lucide-react";
+import { WhatsAppIcon, InstagramIcon } from "@/components/spectrum/brand-icons";
 
 const STEPS = [
   {
     n: "01",
     title: "Connect what you already use",
-    body: "Your own WhatsApp Business account, Instagram DMs, Gmail, Outlook. No new inbox to check.",
+    body: "Your own WhatsApp Business account, Instagram DMs, voice calls. No new inbox to check.",
   },
   {
     n: "02",
@@ -27,8 +27,7 @@ const STEPS = [
 const CHANNELS = [
   { icon: <WhatsAppIcon size={18} />, label: "WhatsApp" },
   { icon: <InstagramIcon size={18} />, label: "Instagram" },
-  { icon: <GmailIcon size={18} />, label: "Gmail" },
-  { icon: <OutlookIcon size={18} />, label: "Outlook" },
+  { icon: <PhoneCall size={18} />, label: "Voice" },
 ];
 
 const LEDGER_ENTRIES = [

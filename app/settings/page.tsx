@@ -941,20 +941,28 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Gmail */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                  <Mail className="w-5 h-5" />
+            {/* Gmail - hidden from new connections. Google's restricted-scope
+                verification (CASA security assessment, real recurring cost)
+                isn't worth it yet - see docs/... decision. Only rendered for
+                a business that already has one connected, so nobody loses
+                an existing connection; the "Connect" entry point that would
+                invite a new one - which Google blocks in Testing mode for
+                any account outside the console's own test-user list anyway -
+                is gone. Backend (gmail_channel.py, backfill.py) is untouched,
+                so this is reversible by restoring this block alone. */}
+            {emailConnection && (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
+                    <p className="text-[11px] text-os-text-dim">
+                      {emailConnection.handle || "Connected"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
-                  <p className="text-[11px] text-os-text-dim">
-                    {emailConnection ? emailConnection.handle || "Connected" : "Read customer payment confirmations and meeting requests from email."}
-                  </p>
-                </div>
-              </div>
-              {emailConnection ? (
                 <div className="flex items-center gap-2">
                   <Badge variant={emailConnection.status === "active" ? "emerald" : "amber"} dot>
                     {emailConnection.status === "active" ? "Connected" : emailConnection.status}
@@ -969,16 +977,8 @@ export default function SettingsPage() {
                     {isBackfilling ? "Reading..." : "Backfill Now"}
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleConnectGmail}
-                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                >
-                  Connect Gmail OAuth
-                </button>
-              )}
-            </div>
+              </div>
+            )}
             {backfillResult && (
               <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
             )}

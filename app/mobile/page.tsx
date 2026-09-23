@@ -33,7 +33,7 @@ const EXAMPLES = [
   },
   {
     user: "Kaun se leads hot hain abhi?",
-    ai: "3 hot leads:\n• Priya D. — Elite plan ka rate pucha (WhatsApp · 2h ago)\n• Rahul M. — Sample dekha, ready to convert (IG · 4h ago)\n• Anjali S. — Demo schedule karna chahti hain (Gmail · 6h ago)",
+    ai: "3 hot leads:\n• Priya D. — Elite plan ka rate pucha (WhatsApp · 2h ago)\n• Rahul M. — Sample dekha, ready to convert (IG · 4h ago)\n• Anjali S. — Demo schedule karna chahti hain (Voice call · 6h ago)",
   },
   {
     user: "Priya ko kya message karoon?",
@@ -65,7 +65,7 @@ const STEPS = [
   },
   {
     title: "Tap HAAN",
-    body: "One tap and it goes out over your WhatsApp, Instagram or Gmail. No typing, no copy-paste, no switching apps.",
+    body: "One tap and it goes out over your WhatsApp or Instagram. No typing, no copy-paste, no switching apps.",
   },
 ];
 

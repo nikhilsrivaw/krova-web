@@ -18,6 +18,7 @@ import {
   ArrowUp,
   Instagram,
   Mail,
+  Phone,
   Zap,
   Users,
   Search,
@@ -35,7 +36,7 @@ import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
 import { Callout } from "@/components/spectrum/callout";
-import { WhatsAppIcon, InstagramIcon, GmailIcon, OutlookIcon } from "@/components/spectrum/brand-icons";
+import { WhatsAppIcon, InstagramIcon } from "@/components/spectrum/brand-icons";
 
 interface TocSection {
   id: string;
@@ -56,9 +57,8 @@ const TOC: TocSection[] = [
   { id: "channels-overview", title: "Channels overview", icon: <Plug size={13} />, group: "Channels" },
   { id: "whatsapp", title: "WhatsApp", icon: <MessageSquare size={13} />, group: "Channels" },
   { id: "instagram", title: "Instagram", icon: <Instagram size={13} />, group: "Channels" },
-  { id: "gmail", title: "Gmail", icon: <Mail size={13} />, group: "Channels" },
-  { id: "outlook", title: "Outlook", icon: <Mail size={13} />, group: "Channels" },
-  { id: "voice", title: "Voice & tone", icon: <Sparkles size={13} />, group: "Configure" },
+  { id: "voice-calls", title: "Voice", icon: <Phone size={13} />, group: "Channels" },
+  { id: "voice-tone", title: "Voice & tone", icon: <Sparkles size={13} />, group: "Configure" },
   { id: "guardrails", title: "Guardrails", icon: <ShieldCheck size={13} />, group: "Configure" },
   { id: "autopilot", title: "Autopilot rules", icon: <Zap size={13} />, group: "Configure" },
   { id: "team", title: "Team & roles", icon: <Users size={13} />, group: "Configure" },
@@ -340,7 +340,7 @@ export default function DocsPage() {
             <Section id="introduction" eyebrow="Start here" title="What is KROVA?">
               <Lead>
                 KROVA is your AI business analyst. It reads every customer conversation across
-                WhatsApp, Instagram, Gmail and Outlook, then tells you who&rsquo;s hot, who&rsquo;s
+                WhatsApp, Instagram and voice calls, then tells you who&rsquo;s hot, who&rsquo;s
                 slipping, what&rsquo;s at risk, and exactly what to say next.
               </Lead>
               <P>
@@ -463,7 +463,7 @@ export default function DocsPage() {
                   },
                   {
                     title: "Connect channels",
-                    body: "Pick at least one — WhatsApp, Instagram, Gmail or Outlook. You can add the rest later; each takes one click.",
+                    body: "Pick at least one — WhatsApp, Instagram or Voice. You can add the rest later.",
                   },
                   {
                     title: "AI setup",
@@ -573,7 +573,7 @@ export default function DocsPage() {
                 items={[
                   "A status — hot, warm, cold, converted or lost",
                   "A health score from 0 to 100 showing relationship strength",
-                  "Their primary channel (WhatsApp, Instagram, Gmail, Outlook)",
+                  "Their primary channel (WhatsApp, Instagram, Voice)",
                   "A timeline of every conversation, across every channel",
                   "An assigned team member, if you have a team",
                   "Notes and commitments — anything you promised them",
@@ -618,16 +618,15 @@ export default function DocsPage() {
             {/* CHANNELS OVERVIEW */}
             <Section id="channels-overview" eyebrow="Channels" title="Connecting channels">
               <P>
-                A channel is any inbox KROVA reads from and writes to. Four are supported today, and
-                you can connect more than one of each — useful if you run two WhatsApp numbers or a
-                second email address.
+                A channel is any inbox — or phone line — KROVA reads from and writes to. Three are
+                supported today, and you can connect more than one of each — useful if you run two
+                WhatsApp numbers.
               </P>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { icon: <WhatsAppIcon size={20} />, name: "WhatsApp", time: "2 min" },
                   { icon: <InstagramIcon size={20} />, name: "Instagram", time: "3 min" },
-                  { icon: <GmailIcon size={20} />, name: "Gmail", time: "1 min" },
-                  { icon: <OutlookIcon size={20} />, name: "Outlook", time: "1 min" },
+                  { icon: <Phone size={20} />, name: "Voice", time: "~1 day (KYC)" },
                 ].map((c) => (
                   <div
                     key={c.name}
@@ -708,50 +707,45 @@ export default function DocsPage() {
               </Callout>
             </Section>
 
-            {/* GMAIL */}
-            <Section id="gmail" eyebrow="Channels" title="Connecting Gmail">
-              <P>Works with any Gmail or Google Workspace inbox. One click and you&rsquo;re done.</P>
+            {/* VOICE CALLS */}
+            <Section id="voice-calls" eyebrow="Channels" title="Connecting Voice">
+              <P>
+                A real phone number your customers can call, answered by KROVA&rsquo;s AI in real time.
+                India regulatory KYC is required before a number can be purchased — budget about a day
+                for approval, not the ~2 minutes other channels take.
+              </P>
               <Steps
                 items={[
-                  { title: "Click Connect Gmail", body: "Settings → Channels → Gmail sends you to Google." },
                   {
-                    title: "Choose the right account",
-                    body: "If you're signed into several Google accounts, pick the business one.",
+                    title: "Create your voice subaccount",
+                    body: "Voice → Regulatory KYC & Compliance → Create Subaccount. One click, instant.",
                   },
                   {
-                    title: "Grant read and send permissions",
-                    body: "KROVA reads your business inbox and sends replies on your behalf. Approve both.",
+                    title: "Register your business identity",
+                    body: "Registers your business name with the carrier for KYC.",
                   },
                   {
-                    title: "Filter the inbox (optional)",
-                    body: "In Settings → Channels → Gmail you can exclude labels such as Newsletters so they're never analysed.",
+                    title: "Upload KYC documents",
+                    body: "Registration Certificate and any other document types listed. Each type may ask for extra details (e.g. your registered business name) — the form will prompt for it.",
+                  },
+                  {
+                    title: "Submit and wait for carrier approval",
+                    body: "Status moves to \"In Review by Carrier\", then \"Compliance Approved\" once cleared.",
+                  },
+                  {
+                    title: "Search and buy a number",
+                    body: "Voice → Phone Numbers, once approved. Search by area code (e.g. 80 for Bengaluru — no leading zero) and connect.",
                   },
                 ]}
               />
-            </Section>
-
-            {/* OUTLOOK */}
-            <Section id="outlook" eyebrow="Channels" title="Connecting Outlook">
-              <P>Works with personal Outlook.com addresses and Microsoft 365 work accounts.</P>
-              <Steps
-                items={[
-                  { title: "Click Connect Outlook", body: "Settings → Channels → Outlook sends you to Microsoft." },
-                  { title: "Sign in", body: "Use your Microsoft account credentials." },
-                  {
-                    title: "Approve permissions",
-                    body: "Mail.Read and Mail.Send. KROVA never touches OneDrive or Teams.",
-                  },
-                ]}
-              />
-              <Callout title="Workspace admin approval">
-                Some Microsoft 365 tenants require IT admin approval before third-party apps can
-                connect. If you see that message, forward the Microsoft consent page to your IT team
-                — it&rsquo;s a one-click approval at their end.
+              <Callout type="tip" title="No leading zero">
+                Plivo&rsquo;s own numbers drop the STD code&rsquo;s leading zero (Bengaluru is
+                &ldquo;80&rdquo;, not &ldquo;080&rdquo;) — search either way and KROVA normalises it.
               </Callout>
             </Section>
 
-            {/* VOICE */}
-            <Section id="voice" eyebrow="Configure" title="Teaching KROVA your voice">
+            {/* VOICE TONE */}
+            <Section id="voice-tone" eyebrow="Configure" title="Teaching KROVA your voice">
               <P>
                 Drafts come out in <em>your</em> tone rather than generic chatbot language. The AI
                 learns from two places: the messages you&rsquo;ve already sent, and your edits to its
@@ -937,7 +931,7 @@ export default function DocsPage() {
               <div className="overflow-hidden rounded-xl border border-os-border">
                 {[
                   { path: "Settings → Profile", what: "Business name, city, type" },
-                  { path: "Settings → Channels", what: "Connect or disconnect WhatsApp, Instagram, Gmail, Outlook" },
+                  { path: "Settings → Channels", what: "Connect or disconnect WhatsApp, Instagram, Voice" },
                   { path: "Settings → Briefing", what: "Phone number, time, frequency" },
                   { path: "Settings → Voice", what: "Tone, language, sample replies" },
                   { path: "Settings → Guardrails", what: "Rules the AI must never break" },

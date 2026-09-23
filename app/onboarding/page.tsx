@@ -7,7 +7,6 @@ import {
   Building,
   MessageSquare,
   PhoneCall,
-  Mail,
   Shield,
   Sparkles,
   ArrowRight,
@@ -24,7 +23,7 @@ import { account, approvals, channels, type AutonomyLevel } from "@/lib/api";
 const STEPS = [
   "Business & Vertical",
   "Connect WhatsApp",
-  "Voice & Gmail (Optional)",
+  "Connect Voice (Optional)",
   "Autonomy Guardrails",
 ];
 
@@ -48,9 +47,8 @@ export default function OnboardingPage() {
   const [isConnectingWA, setIsConnectingWA] = useState(false);
   const [isWAConnected, setIsWAConnected] = useState(true);
 
-  // Step 3: Voice & Gmail
+  // Step 3: Voice
   const [isVoiceConnected, setIsVoiceConnected] = useState(false);
-  const [isGmailConnected, setIsGmailConnected] = useState(false);
 
   // Step 4: Autonomy (Default draft)
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
@@ -207,7 +205,7 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
-        {/* Step 2: Connect Voice & Gmail (Optional) */}
+        {/* Step 2: Connect Voice (Optional) */}
         {currentStep === 2 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -216,7 +214,7 @@ export default function OnboardingPage() {
           >
             <div>
               <h2 className="text-2xl font-bold text-white tracking-tight">
-                Connect Secondary Channels (Optional)
+                Connect Voice (Optional)
               </h2>
               <p className="text-xs text-os-text-dim mt-1">
                 You can configure these now or complete them later from the Voice and Settings tabs.
@@ -243,28 +241,6 @@ export default function OnboardingPage() {
                 </Badge>
               </GlassCard>
 
-              {/* Gmail Card */}
-              <GlassCard className="p-5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
-                    <p className="text-[11px] text-os-text-dim">
-                      Extract payment receipts and client promises from emails.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsGmailConnected(!isGmailConnected)}
-                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
-                >
-                  {isGmailConnected ? "✓ Connected" : "Connect OAuth"}
-                </button>
-              </GlassCard>
             </div>
           </motion.div>
         )}
