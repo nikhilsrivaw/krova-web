@@ -487,7 +487,7 @@ export default function ConversationsPage() {
   return (
     <AppLayout
       title="Unified Conversations"
-      subtitle="Interleaved timeline across WhatsApp, Voice, Email & Instagram"
+      subtitle="Interleaved timeline across WhatsApp, Instagram & Voice"
     >
       {/* A flat background gives glass panels nothing to actually blur -
           same fix as the dashboard, kept restrained here (Minimalism &
@@ -520,7 +520,7 @@ export default function ConversationsPage() {
             </div>
 
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-              {["all", "whatsapp", "instagram", "voice", "email"].map((ch) => (
+              {["all", "whatsapp", "instagram", "voice"].map((ch) => (
                 <button
                   key={ch}
                   type="button"
