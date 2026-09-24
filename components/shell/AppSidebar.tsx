@@ -25,6 +25,7 @@ import {
   Scale,
   Radar,
   Package,
+  Boxes,
   Building2,
   Clock,
   FileCheck2,
@@ -214,6 +215,14 @@ export function AppSidebar({
       accent: "text-brass-bright",
       requiresCapability: "order_sync",
       shortcut: "G O",
+    },
+    {
+      label: "Catalogue",
+      href: "/products",
+      icon: Boxes,
+      accent: "text-brass-bright",
+      requiresCapability: "order_sync",
+      shortcut: "G C",
     },
     {
       label: "Properties",

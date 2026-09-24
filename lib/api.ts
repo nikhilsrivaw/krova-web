@@ -1578,6 +1578,100 @@ export type AnalyticsOverview = {
   };
 };
 
+// How fast the business replies, and the conversion rate at each speed.
+// The buckets are fixed server-side (see shared/care/response_metrics.py)
+// so the labels below are the only ones that can arrive.
+export type ResponseSpeedBucket = {
+  label: "under_15m" | "15m_to_1h" | "1h_to_4h" | "4h_to_24h" | "over_24h";
+  asks: number;
+  converted: number;
+  conversion_rate: number | null;
+};
+
+export type ResponseSpeedChannel = {
+  channel: string;
+  answered: number;
+  median_seconds: number | null;
+};
+
+export type ResponseSpeed = {
+  asks: number;
+  answered: number;
+  unanswered: number;
+  answer_rate: number | null;
+  median_seconds: number | null;
+  p90_seconds: number | null;
+  buckets: ResponseSpeedBucket[];
+  by_channel: ResponseSpeedChannel[];
+  note: string;
+};
+
+// The product catalogue. Sources differ completely by business - most
+// sellers here are on WhatsApp/Instagram or their own site, not Shopify -
+// so source_platform says where a row actually came from.
+export type ProductVariant = {
+  id: string;
+  sku: string | null;
+  title: string | null;
+  options: Record<string, string>;
+  price_paise: number | null;
+  inventory_quantity: number | null;
+  // null means the source never told us - which is not the same as
+  // "out of stock", and must never be rendered as one.
+  available: boolean | null;
+};
+
+export type Product = {
+  id: string;
+  source_platform: string;
+  title: string;
+  product_type: string | null;
+  vendor: string | null;
+  status: string;
+  image_url: string | null;
+  variants: ProductVariant[];
+};
+
+export type CatalogueSyncResult = {
+  products_created: number;
+  products_updated: number;
+  variants_created: number;
+  variants_updated: number;
+  variants_retired: number;
+  note: string;
+};
+
+export type CatalogueImportResult = CatalogueSyncResult & {
+  warnings: string[];
+};
+
+export const products = {
+  list: (params?: { search?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<Product[]>(`/products${suffix}`);
+  },
+
+  syncMeta: () => api.post<CatalogueSyncResult>("/products/sync/meta", {}),
+
+  importCsv: (file: File) => {
+    const formData = new FormData();
+    formData.set("file", file);
+    return api.post<CatalogueImportResult>("/products/import", formData, true);
+  },
+
+  create: (data: {
+    title: string;
+    product_type?: string | null;
+    vendor?: string | null;
+    variants?: Array<{ sku?: string | null; title?: string | null; price_paise?: number | null }>;
+  }) => api.post<Product>("/products", data),
+
+  remove: (id: string) => api.delete<void>(`/products/${id}`),
+};
+
 export const analytics = {
   overview: () => api.get<AnalyticsOverview>("/analytics/overview"),
   receivables: () => api.get<ReceivablesAgeing>("/analytics/receivables"),
@@ -1586,6 +1680,8 @@ export const analytics = {
   agent: () => api.get<AgentPerformance>("/analytics/agent"),
   team: () => api.get<TeamPerformance>("/analytics/team"),
   trustReport: (days = 30) => api.get<TrustReport>(`/analytics/trust-report?days=${days}`),
+  responseSpeed: (days = 30) =>
+    api.get<ResponseSpeed>(`/analytics/response-speed?days=${days}`),
 };
 
 // software-startup vertical - "proof of performance," not a marketing claim.

@@ -30,7 +30,24 @@ import {
   type AgentPerformance,
   type TeamPerformance,
   type TrustReport,
+  type ResponseSpeed,
 } from "@/lib/api";
+
+const RESPONSE_BUCKET_LABELS: Record<ResponseSpeed["buckets"][number]["label"], string> = {
+  under_15m: "Under 15 min",
+  "15m_to_1h": "15 min – 1 hr",
+  "1h_to_4h": "1 – 4 hrs",
+  "4h_to_24h": "4 – 24 hrs",
+  over_24h: "Over 24 hrs",
+};
+
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
+  return `${(seconds / 86400).toFixed(1)}d`;
+}
 
 export default function AnalyticsPage() {
   const [receivables, setReceivables] = useState<ReceivablesAgeing | null>(null);
@@ -39,6 +56,7 @@ export default function AnalyticsPage() {
   const [agentPerf, setAgentPerf] = useState<AgentPerformance | null>(null);
   const [teamPerf, setTeamPerf] = useState<TeamPerformance | null>(null);
   const [trustReport, setTrustReport] = useState<TrustReport | null>(null);
+  const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -46,15 +64,19 @@ export default function AnalyticsPage() {
   useEffect(() => {
     let mounted = true;
     const loadAnalytics = async () => {
-      const [recRes, keptRes, chRes, agRes, teamRes, trustRes] = await Promise.allSettled([
-        analytics.receivables(),
-        analytics.kept(),
-        analytics.channels(),
-        analytics.agent(),
-        analytics.team(),
-        analytics.trustReport(),
-      ]);
+      const [recRes, keptRes, chRes, agRes, teamRes, trustRes, speedRes] =
+        await Promise.allSettled([
+          analytics.receivables(),
+          analytics.kept(),
+          analytics.channels(),
+          analytics.agent(),
+          analytics.team(),
+          analytics.trustReport(),
+          analytics.responseSpeed(),
+        ]);
       if (!mounted) return;
+
+      if (speedRes.status === "fulfilled") setResponseSpeed(speedRes.value);
 
       if (recRes.status === "fulfilled") setReceivables(recRes.value);
       if (keptRes.status === "fulfilled") setKept(keptRes.value);
@@ -153,6 +175,84 @@ export default function AnalyticsPage() {
             </p>
           )}
         </div>
+
+        {/* SECTION 1b: RESPONSE SPEED vs CONVERSION. The one view that needs
+            both halves of this platform - message timestamps and real orders,
+            on one customer. A messaging tool knows the first; a store platform
+            knows the second; neither can draw the line between them. */}
+        {responseSpeed && responseSpeed.asks > 0 && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Response Speed</h3>
+                <p className="text-xs text-os-text-dim">
+                  How fast you reply — and how often each speed ends in an order.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Median Reply</span>
+                <span className="text-lg font-bold text-white">
+                  {formatDuration(responseSpeed.median_seconds)}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Slowest 10%</span>
+                <span className="text-lg font-bold text-amber-400">
+                  {formatDuration(responseSpeed.p90_seconds)}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Conversations</span>
+                <span className="text-lg font-bold text-white">{responseSpeed.asks}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06]">
+                <span className="text-os-text-dim text-[10px] block">Never Answered</span>
+                <span
+                  className={`text-lg font-bold ${
+                    responseSpeed.unanswered > 0 ? "text-red-400" : "text-emerald-400"
+                  }`}
+                >
+                  {responseSpeed.unanswered}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              {responseSpeed.buckets
+                .filter((b) => b.asks > 0)
+                .map((b) => (
+                  <div
+                    key={b.label}
+                    className="p-2.5 rounded-lg bg-black/20 border border-white/[0.05] flex items-center justify-between gap-3"
+                  >
+                    <span className="text-[11px] text-white/80 w-28 shrink-0">
+                      {RESPONSE_BUCKET_LABELS[b.label]}
+                    </span>
+                    <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-cyan-400/70"
+                        style={{ width: `${Math.round((b.conversion_rate ?? 0) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono text-os-text-dim shrink-0 w-32 text-right">
+                      {b.conversion_rate != null
+                        ? `${Math.round(b.conversion_rate * 100)}% ordered`
+                        : "—"}{" "}
+                      · {b.asks} {b.asks === 1 ? "chat" : "chats"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+
+            <p className="text-[10px] text-os-text-dim font-mono">{responseSpeed.note}</p>
+          </GlassCard>
+        )}
 
         {/* SECTION 1a: TRUST REPORT - "PROOF OF PERFORMANCE," NOT A CLAIM. Every
             number here reads off real MessageDraft rows - nothing computed
