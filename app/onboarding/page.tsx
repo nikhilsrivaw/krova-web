@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -16,6 +16,7 @@ import {
   Eye,
   FileText,
 } from "lucide-react";
+import { fetchVerticals, type Vertical } from "@/lib/api";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { account, approvals, channels, type AutonomyLevel } from "@/lib/api";
@@ -27,13 +28,7 @@ const STEPS = [
   "Autonomy Guardrails",
 ];
 
-const VERTICALS = [
-  { key: "clinic", label: "Clinic & Healthcare", desc: "Patient appointments, doctor consultations, diagnostics" },
-  { key: "coaching", label: "Coaching Institute", desc: "Student enrollments, batch scheduling, fee reminders" },
-  { key: "salon", label: "Salon & Beauty Chain", desc: "Stylist bookings, service catalogs, appointment rescheduling" },
-  { key: "agency", label: "Agency & Consultancy", desc: "Retainer client deliverables and payment milestones" },
-  { key: "general", label: "General Professional", desc: "Standard client inquiries, quotes & ledger commitments" },
-];
+
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -41,7 +36,14 @@ export default function OnboardingPage() {
 
   // Step 1: Business Profile
   const [businessName, setBusinessName] = useState("Apex Healthcare LLP");
-  const [vertical, setVertical] = useState("clinic");
+  const [vertical, setVertical] = useState("general");
+  const [verticals, setVerticals] = useState<Vertical[]>([]);
+
+  // Server-driven, same as signup: onboarding asks for the business's market
+  // type, and that list is a config change rather than a frontend release.
+  useEffect(() => {
+    fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
+  }, []);
 
   // Step 2: WhatsApp
   const [isConnectingWA, setIsConnectingWA] = useState(false);
@@ -129,10 +131,10 @@ export default function OnboardingPage() {
 
               <div>
                 <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
-                  Select Industry Vertical:
+                  What kind of business is this?
                 </label>
                 <div className="space-y-2.5">
-                  {VERTICALS.map((v) => (
+                  {verticals.map((v) => (
                     <div
                       key={v.key}
                       onClick={() => setVertical(v.key)}
@@ -146,7 +148,7 @@ export default function OnboardingPage() {
                         <span className="text-xs font-bold text-white">{v.label}</span>
                         {vertical === v.key && <Check className="w-4 h-4 text-brass" />}
                       </div>
-                      <p className="text-[11px] opacity-80 mt-0.5">{v.desc}</p>
+                      <p className="text-[11px] opacity-80 mt-0.5">{v.summary}</p>
                     </div>
                   ))}
                 </div>
