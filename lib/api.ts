@@ -1606,6 +1606,86 @@ export type ResponseSpeed = {
   note: string;
 };
 
+// Quotations (Type 1 / B2B). An offer, not a promise - it gets revised,
+// expires on its own terms, and ends won or lost.
+export type QuotationStatus =
+  | "draft"
+  | "sent"
+  | "negotiating"
+  | "won"
+  | "lost"
+  | "expired"
+  | "withdrawn";
+
+export type QuotationItem = {
+  id: string;
+  description: string;
+  quantity: string | null;
+  unit_price_paise: number | null;
+  line_total_paise: number | null;
+  variant_id: string | null;
+};
+
+export type Quotation = {
+  id: string;
+  customer_id: string;
+  customer_name: string | null;
+  reference: string | null;
+  status: QuotationStatus;
+  total_paise: number | null;
+  currency: string;
+  sent_at: string | null;
+  valid_until: string | null;
+  notes: string | null;
+  follow_up_count: number;
+  last_followed_up_at: string | null;
+  closed_at: string | null;
+  outcome_note: string | null;
+  supersedes_id: string | null;
+  source_quote: string | null;
+  items: QuotationItem[];
+  // Days since sending - the number the 21-day staleness research is about.
+  days_open: number | null;
+};
+
+export type QuotationPipeline = {
+  open_count: number;
+  open_value_paise: number;
+  won_count: number;
+  lost_count: number;
+  expired_count: number;
+  win_rate: number | null;
+  stale_count: number;
+  note: string;
+};
+
+export const quotations = {
+  list: (params?: { status?: QuotationStatus; open_only?: boolean; customer_id?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.open_only) qs.set("open_only", "true");
+    if (params?.customer_id) qs.set("customer_id", params.customer_id);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<Quotation[]>(`/quotations${suffix}`);
+  },
+
+  pipeline: (staleDays = 21) =>
+    api.get<QuotationPipeline>(`/quotations/pipeline?stale_days=${staleDays}`),
+
+  create: (data: {
+    customer_id: string;
+    reference?: string | null;
+    total_paise?: number | null;
+    valid_until?: string | null;
+    notes?: string | null;
+    items?: Array<{ description: string; quantity?: string | null; unit_price_paise?: number | null }>;
+    mark_sent?: boolean;
+  }) => api.post<Quotation>("/quotations", data),
+
+  recordOutcome: (id: string, status: QuotationStatus, outcome_note?: string | null) =>
+    api.post<Quotation>(`/quotations/${id}/outcome`, { status, outcome_note }),
+};
+
 // The product catalogue. Sources differ completely by business - most
 // sellers here are on WhatsApp/Instagram or their own site, not Shopify -
 // so source_platform says where a row actually came from.
@@ -1720,7 +1800,9 @@ export type Capability =
   | "care_recall"
   | "opd_queue"
   | "tpa_claim_tracking"
-  | "photo_product_match";
+  | "photo_product_match"
+  // Type 1 (B2B): quotations sent, chased, and won or lost.
+  | "quotations";
 
 export type UserProfile = {
   user_id: string;

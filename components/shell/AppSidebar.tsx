@@ -25,6 +25,7 @@ import {
   Scale,
   Radar,
   Package,
+  FileText,
   Boxes,
   Building2,
   Clock,
@@ -207,6 +208,14 @@ export function AppSidebar({
       accent: "text-brass-bright",
       requiresCapability: "tpa_claim_tracking",
       shortcut: "G T",
+    },
+    {
+      label: "Quotations",
+      href: "/quotations",
+      icon: FileText,
+      accent: "text-brass-bright",
+      requiresCapability: "quotations",
+      shortcut: "G U",
     },
     {
       label: "Orders",
