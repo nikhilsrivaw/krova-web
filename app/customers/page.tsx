@@ -282,6 +282,40 @@ export default function CustomersPage() {
     }
   };
 
+  // Who pays for this customer. Unlike a stage, this changes who a
+  // payer-targeted automation messages - so a failed write is surfaced and
+  // rolled back rather than left as an optimistic guess.
+  const [payerQuery, setPayerQuery] = useState("");
+  const [payerError, setPayerError] = useState<string | null>(null);
+  const payerMatches = (() => {
+    const q = payerQuery.trim().toLowerCase();
+    if (!q || !selectedCustomer) return [];
+    return customers
+      .filter((c) => c.id !== selectedCustomer.id)
+      .filter((c) =>
+        (c.name || "").toLowerCase().includes(q) ||
+        c.identities.some((i) => i.value.toLowerCase().includes(q)),
+      )
+      .slice(0, 6);
+  })();
+
+  const handleSetPayer = async (payer: CustomerSummary | null) => {
+    if (!selectedCustomer) return;
+    const before = {
+      paid_by_customer_id: selectedCustomer.paid_by_customer_id ?? null,
+      paid_by_name: selectedCustomer.paid_by_name ?? null,
+    };
+    setPayerError(null);
+    patchSelected({ paid_by_customer_id: payer?.id ?? null, paid_by_name: payer?.name ?? null });
+    setPayerQuery("");
+    try {
+      await crm.setPayer(selectedCustomer.id, payer?.id ?? null);
+    } catch (err) {
+      patchSelected(before);
+      setPayerError(err instanceof Error ? err.message : "Could not save who pays.");
+    }
+  };
+
   const handleSetDealValue = async () => {
     if (!selectedCustomer) return;
     const rupees = newDealValue.trim();
@@ -799,6 +833,57 @@ export default function CustomersPage() {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Paid by - a parent for a student, a company for an
+                  employee, a family member for a tenant. Automation steps
+                  can be sent to this person instead of the customer. */}
+              <div>
+                <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
+                  Paid By
+                </h4>
+                {selectedCustomer.paid_by_customer_id ? (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12]">
+                    <span className="text-xs text-white">{selectedCustomer.paid_by_name || "Unnamed contact"}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSetPayer(null)}
+                      className="text-[11px] text-os-text-dim hover:text-red-400 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      value={payerQuery}
+                      onChange={(e) => setPayerQuery(e.target.value)}
+                      placeholder="Themselves - or search a name or number"
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                    />
+                    {payerMatches.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full rounded-lg bg-os-card border border-white/[0.12] shadow-lg overflow-hidden">
+                        {payerMatches.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleSetPayer(c)}
+                            className="w-full text-left px-3 py-2 text-xs text-white hover:bg-white/[0.06] cursor-pointer"
+                          >
+                            {c.name || "Unnamed"}{" "}
+                            <span className="text-os-text-dim">{c.identities[0]?.value}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {payerError && <p className="text-[11px] text-red-400 mt-1">{payerError}</p>}
+                {!!selectedCustomer.pays_for?.length && (
+                  <p className="text-[11px] text-os-text-dim mt-1.5">
+                    Pays for: {selectedCustomer.pays_for.map((p) => p.name || "Unnamed").join(", ")}
+                  </p>
+                )}
               </div>
 
               {/* Deal Value - a forecast the business sets, distinct from a

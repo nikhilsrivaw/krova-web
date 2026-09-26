@@ -176,6 +176,30 @@ export default function LedgerPage() {
     }
   };
 
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+
+  const handleRecordPayment = async (id: string) => {
+    const rupees = Number(paymentAmount);
+    if (!(rupees > 0)) return;
+    setActionError(null);
+    setIsRecordingPayment(true);
+    try {
+      const updated = await ledger.recordPayment(id, Math.round(rupees * 100));
+      setPaymentAmount("");
+      loadLedger();
+      // Keep the drawer open on a part-payment so the new balance is
+      // visible; close it once the promise is fully met.
+      setSelectedCommitment((current) =>
+        updated.status === "met" || !current ? null : { ...current, ...updated },
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not record this payment.");
+    } finally {
+      setIsRecordingPayment(false);
+    }
+  };
+
   const openEvidence = async (com: Commitment) => {
     setIsLoadingDetail(true);
     setActionError(null);
@@ -427,6 +451,11 @@ export default function LedgerPage() {
 
                       <td className="py-3 px-3 font-mono font-bold text-white">
                         {c.amount_display || (c.amount_paise ? formatPaise(c.amount_paise) : "—")}
+                        {c.amount_received_paise > 0 && c.amount_paise != null && (
+                          <span className="block text-[10px] font-normal text-seal-bright">
+                            {formatPaise(c.amount_received_paise)} received · {formatPaise(c.outstanding_paise ?? 0)} left
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-3 font-mono">
@@ -504,6 +533,18 @@ export default function LedgerPage() {
                         : "Non-monetary task")}
                   </span>
                 </div>
+                {selectedCommitment.amount_received_paise > 0 && (
+                  <div className="flex items-center justify-between mb-2 text-xs font-mono">
+                    <span className="text-seal-bright">
+                      {formatPaise(selectedCommitment.amount_received_paise)} received
+                    </span>
+                    {selectedCommitment.outstanding_paise != null && (
+                      <span className="text-white">
+                        {formatPaise(selectedCommitment.outstanding_paise)} still due
+                      </span>
+                    )}
+                  </div>
+                )}
                 <p className="text-xs text-white/90">{selectedCommitment.description}</p>
               </GlassCard>
 
@@ -552,6 +593,42 @@ export default function LedgerPage() {
                     )}
                   </div>
                 )}
+
+              {/* Record a payment - all or part. Instalments, deposits and
+                  "baaki next week" are how fees and retainers really get
+                  paid; marking the whole thing met or leaving it fully
+                  owed both make the Ledger wrong. */}
+              {selectedCommitment.status === "open" && selectedCommitment.kind === "payment" && (
+                <div className="pt-4 border-t border-white/[0.06] space-y-2">
+                  <h5 className="text-xs font-mono uppercase text-os-text-dim">Record payment received:</h5>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder={
+                        selectedCommitment.outstanding_paise
+                          ? `₹ up to ${(selectedCommitment.outstanding_paise / 100).toLocaleString("en-IN")}`
+                          : "₹ amount"
+                      }
+                      className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPayment(selectedCommitment.id)}
+                      disabled={isRecordingPayment || !(Number(paymentAmount) > 0)}
+                      className="px-4 py-2 rounded-lg bg-seal hover:bg-seal-dim text-white font-bold text-xs shadow-md disabled:opacity-50 cursor-pointer"
+                    >
+                      {isRecordingPayment ? "Saving..." : "Record"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-os-text-dim">
+                    Closes as met once the full amount has arrived. A customer saying they paid isn&apos;t
+                    recorded automatically - only you or a verified WhatsApp payment can.
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons: Mark Met, Missed, Cancelled */}
               {selectedCommitment.status === "open" && (

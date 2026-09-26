@@ -118,6 +118,11 @@ export type Commitment = {
   description: string;
   amount_paise: number | null;
   amount_display: string | null;
+  // Money received so far, and what is still owed. amount_paise stays
+  // what was promised - see shared/care/commitment_payments.py.
+  amount_received_paise: number;
+  outstanding_paise: number | null;
+  outstanding_display: string | null;
   currency: string;
   due_at: string | null;
   due_at_explicit: boolean;
@@ -179,6 +184,11 @@ export const ledger = {
 
   resolve: (id: string, outcome: "met" | "missed" | "cancelled") =>
     api.post<Commitment>(`/ledger/commitments/${id}/resolve`, { outcome }),
+
+  // Money received against an open commitment - all of it or part. Closes
+  // it as met once the promised amount has arrived.
+  recordPayment: (id: string, amountPaise: number) =>
+    api.post<Commitment>(`/ledger/commitments/${id}/payments`, { amount_paise: amountPaise }),
 
   /** Beta - WhatsApp Payments (India), unverified against a live WABA. See docs/whatsapp-hub-fixes-and-gaps.md. */
   requestPayment: (id: string, templateName: string, templateLanguage = "en") =>
@@ -263,6 +273,11 @@ export type CustomerSummary = {
   summary?: string;
   preferred_channel?: string;
   stage?: string | null;
+  /** Who pays for this customer (a parent, a company...) - set by hand, never inferred. */
+  paid_by_customer_id?: string | null;
+  paid_by_name?: string | null;
+  /** The people this customer pays for. */
+  pays_for?: { id: string; name: string | null }[];
   /** Confirmed tag labels only - suggestions live in crm.tags(). */
   tags?: string[];
   deal_value_paise?: number | null;
@@ -359,6 +374,15 @@ export const crm = {
     api.patch<{ customer_id: string; stage: string | null }>(
       `/crm/customers/${customerId}/stage`,
       { stage },
+    ),
+
+  // Link (or clear, with null) who pays for this customer. Automation
+  // steps can then be sent to the payer instead - "fees due -> WhatsApp
+  // the parent".
+  setPayer: (customerId: string, paidByCustomerId: string | null) =>
+    api.patch<{ customer_id: string; paid_by_customer_id: string | null; paid_by_name: string | null }>(
+      `/crm/customers/${customerId}/payer`,
+      { paid_by_customer_id: paidByCustomerId },
     ),
 
   pipelineStages: () => api.get<{ stages: string[] }>("/crm/pipeline-stages"),
@@ -995,14 +1019,17 @@ export type AutomationTrigger =
   | "flow.completed"
   | "appointment.booked"
   | "appointment.cancelled"
+  | "appointment.rescheduled"
   | "escalation.raised"
   | "queue_token.issued"
   | "competitor.mentioned"
   | "churn_risk.detected"
   | "demo.requested"
   | "pricing_question.asked"
-  // The rest of Signals' AI-extracted kinds (product_feedback-gated, same
-  // as the four above) - see shared/care/signal_dispatch.py.
+  // The rest of Signals' AI-extracted kinds - see shared/care/
+  // signal_dispatch.py. competitor/churn_risk/complaint/praise reach every
+  // business (shared/ai/signals.py's business-neutral mode); demo, pricing,
+  // bug and feature_request only come from product_feedback businesses.
   | "bug.detected"
   | "feature_request.detected"
   | "complaint.detected"
@@ -1015,7 +1042,21 @@ export type AutomationTrigger =
   | "rto_risk.detected"
   // Direct status-comparison signal, tpa_claim_tracking capability - see
   // services/api/routers/insurance_claims.py::update_claim.
-  | "claim.status_changed";
+  | "claim.status_changed"
+  // The time-based triggers - the only ones here that aren't "something
+  // just happened". Fired once a day by shared/care/date_triggers.py so a
+  // business can set its own timing with a days_until/days_overdue/
+  // days_open condition, instead of inheriting the numbers baked into our
+  // own sweeps. See that module's docstring.
+  | "commitment.due_soon"
+  | "commitment.overdue"
+  | "quotation.aging"
+  // Daily, for every customer who has messaged and not today - "this
+  // person has gone quiet". Measured from the customer's own last message.
+  | "customer.inactive"
+  // A person moved the customer to another pipeline stage (the CRM's
+  // stage picker). Stage names are the business's own.
+  | "customer.stage_changed";
 // escalation_rate.detected / account_health.detected deliberately absent -
 // business-level signals with no customer_id, so a rule on either could
 // never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
@@ -1064,6 +1105,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "flow.completed": ["flow_id"],
   "appointment.booked": ["starts_at", "intake_channel"],
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
+  "appointment.rescheduled": ["starts_at", "intake_channel"],
   "escalation.raised": ["reason"],
   "queue_token.issued": ["shift", "queue_number"],
   "competitor.mentioned": ["severity", "title", "body"],
@@ -1080,6 +1122,14 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "intent_leakage.detected": ["severity", "title", "body"],
   "rto_risk.detected": ["severity", "title", "body"],
   "claim.status_changed": ["severity", "title", "body"],
+  "commitment.due_soon": ["days_until", "kind", "direction", "amount_paise", "amount_outstanding_paise", "description"],
+  "commitment.overdue": ["days_overdue", "kind", "direction", "amount_paise", "amount_outstanding_paise", "description"],
+  "quotation.aging": ["days_open", "status", "amount_paise", "reference"],
+  "customer.stage_changed": ["from_stage", "to_stage"],
+  "customer.inactive": [
+    "days_since_customer_message", "days_since_any_message",
+    "days_since_last_visit", "has_upcoming_visit", "stage",
+  ],
 };
 
 export type AutomationCondition = {
@@ -1090,7 +1140,7 @@ export type AutomationCondition = {
 
 // One action in a rule's chain - a rule holds an ordered list of these
 // (position is the array index, not a field on the object). Each step is
-// independently gated by its own optional condition and optional delay;
+// independently gated by its own optional conditions and optional delay;
 // there is no branching - a step whose condition doesn't hold is skipped,
 // the rest of the chain still runs. See shared/db/models/integrations.py::
 // AutomationStep's own docstring for why that's deliberate.
@@ -1102,9 +1152,13 @@ export type AutomationStepConfig = {
    * place_call: {reason}. send_sms: {message}. send_email: {subject, body}.
    */
   action_config: Record<string, string>;
-  // null/omitted = this step always runs. See CONDITION_FIELDS above for
-  // what `field` may be, per the rule's own trigger_type.
-  condition?: AutomationCondition | null;
+  // All must hold for the step to run (AND) - "days until due is 3 AND
+  // it's a payment". Empty/omitted = always runs. See CONDITION_FIELDS
+  // above for what each `field` may be, per the rule's own trigger_type.
+  // AND only, deliberately: "A or B" is two rules with the same action.
+  // (The API also returns a legacy single `condition`, the first of these,
+  // for older clients - not typed here so nothing in this app reads it.)
+  conditions?: AutomationCondition[] | null;
   // null/omitted = runs immediately (or, for step 2+, right after the
   // previous step). Set so this step waits this many seconds first.
   delay_seconds?: number | null;
@@ -1126,11 +1180,73 @@ export type AutomationRule = {
   steps: AutomationStepConfig[];
 };
 
-// Old names kept as aliases - PostCallRulesTab (the /voice page's own,
-// call-only view) still imports these; no behaviour change for it.
+// Old names kept as aliases. Nothing in the app imports them any more -
+// the /voice page's own tab, the last holdout, now uses the Automation*
+// names like everything else - but they stay exported because the table
+// and the API route are still called post-call rules, so a caller
+// reaching for the old name is reaching for the right thing.
 export type PostCallTrigger = AutomationTrigger;
 export type PostCallAction = AutomationAction;
 export type PostCallRule = AutomationRule;
+
+// ── Automation execution history ──────────────────────────────────────────────
+// The answer to "did my rule actually do anything?" - a question this
+// builder could not answer at all before. See the backend's own
+// AutomationRunLog docstring.
+
+export type AutomationRunStatus =
+  // The action was actually carried out.
+  | "ran"
+  // The step ran but had nothing to do - no phone number on the customer,
+  // no connected channel. A real outcome, not a failure.
+  | "no_action"
+  // The step's condition didn't hold; `detail` says which field, and what
+  // the value actually was.
+  | "skipped"
+  // The step has a delay and is waiting; it gets its own ran/no_action row
+  // when it resumes.
+  | "queued"
+  // The action raised; `detail` carries the error.
+  | "failed";
+
+export type AutomationRunLog = {
+  id: string;
+  rule_id: string;
+  // null when the rule was never named - the UI falls back to the trigger.
+  rule_name?: string | null;
+  trigger_type: AutomationTrigger;
+  step_position: number;
+  action_type: AutomationAction;
+  status: AutomationRunStatus;
+  // Already a plain sentence - shown verbatim, never translated here.
+  detail?: string | null;
+  customer_id?: string | null;
+  occurred_at: string;
+};
+
+export type AutomationRunHistory = {
+  // So an empty list can say "nothing in the last N days" rather than
+  // leaving "never ran" and "aged out" indistinguishable.
+  retention_days: number;
+  runs: AutomationRunLog[];
+};
+
+export type AutomationTestStep = {
+  position: number;
+  action_type: AutomationAction;
+  verdict: "would_run" | "would_skip" | "would_wait";
+  detail?: string | null;
+  // The message exactly as it would be sent, {{tokens}} resolved.
+  preview?: string | null;
+};
+
+export type AutomationTestResult = {
+  available_fields: string[];
+  // Fields a condition needs that the supplied context doesn't have - the
+  // single most confusing way for a rule to quietly do nothing.
+  missing_fields: string[];
+  steps: AutomationTestStep[];
+};
 
 export const postCallRules = {
   list: () => api.get<AutomationRule[]>("/post-call-rules"),
@@ -1155,6 +1271,26 @@ export const postCallRules = {
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
   remove: (id: string) => api.delete<void>(`/post-call-rules/${id}`),
+
+  // What a rule actually did, newest first. Optionally narrowed to one
+  // rule. See AutomationRunLog's own docstring for why "it ran but did
+  // nothing" and "it never ran" are separate statuses rather than one.
+  runs: (params?: { rule_id?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.rule_id) query.set("rule_id", params.rule_id);
+    if (params?.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return api.get<AutomationRunHistory>(`/post-call-rules/runs${qs ? `?${qs}` : ""}`);
+  },
+
+  // Dry run - what this rule would do against the supplied trigger data.
+  // Sends nothing, writes nothing, and the rule need not exist yet.
+  test: (data: {
+    trigger_type: AutomationTrigger;
+    channel?: AutomationChannel | null;
+    steps: AutomationStepConfig[];
+    context: Record<string, string | number | boolean>;
+  }) => api.post<AutomationTestResult>("/post-call-rules/test", data),
 };
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────
@@ -2658,6 +2794,8 @@ export const WEBHOOK_EVENT_TYPES = [
   // whatsapp/webhook.py's flow_reply handling), the backend already
   // accepted it, this list just never got it added.
   "flow.completed",
+  // Fired from the CRM when someone moves a customer to another stage.
+  "customer.stage_changed",
   // Real-time product-feedback signals (shared/ai/signals.py), gated to
   // businesses whose vertical declares product_feedback (today only
   // "startup") - the same real-time dispatch competitor.mentioned above

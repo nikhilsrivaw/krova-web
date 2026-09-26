@@ -181,7 +181,10 @@ export function AppSidebar({
       href: "/signals",
       icon: Radar,
       accent: "text-brass-bright",
-      requiresCapability: ["product_feedback", "care_recall", "order_sync"],
+      // No capability gate since 2026-09-25: every business now gets the
+      // conversation signals (complaint, churn risk, praise, competitor
+      // mentions - see shared/ai/signals.py), so there is always something
+      // this page can show.
       shortcut: "G I",
     },
     {

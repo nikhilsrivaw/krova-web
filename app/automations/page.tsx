@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail, Instagram,
-  Filter, Clock, TrendingDown,
+  Filter, Clock, TrendingDown, History,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -13,6 +13,8 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { FlowCanvas } from "@/components/automations/FlowCanvas";
+import { RunHistoryPanel } from "@/components/automations/RunHistoryPanel";
+import { RuleTester } from "@/components/automations/RuleTester";
 import {
   postCallRules,
   flows as flowsApi,
@@ -48,6 +50,7 @@ const CHANNEL_AMBIGUOUS_TRIGGERS = new Set<AutomationTrigger>([
   "message.received",
   "appointment.booked",
   "appointment.cancelled",
+  "appointment.rescheduled",
   "escalation.raised",
   "queue_token.issued",
   "competitor.mentioned",
@@ -66,6 +69,7 @@ const SCHEDULING_TRIGGERS = new Set<AutomationTrigger>([
   "flow.completed",
   "appointment.booked",
   "appointment.cancelled",
+  "appointment.rescheduled",
   "queue_token.issued",
 ]);
 
@@ -86,6 +90,7 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "flow.completed": "A customer completes a WhatsApp Flow",
   "appointment.booked": "An appointment is booked",
   "appointment.cancelled": "An appointment is cancelled",
+  "appointment.rescheduled": "An appointment is rescheduled",
   "escalation.raised": "The AI escalates to a human",
   "queue_token.issued": "A queue token is issued",
   "competitor.mentioned": "A competitor is mentioned",
@@ -105,6 +110,17 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "intent_leakage.detected": "A customer shows signs of buying elsewhere",
   "rto_risk.detected": "An order is at risk of return-to-origin",
   "claim.status_changed": "A claim's status changes",
+  // The time-based triggers. Phrased as "every day while ..." on purpose:
+  // these don't fire on an event, they fire once a day for every open
+  // commitment or quotation, and the condition is what narrows that down
+  // to the day the business actually means. A label reading "a payment is
+  // due soon" would hide exactly the thing someone has to understand to
+  // build a rule here that doesn't message someone 30 days running.
+  "commitment.due_soon": "Every day while a promise is still due (set the day with a condition)",
+  "commitment.overdue": "Every day while a promise is overdue (set the day with a condition)",
+  "quotation.aging": "Every day while a quote is still open (set the day with a condition)",
+  "customer.inactive": "Every day while a customer has gone quiet (set how quiet with a condition)",
+  "customer.stage_changed": "A customer is moved to another pipeline stage",
 };
 
 // Which of a business's own capabilities a trigger actually needs to ever
@@ -115,14 +131,14 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
 // silent trap: a rule that saves cleanly and never fires, with no warning
 // anywhere. Absent from this map = universal, exactly like today.
 const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[]>> = {
-  "competitor.mentioned": ["product_feedback"],
-  "churn_risk.detected": ["product_feedback"],
+  // competitor.mentioned, churn_risk.detected, complaint.detected and
+  // praise.detected are ungated: every business gets those four since
+  // shared/ai/signals.py grew its business-neutral mode. The four below
+  // still only come from the product-feedback extractor.
   "demo.requested": ["product_feedback"],
   "pricing_question.asked": ["product_feedback"],
   "bug.detected": ["product_feedback"],
   "feature_request.detected": ["product_feedback"],
-  "complaint.detected": ["product_feedback"],
-  "praise.detected": ["product_feedback"],
   "overdue_followup.detected": ["care_recall"],
   "report_not_collected.detected": ["care_recall"],
   "overdue_refund.detected": ["order_sync"],
@@ -130,6 +146,12 @@ const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[
   "rto_risk.detected": ["order_sync"],
   "queue_token.issued": ["opd_queue"],
   "claim.status_changed": ["tpa_claim_tracking"],
+  // commitment.due_soon / commitment.overdue are deliberately ungated -
+  // the Commitment Ledger is the core of the product, not a capability
+  // any vertical opts out of. quotation.aging needs the quotations
+  // capability, which is what actually decides whether the Quotations
+  // feature exists for this business at all.
+  "quotation.aging": ["quotations"],
 };
 
 const ACTION_LABEL: Record<AutomationAction, string> = {
@@ -177,6 +199,28 @@ const FIELD_LABEL: Record<string, string> = {
   severity: "Severity",
   title: "Signal title",
   body: "Signal detail",
+  // Time-based trigger fields. These are the ones a condition is
+  // genuinely required on - see TRIGGER_LABEL above.
+  days_until: "Days until it's due",
+  days_overdue: "Days overdue",
+  days_open: "Days the quote has been open",
+  kind: "What was promised",
+  direction: "Who owes whom",
+  amount_paise: "Amount promised (in paise)",
+  amount_outstanding_paise: "Amount still owed (in paise)",
+  description: "What was promised, in words",
+  status: "Quote status",
+  reference: "Quote reference",
+  // customer.inactive. "Customer" and "either side" are spelled out
+  // because the difference is the whole point: a reminder the business
+  // sent resets the second but not the first.
+  days_since_customer_message: "Days since the customer last wrote",
+  days_since_any_message: "Days since either side wrote",
+  days_since_last_visit: "Days since their last visit",
+  has_upcoming_visit: "Has a visit booked",
+  stage: "Pipeline stage",
+  from_stage: "Moved from stage",
+  to_stage: "Moved to stage",
 };
 
 // How to render/parse each field's value - most conditions compare plain
@@ -185,6 +229,17 @@ const FIELD_TYPE: Record<string, "text" | "number" | "boolean"> = {
   duration_seconds: "number",
   queue_number: "number",
   escalated: "boolean",
+  days_until: "number",
+  days_overdue: "number",
+  days_open: "number",
+  // Paise, not rupees - the label says so, and converting here would mean
+  // the value saved no longer matches the field it's compared against.
+  amount_paise: "number",
+  amount_outstanding_paise: "number",
+  days_since_customer_message: "number",
+  days_since_any_message: "number",
+  days_since_last_visit: "number",
+  has_upcoming_visit: "boolean",
 };
 
 const OPERATOR_LABEL: Record<AutomationOperator, string> = {
@@ -217,6 +272,29 @@ const DELAY_UNIT_SECONDS: Record<"minutes" | "hours" | "days", number> = {
   minutes: 60, hours: 3600, days: 86400,
 };
 
+// Mirrors the backend's PAYER_ACTIONS (shared/care/post_call_actions.py):
+// the actions that reach a person on a channel, and so can be pointed at
+// whoever pays for the customer instead.
+const PAYER_ACTIONS = new Set<AutomationAction>([
+  "whatsapp_followup", "send_sms", "send_email", "place_call", "send_flow",
+]);
+
+// One condition row while it's being edited - value stays a string until
+// buildConditions parses it to the field's real type.
+type ConditionDraft = { field: string; operator: AutomationOperator; value: string };
+const BLANK_CONDITION: ConditionDraft = { field: "", operator: "equals", value: "" };
+
+// Mirrors the backend's MAX_CONDITIONS_PER_STEP (shared/care/
+// post_call_actions.py) - the API rejects more, so the button stops here.
+const MAX_CONDITIONS = 5;
+
+// The day-count fields of the time-based triggers, which fire once a day -
+// the only fields where a range operator means "repeat daily".
+const TIME_FIELDS = new Set([
+  "days_until", "days_overdue", "days_open",
+  "days_since_customer_message", "days_since_any_message", "days_since_last_visit",
+]);
+
 const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[]): string => {
   if (step.action_type === "send_flow") {
     const flow = publishedFlows.find((f) => f.id === step.action_config.flow_id);
@@ -232,7 +310,7 @@ export default function AutomationsPage() {
   // "Rules" = everything else, "Scheduling" = the booking-lifecycle subset
   // (SCHEDULING_TRIGGERS) - two filtered views over the same rules and the
   // same builder, not a separate feature or a separate table.
-  const [automationsTab, setAutomationsTab] = useState<"rules" | "scheduling">("rules");
+  const [automationsTab, setAutomationsTab] = useState<"rules" | "scheduling" | "activity">("rules");
   // Per-viewer convenience only (which businesses have already seen the
   // starter-rule suggestion below) - not real state, never read back by
   // anyone but this browser, so localStorage is the right tool here.
@@ -292,15 +370,16 @@ export default function AutomationsPage() {
 
   // The currently-open card's own fields.
   const [action, setAction] = useState<AutomationAction>("whatsapp_followup");
-  const [conditionEnabled, setConditionEnabled] = useState(false);
-  const [conditionField, setConditionField] = useState("");
-  const [conditionOperator, setConditionOperator] = useState<AutomationOperator>("equals");
-  const [conditionValue, setConditionValue] = useState("");
+  // Every condition on the step being edited - ALL must hold for it to
+  // run. Empty = the step always runs. Values stay strings while being
+  // typed and are parsed to their field's real type only on build.
+  const [conditionRows, setConditionRows] = useState<ConditionDraft[]>([]);
   const [delayEnabled, setDelayEnabled] = useState(false);
   const [delayValue, setDelayValue] = useState("5");
   const [delayUnit, setDelayUnit] = useState<"minutes" | "hours" | "days">("minutes");
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
   const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
+  const [sendTo, setSendTo] = useState<"customer" | "payer">("customer");
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
   const [flowCta, setFlowCta] = useState("Open");
@@ -342,7 +421,15 @@ export default function AutomationsPage() {
   // a trigger this page actually knows about; an unrecognised value is
   // silently ignored rather than opening a broken/blank builder.
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("trigger");
+    const params = new URLSearchParams(window.location.search);
+    // ?tab=activity - what the /voice page links to for "what did these
+    // rules actually do". Handled before ?trigger= so a link carrying
+    // both still opens the builder, which is the more specific intent.
+    const requestedTab = params.get("tab");
+    if (requestedTab === "activity" || requestedTab === "scheduling" || requestedTab === "rules") {
+      setAutomationsTab(requestedTab);
+    }
+    const requested = params.get("trigger");
     if (!requested || !(requested in TRIGGER_LABEL)) return;
     const t = requested as AutomationTrigger;
     setAutomationsTab(SCHEDULING_TRIGGERS.has(t) ? "scheduling" : "rules");
@@ -351,6 +438,32 @@ export default function AutomationsPage() {
     setChannelTouched(false);
     setBuilderOpen(true);
   }, []);
+
+  // ?edit=<rule_id> opens that rule in this builder - what the /voice
+  // page's own automations tab links to now that it no longer carries a
+  // second, narrower editor of its own (it could only ever save a
+  // single-step, condition-less, delay-less rule against the same API,
+  // so editing a real rule there quietly dropped the rest of it).
+  //
+  // Applied once the rules have actually loaded, not on mount: the id
+  // means nothing until there's a rule list to find it in.
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
+  useEffect(() => {
+    setPendingEditId(new URLSearchParams(window.location.search).get("edit"));
+  }, []);
+  useEffect(() => {
+    if (!pendingEditId || rules.length === 0) return;
+    const rule = rules.find((r) => r.id === pendingEditId);
+    // Consumed either way - a rule that was deleted between the link
+    // being made and followed should not leave this retrying forever.
+    setPendingEditId(null);
+    if (!rule) return;
+    setAutomationsTab(SCHEDULING_TRIGGERS.has(rule.trigger_type) ? "scheduling" : "rules");
+    openForEdit(rule);
+    // openForEdit is stable enough for this one-shot; re-running on every
+    // render of it would reopen the builder over the user's own edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEditId, rules]);
 
   const selectedFlow = publishedFlows.find((f) => f.id === flowId) || null;
   // Best-effort guess at the entry screen id, same as FlowsPanel's own send modal.
@@ -369,10 +482,10 @@ export default function AutomationsPage() {
     setFlowId(step?.action_type === "send_flow" ? config.flow_id || "" : "");
     setFlowBody(step?.action_type === "send_flow" ? config.body || "Please fill this in:" : "Please fill this in:");
     setFlowCta(step?.action_type === "send_flow" ? config.cta || "Open" : "Open");
-    setConditionEnabled(!!step?.condition);
-    setConditionField(step?.condition?.field ?? "");
-    setConditionOperator(step?.condition?.operator ?? "equals");
-    setConditionValue(step?.condition ? String(step.condition.value) : "");
+    setSendTo(config.send_to === "payer" ? "payer" : "customer");
+    setConditionRows(
+      (step?.conditions ?? []).map((c) => ({ field: c.field, operator: c.operator, value: String(c.value) })),
+    );
     setDelayEnabled(!!step?.delay_seconds);
     if (step?.delay_seconds) {
       // Coarsest unit that divides evenly, matching formatDelay's own logic.
@@ -434,9 +547,13 @@ export default function AutomationsPage() {
   };
 
   const availableFields = CONDITION_FIELDS[trigger] ?? [];
-  const conditionFieldType = FIELD_TYPE[conditionField] ?? "text";
-  const conditionOperators =
-    conditionFieldType === "number" ? NUMBER_OPERATORS : conditionFieldType === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
+  const fieldTypeOf = (field: string) => FIELD_TYPE[field] ?? "text";
+  const operatorsFor = (field: string): AutomationOperator[] => {
+    const kind = fieldTypeOf(field);
+    return kind === "number" ? NUMBER_OPERATORS : kind === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
+  };
+  const updateConditionRow = (index: number, patch: Partial<ConditionDraft>) =>
+    setConditionRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   const buildDelaySeconds = (): number | null | undefined => {
     // undefined = invalid state (enabled but incomplete/non-positive) ->
@@ -447,23 +564,40 @@ export default function AutomationsPage() {
     return Math.round(n * DELAY_UNIT_SECONDS[delayUnit]);
   };
 
-  const buildCondition = (): AutomationCondition | null | undefined => {
-    // undefined = invalid state (enabled but incomplete) -> block save,
-    // same contract as buildConfig() returning null.
-    if (!conditionEnabled) return null;
-    if (!conditionField || !conditionValue.trim()) return undefined;
-    if (conditionFieldType === "number") {
-      const n = Number(conditionValue);
-      if (Number.isNaN(n)) return undefined;
-      return { field: conditionField, operator: conditionOperator, value: n };
+  const buildConditions = (): AutomationCondition[] | null | undefined => {
+    // undefined = invalid state (a row started but left incomplete) ->
+    // block save, same contract as buildConfig() returning null. One bad
+    // row invalidates the lot rather than being dropped: silently saving
+    // "3 days before" without the "and it's a payment" the owner typed
+    // would message every kind of commitment.
+    if (conditionRows.length === 0) return null;
+    const built: AutomationCondition[] = [];
+    for (const row of conditionRows) {
+      if (!row.field || !row.value.trim()) return undefined;
+      const kind = fieldTypeOf(row.field);
+      if (kind === "number") {
+        const n = Number(row.value);
+        if (Number.isNaN(n)) return undefined;
+        built.push({ field: row.field, operator: row.operator, value: n });
+      } else if (kind === "boolean") {
+        built.push({ field: row.field, operator: row.operator, value: row.value === "true" });
+      } else {
+        built.push({ field: row.field, operator: row.operator, value: row.value.trim() });
+      }
     }
-    if (conditionFieldType === "boolean") {
-      return { field: conditionField, operator: conditionOperator, value: conditionValue === "true" };
-    }
-    return { field: conditionField, operator: conditionOperator, value: conditionValue.trim() };
+    return built;
   };
 
+  // Wraps the per-action config with who it goes to. Only messaging
+  // actions can go to a payer (the backend's PAYER_ACTIONS); for any other
+  // action the choice is dropped rather than saved and rejected.
   const buildConfig = (): Record<string, string> | null => {
+    const config = buildActionConfig();
+    if (!config) return null;
+    return sendTo === "payer" && PAYER_ACTIONS.has(action) ? { ...config, send_to: "payer" } : config;
+  };
+
+  const buildActionConfig = (): Record<string, string> | null => {
     if (action === "whatsapp_followup") {
       return textConfig.trim() ? { message: textConfig.trim() } : null;
     }
@@ -502,12 +636,12 @@ export default function AutomationsPage() {
   // but a card must be complete to close via "Done". undefined = actively
   // invalid (a condition or delay was started but left incomplete).
   const buildStep = (): AutomationStepConfig | null | undefined => {
-    const condition = buildCondition();
+    const conditions = buildConditions();
     const delaySeconds = buildDelaySeconds();
-    if (condition === undefined || delaySeconds === undefined) return undefined;
+    if (conditions === undefined || delaySeconds === undefined) return undefined;
     const config = buildConfig();
     if (!config) return null;
-    return { action_type: action, action_config: config, condition, delay_seconds: delaySeconds };
+    return { action_type: action, action_config: config, conditions, delay_seconds: delaySeconds };
   };
 
   // Opens a blank card to compose a brand new step, inserted at `at`
@@ -640,66 +774,134 @@ export default function AutomationsPage() {
         </select>
       </div>
 
+      {PAYER_ACTIONS.has(action) && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Send to</label>
+          <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
+            {(["customer", "payer"] as const).map((who) => (
+              <button
+                key={who}
+                type="button"
+                onClick={() => setSendTo(who)}
+                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-all ${
+                  sendTo === who ? "bg-cyan-500/20 text-cyan-400" : "text-os-text-dim hover:text-white"
+                }`}
+              >
+                {who === "customer" ? "The customer" : "Whoever pays for them"}
+              </button>
+            ))}
+          </div>
+          {sendTo === "payer" && (
+            <p className="text-[11px] text-os-text-dim mt-1.5 leading-relaxed">
+              Goes to the payer linked on the customer&apos;s page (a parent, a company...). Use{" "}
+              <code className="text-cyan-400">{"{{participant_name}}"}</code> for the customer&apos;s own name.
+              If nobody is linked, the step is skipped - it never falls back to the customer.
+            </p>
+          )}
+        </div>
+      )}
+
       {availableFields.length > 0 && (
         <div>
           <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5 cursor-pointer">
             <input
               type="checkbox"
-              checked={conditionEnabled}
-              onChange={(e) => {
-                setConditionEnabled(e.target.checked);
-                if (!e.target.checked) { setConditionField(""); setConditionValue(""); }
-              }}
+              checked={conditionRows.length > 0}
+              onChange={(e) =>
+                setConditionRows(e.target.checked ? [{ ...BLANK_CONDITION }] : [])
+              }
               className="cursor-pointer"
             />
             <Filter className="w-3 h-3" /> Only when...
           </label>
-          {conditionEnabled && (
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                value={conditionField}
-                onChange={(e) => {
-                  setConditionField(e.target.value);
-                  setConditionOperator("equals");
-                  setConditionValue("");
-                }}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-              >
-                <option value="">Choose a field...</option>
-                {availableFields.map((f) => (
-                  <option key={f} value={f}>{FIELD_LABEL[f] ?? f}</option>
-                ))}
-              </select>
-              <select
-                value={conditionOperator}
-                onChange={(e) => setConditionOperator(e.target.value as AutomationOperator)}
-                disabled={!conditionField}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
-              >
-                {conditionOperators.map((op) => (
-                  <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
-                ))}
-              </select>
-              {conditionFieldType === "boolean" ? (
-                <select
-                  value={conditionValue}
-                  onChange={(e) => setConditionValue(e.target.value)}
-                  disabled={!conditionField}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+          {conditionRows.length > 0 && (
+            <div className="space-y-2">
+              {conditionRows.map((row, index) => {
+                const kind = fieldTypeOf(row.field);
+                return (
+                  <div key={index} className="space-y-2">
+                    {index > 0 && (
+                      // Spelled out between every row rather than a
+                      // global "match all" toggle - there is no "any"
+                      // mode, and the word itself is the explanation.
+                      <p className="text-[10px] uppercase tracking-wide text-cyan-400/80 pl-1">and</p>
+                    )}
+                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                      <select
+                        value={row.field}
+                        onChange={(e) =>
+                          updateConditionRow(index, { field: e.target.value, operator: "equals", value: "" })
+                        }
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                      >
+                        <option value="">Choose a field...</option>
+                        {availableFields.map((f) => (
+                          <option key={f} value={f}>{FIELD_LABEL[f] ?? f}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={row.operator}
+                        onChange={(e) => updateConditionRow(index, { operator: e.target.value as AutomationOperator })}
+                        disabled={!row.field}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                      >
+                        {operatorsFor(row.field).map((op) => (
+                          <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
+                        ))}
+                      </select>
+                      {kind === "boolean" ? (
+                        <select
+                          value={row.value}
+                          onChange={(e) => updateConditionRow(index, { value: e.target.value })}
+                          disabled={!row.field}
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                        >
+                          <option value="">Choose...</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </select>
+                      ) : (
+                        <input
+                          type={kind === "number" ? "number" : "text"}
+                          value={row.value}
+                          onChange={(e) => updateConditionRow(index, { value: e.target.value })}
+                          disabled={!row.field}
+                          placeholder="value"
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-40"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setConditionRows((rows) => rows.filter((_, i) => i !== index))}
+                        className="p-2 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 border border-white/[0.08] transition-all cursor-pointer"
+                        aria-label="Remove this condition"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {row.operator === "less_than_or_equal" || row.operator === "less_than" ||
+                    row.operator === "greater_than_or_equal" || row.operator === "greater_than" ? (
+                      TIME_FIELDS.has(row.field) && (
+                        // The one place a daily trigger can surprise
+                        // someone: a range matches on every day inside
+                        // it. Said here, where the choice is made.
+                        <p className="text-[10px] text-amber-300/80 pl-1">
+                          A range matches every day it stays true - this step will run once a day
+                          until it doesn&apos;t. Use &quot;is&quot; to run it on exactly one day.
+                        </p>
+                      )
+                    ) : null}
+                  </div>
+                );
+              })}
+              {conditionRows.length < MAX_CONDITIONS && (
+                <button
+                  type="button"
+                  onClick={() => setConditionRows((rows) => [...rows, { ...BLANK_CONDITION }])}
+                  className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 cursor-pointer"
                 >
-                  <option value="">Choose...</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              ) : (
-                <input
-                  type={conditionFieldType === "number" ? "number" : "text"}
-                  value={conditionValue}
-                  onChange={(e) => setConditionValue(e.target.value)}
-                  disabled={!conditionField}
-                  placeholder="value"
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none disabled:opacity-40"
-                />
+                  <Plus className="w-3 h-3" /> And another condition
+                </button>
               )}
             </div>
           )}
@@ -982,16 +1184,18 @@ export default function AutomationsPage() {
         <p className="text-xs text-white truncate">
           {total > 1 && <span className="text-os-text-dim">Step {index + 1}: </span>}
           {ACTION_LABEL[step.action_type] ?? step.action_type}
+          {step.action_config.send_to === "payer" && <span className="text-cyan-400"> (to the payer)</span>}
           {summary && <span className="text-os-text-dim"> - {summary}</span>}
         </p>
-        {(step.condition || step.delay_seconds) && (
+        {(!!step.conditions?.length || !!step.delay_seconds) && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {step.condition && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
+            {step.conditions?.map((c, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
                 <Filter className="w-2.5 h-2.5" />
-                {FIELD_LABEL[step.condition.field] ?? step.condition.field} {OPERATOR_LABEL[step.condition.operator]} &quot;{String(step.condition.value)}&quot;
+                {i > 0 && <span className="text-cyan-400/60">and</span>}
+                {FIELD_LABEL[c.field] ?? c.field} {OPERATOR_LABEL[c.operator]} &quot;{String(c.value)}&quot;
               </span>
-            )}
+            ))}
             {!!step.delay_seconds && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px]">
                 <Clock className="w-2.5 h-2.5" /> waits {formatDelay(step.delay_seconds)}
@@ -1058,7 +1262,7 @@ export default function AutomationsPage() {
 
         <GlassCard className="p-6 space-y-4">
           <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
-            {(["rules", "scheduling"] as const).map((tab) => (
+            {(["rules", "scheduling", "activity"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1070,11 +1274,29 @@ export default function AutomationsPage() {
                   automationsTab === tab ? "bg-cyan-500/20 text-cyan-400" : "text-os-text-dim hover:text-white"
                 }`}
               >
-                {tab === "rules" ? "Rules" : "Scheduling"}
+                {tab === "rules" ? "Rules" : tab === "scheduling" ? "Scheduling" : "Activity"}
               </button>
             ))}
           </div>
 
+          {automationsTab === "activity" ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Activity</h3>
+                  <p className="text-xs text-os-text-dim">
+                    Every step your automations have taken, and why - including the ones that
+                    skipped, so &quot;nothing happened&quot; always has a reason attached.
+                  </p>
+                </div>
+              </div>
+              <RunHistoryPanel triggerLabel={TRIGGER_LABEL} actionLabel={ACTION_LABEL} />
+            </div>
+          ) : (
+          <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
@@ -1147,6 +1369,15 @@ export default function AutomationsPage() {
                 onInsertAt={handleInsertAt}
                 onRemoveStep={removeStep}
                 onMoveStep={moveStep}
+              />
+
+              <RuleTester
+                trigger={trigger}
+                channel={channel}
+                steps={steps}
+                fieldLabel={FIELD_LABEL}
+                fieldType={FIELD_TYPE}
+                actionLabel={ACTION_LABEL}
               />
 
               {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
@@ -1264,6 +1495,8 @@ export default function AutomationsPage() {
                 </div>
               ))}
             </div>
+          )}
+          </>
           )}
         </GlassCard>
       </div>

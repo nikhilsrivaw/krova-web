@@ -216,14 +216,15 @@ function StepNode({ id, data }: NodeProps) {
             {d.step ? d.actionLabel[d.step.action_type] : ""}
           </p>
           {d.summary && <p className="text-[11px] text-os-text-dim truncate mt-0.5">{d.summary}</p>}
-          {(d.step?.condition || d.step?.delay_seconds) && (
+          {(!!d.step?.conditions?.length || !!d.step?.delay_seconds) && (
             <div className="flex flex-wrap gap-1 mt-1.5">
-              {d.step?.condition && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
+              {d.step?.conditions?.map((c, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
                   <Filter className="w-2.5 h-2.5" />
-                  {d.fieldLabel[d.step.condition.field] ?? d.step.condition.field} {d.operatorLabel[d.step.condition.operator]} &quot;{String(d.step.condition.value)}&quot;
+                  {i > 0 && <span className="text-cyan-400/60">and</span>}
+                  {d.fieldLabel[c.field] ?? c.field} {d.operatorLabel[c.operator]} &quot;{String(c.value)}&quot;
                 </span>
-              )}
+              ))}
               {d.delayText && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px]">
                   <Clock className="w-2.5 h-2.5" /> {d.delayText}
