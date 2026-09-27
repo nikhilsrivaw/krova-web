@@ -290,6 +290,14 @@ export type CustomerSummary = {
 // the nightly profile worker proposed from real signal data (status
 // "suggested", with `reasoning` attached) - a human still has to say yes.
 
+export type CustomerDate = {
+  id: string;
+  label: string;
+  /** YYYY-MM-DD */
+  date: string;
+  note?: string | null;
+};
+
 export type CustomerTag = {
   id: string;
   label: string;
@@ -384,6 +392,15 @@ export const crm = {
       `/crm/customers/${customerId}/payer`,
       { paid_by_customer_id: paidByCustomerId },
     ),
+
+  // Key dates the business sets on a customer - "Renewal", "AMC expiry",
+  // "Package ends". Its automation rules act on them through the
+  // customer.date_approaching trigger.
+  dates: (customerId: string) => api.get<CustomerDate[]>(`/crm/customers/${customerId}/dates`),
+  addDate: (customerId: string, data: { label: string; date: string; note?: string | null }) =>
+    api.post<CustomerDate>(`/crm/customers/${customerId}/dates`, data),
+  deleteDate: (dateId: string) => api.delete<void>(`/crm/dates/${dateId}`),
+  dateLabels: () => api.get<string[]>("/crm/date-labels"),
 
   pipelineStages: () => api.get<{ stages: string[] }>("/crm/pipeline-stages"),
 
@@ -1056,7 +1073,10 @@ export type AutomationTrigger =
   | "customer.inactive"
   // A person moved the customer to another pipeline stage (the CRM's
   // stage picker). Stage names are the business's own.
-  | "customer.stage_changed";
+  | "customer.stage_changed"
+  // Daily, for every date the business set on a customer (renewal, AMC
+  // expiry, package end...) - from 60 days before to 30 days after.
+  | "customer.date_approaching";
 // escalation_rate.detected / account_health.detected deliberately absent -
 // business-level signals with no customer_id, so a rule on either could
 // never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
@@ -1126,6 +1146,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "commitment.overdue": ["days_overdue", "kind", "direction", "amount_paise", "amount_outstanding_paise", "description"],
   "quotation.aging": ["days_open", "status", "amount_paise", "reference"],
   "customer.stage_changed": ["from_stage", "to_stage"],
+  "customer.date_approaching": ["label", "days_until", "date", "note"],
   "customer.inactive": [
     "days_since_customer_message", "days_since_any_message",
     "days_since_last_visit", "has_upcoming_visit", "stage",

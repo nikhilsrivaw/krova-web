@@ -121,6 +121,7 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "quotation.aging": "Every day while a quote is still open (set the day with a condition)",
   "customer.inactive": "Every day while a customer has gone quiet (set how quiet with a condition)",
   "customer.stage_changed": "A customer is moved to another pipeline stage",
+  "customer.date_approaching": "Every day around a date set on a customer — renewal, AMC expiry… (set the day with a condition)",
 };
 
 // Which of a business's own capabilities a trigger actually needs to ever
@@ -220,6 +221,9 @@ const FIELD_LABEL: Record<string, string> = {
   has_upcoming_visit: "Has a visit booked",
   stage: "Pipeline stage",
   from_stage: "Moved from stage",
+  label: "Which date (its label, e.g. Renewal)",
+  date: "The date",
+  note: "Date note",
   to_stage: "Moved to stage",
 };
 

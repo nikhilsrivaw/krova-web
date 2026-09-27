@@ -39,6 +39,7 @@ import {
   account,
   queue as queueApi,
   formatPaise,
+  type CustomerDate,
   type CustomerSummary,
   type ContactImportResult,
   type CustomerTag,
@@ -313,6 +314,45 @@ export default function CustomersPage() {
     } catch (err) {
       patchSelected(before);
       setPayerError(err instanceof Error ? err.message : "Could not save who pays.");
+    }
+  };
+
+  // Key dates - "Renewal", "AMC expiry", "Package ends". Loaded per customer.
+  const [keyDates, setKeyDates] = useState<CustomerDate[]>([]);
+  const [dateLabels, setDateLabels] = useState<string[]>([]);
+  const [newDateLabel, setNewDateLabel] = useState("");
+  const [newDateValue, setNewDateValue] = useState("");
+  const [newDateNote, setNewDateNote] = useState("");
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedCustomer) { setKeyDates([]); return; }
+    crm.dates(selectedCustomer.id).then(setKeyDates).catch(() => setKeyDates([]));
+    crm.dateLabels().then(setDateLabels).catch(() => setDateLabels([]));
+  }, [selectedCustomer?.id]);
+
+  const handleAddDate = async () => {
+    if (!selectedCustomer || !newDateLabel.trim() || !newDateValue) return;
+    setDateError(null);
+    try {
+      const created = await crm.addDate(selectedCustomer.id, {
+        label: newDateLabel.trim(), date: newDateValue, note: newDateNote.trim() || null,
+      });
+      setKeyDates((prev) => [...prev, created].sort((a, b) => a.date.localeCompare(b.date)));
+      if (!dateLabels.includes(created.label)) setDateLabels((l) => [...l, created.label]);
+      setNewDateLabel(""); setNewDateValue(""); setNewDateNote("");
+    } catch (err) {
+      setDateError(err instanceof Error ? err.message : "Could not save the date.");
+    }
+  };
+
+  const handleDeleteDate = async (id: string) => {
+    const before = keyDates;
+    setKeyDates((prev) => prev.filter((d) => d.id !== id));
+    try {
+      await crm.deleteDate(id);
+    } catch {
+      setKeyDates(before);
     }
   };
 
@@ -884,6 +924,76 @@ export default function CustomersPage() {
                     Pays for: {selectedCustomer.pays_for.map((p) => p.name || "Unnamed").join(", ")}
                   </p>
                 )}
+              </div>
+
+              {/* Key dates - what the business knows but the chat may never
+                  say: a renewal, a package ending, an AMC expiring. The
+                  business's own rules act on them (customer.date_approaching). */}
+              <div>
+                <h4 className="text-xs font-mono uppercase text-os-text-dim mb-2">
+                  Key Dates
+                </h4>
+                {keyDates.length > 0 && (
+                  <div className="space-y-1.5 mb-2">
+                    {keyDates.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12]">
+                        <div className="min-w-0">
+                          <p className="text-xs text-white">
+                            {d.label} <span className="text-os-text-dim">·</span>{" "}
+                            {new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                          {d.note && <p className="text-[11px] text-os-text-dim truncate">{d.note}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDate(d.id)}
+                          className="text-[11px] text-os-text-dim hover:text-red-400 cursor-pointer shrink-0 ml-2"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input
+                    list="krova-date-labels"
+                    value={newDateLabel}
+                    onChange={(e) => setNewDateLabel(e.target.value)}
+                    placeholder="Renewal, AMC expiry…"
+                    maxLength={60}
+                    className="px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                  />
+                  <datalist id="krova-date-labels">
+                    {dateLabels.map((l) => <option key={l} value={l} />)}
+                  </datalist>
+                  <input
+                    type="date"
+                    value={newDateValue}
+                    onChange={(e) => setNewDateValue(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+                <div className="flex gap-1.5 mt-1.5">
+                  <input
+                    value={newDateNote}
+                    onChange={(e) => setNewDateNote(e.target.value)}
+                    placeholder="Note (optional) — e.g. quarterly plan"
+                    className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDate}
+                    disabled={!newDateLabel.trim() || !newDateValue}
+                    className="px-3 py-2 rounded-lg bg-brass/20 hover:bg-brass/30 text-brass-bright text-xs font-semibold border border-brass/30 disabled:opacity-40 cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
+                {dateError && <p className="text-[11px] text-red-400 mt-1">{dateError}</p>}
+                <p className="text-[11px] text-os-text-dim mt-1.5">
+                  Your automation rules can act on these — e.g. “5 days before Renewal → WhatsApp”.
+                </p>
               </div>
 
               {/* Deal Value - a forecast the business sets, distinct from a
