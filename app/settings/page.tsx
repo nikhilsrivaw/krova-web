@@ -69,6 +69,9 @@ export default function SettingsPage() {
   const [channelsList, setChannelsList] = useState<ChannelConnection[]>([]);
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
   const [vertical, setVertical] = useState<string>("clinic");
+  // What the server last confirmed, so a save only forces the reload below
+  // when the vertical actually changed - not on every unrelated field edit.
+  const [savedVertical, setSavedVertical] = useState<string>("clinic");
   const [businessName, setBusinessName] = useState("Apex Medical Clinic");
   const [fullName, setFullName] = useState("Dr. Rajesh Sharma");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
@@ -395,6 +398,7 @@ export default function SettingsPage() {
         setProfile(profRes.value);
         setAutonomy(profRes.value.autonomy || "draft");
         setVertical(profRes.value.vertical || "clinic");
+        setSavedVertical(profRes.value.vertical || "clinic");
         setBusinessName(profRes.value.business_name || "");
         setFullName(profRes.value.full_name || "");
         setGoogleReviewUrl(profRes.value.google_review_url || "");
@@ -543,6 +547,19 @@ export default function SettingsPage() {
       await approvals.setAutonomy(autonomy);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+
+      // The sidebar's capabilities come from AppLayout's own, separate
+      // fetch of /auth/me, made once on mount - this page updating the
+      // vertical server-side does not, by itself, tell AppLayout anything
+      // changed. A vertical change is the one field here that the sidebar
+      // actually gates nav items on (lib/verticals/__init__.py's
+      // capabilities_for), so reload to pick up the new capability list.
+      // Every other field on this form updates in place with no reload.
+      if (vertical !== savedVertical) {
+        setSavedVertical(vertical);
+        window.location.reload();
+        return;
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save changes.");
     } finally {
