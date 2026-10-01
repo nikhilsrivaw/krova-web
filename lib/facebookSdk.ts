@@ -30,8 +30,6 @@ declare global {
           override_default_response_type: true;
           extras: {
             setup: Record<string, unknown>;
-            featureType: string;
-            sessionInfoVersion: string;
           };
         },
       ) => void;
@@ -122,7 +120,11 @@ export function loginForEmbeddedSignup(configId: string): Promise<string | null>
         config_id: configId,
         response_type: "code",
         override_default_response_type: true,
-        extras: { setup: {}, featureType: "", sessionInfoVersion: "3" },
+        // Matches Meta's documented sample exactly - no featureType or
+        // sessionInfoVersion, which their current Embedded Signup guide
+        // does not list (https://developers.facebook.com/docs/whatsapp/
+        // embedded-signup/embed-the-flow).
+        extras: { setup: {} },
       },
     );
   });
