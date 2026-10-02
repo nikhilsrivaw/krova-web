@@ -1113,12 +1113,22 @@ export default function WhatsAppPage() {
                         className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-amber-500 focus:outline-none"
                       >
                         <option value="">Choose a template</option>
-                        {templateList.filter((t) => t.sendable).map((t) => (
+                        {templateList.filter((t) => t.sendable && !t.is_carousel).map((t) => (
                           <option key={t.id} value={t.name}>
                             {t.name} ({t.category})
                           </option>
                         ))}
                       </select>
+                      {templateList.some((t) => t.sendable && t.is_carousel) && (
+                        <p className="text-[10px] text-os-text-dim mt-1.5">
+                          Carousel templates aren't sent here - each card needs its own picture
+                          attached at send time, which this quick sender doesn't collect. Use{" "}
+                          <Link href="/campaigns" className="text-brass hover:text-brass-bright font-semibold">
+                            Campaigns
+                          </Link>{" "}
+                          instead, which handles that.
+                        </p>
+                      )}
                     </div>
                     {templateVars.map((val, i) => (
                       <div key={i}>
