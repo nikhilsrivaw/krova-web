@@ -444,6 +444,23 @@ export default function WhatsAppPage() {
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError(null);
+    // Checked here rather than left to the <input required> attribute -
+    // the modal's content area scrolls internally (fixed for the earlier
+    // "form overflows the screen" report), and a browser's native
+    // validation bubble does not reliably appear - or scroll the invalid
+    // field into view - inside a nested overflow-y-auto container. That
+    // silently blocks the submit event entirely: no success, no error,
+    // nothing. This runs the same checks ourselves so a problem is always
+    // visible in the banner below instead of depending on browser-native
+    // UI that can fail silently in exactly this layout.
+    if (!newTemplateName.trim()) {
+      setActionError("Give the template a name.");
+      return;
+    }
+    if (!newTemplateBody.trim()) {
+      setActionError("The message body can't be empty.");
+      return;
+    }
     try {
       const name = newTemplateName.toLowerCase().replace(/\s+/g, "_");
       await templates.create({
@@ -1213,7 +1230,6 @@ export default function WhatsAppPage() {
               </label>
               <input
                 type="text"
-                required
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
                 placeholder="e.g. appointment_reminder"
@@ -1247,7 +1263,6 @@ export default function WhatsAppPage() {
               </label>
               <textarea
                 rows={4}
-                required
                 value={newTemplateBody}
                 onChange={(e) => setNewTemplateBody(e.target.value)}
                 placeholder="Hello {{customer_name}}, your consultation with {{doctor_name}} is confirmed for {{date}}."
