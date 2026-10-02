@@ -136,7 +136,10 @@ export function CarouselTemplateModal({
       subtitle="Up to 10 swipeable cards in one message - drafted by AI, reviewed by you, approved by Meta."
       maxWidth="xl"
     >
-      <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+      {/* Modal's own content area now caps height and scrolls
+          (components/ui/Modal.tsx's max-h-[90vh] fix) - no need for a
+          second, nested scroll container here. */}
+      <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Template Name</label>

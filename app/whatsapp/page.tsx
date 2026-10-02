@@ -1163,7 +1163,16 @@ export default function WhatsAppPage() {
         <CarouselTemplateModal
           isOpen={isCarouselModalOpen}
           onClose={() => setIsCarouselModalOpen(false)}
-          onCreated={() => loadData()}
+          onCreated={(created) => {
+            // Same silent-close gap the regular Create Template modal had -
+            // closing with no confirmation read as if nothing happened.
+            setActiveTab("templates");
+            setTemplateSubmitSuccess(
+              `"${created.name}" was submitted to Meta - it'll show as Pending below until they review it, usually within 24 hours.`,
+            );
+            setTimeout(() => setTemplateSubmitSuccess(null), 8000);
+            loadData();
+          }}
         />
 
         {/* Create Template Modal */}
