@@ -1026,6 +1026,8 @@ export const voice = {
     staff_phone_number?: string;
     /** Requires staff_phone_number to already be set (in this call or previously) - the backend rejects otherwise. */
     copilot_mode?: boolean;
+    /** False even when copilot_mode is on: whether KROVA also listens live and whispers suggestions to staff - the one part of Copilot mode with an ongoing per-second AI cost. */
+    copilot_live_suggestions?: boolean;
     /** Send "" to clear. Calls from this number get the owner voice interface instead of the customer-facing agent. */
     owner_phone?: string;
     /** Publish a public, no-login page of real call-answering stats at /trust/voice/{business_id}. Off by default. */
@@ -1051,8 +1053,10 @@ export type AgentSettings = {
   languages: LanguageOption[];
   /** Set for a warm transfer-on-escalate and/or copilot mode to have anywhere to ring. */
   staff_phone_number: string | null;
-  /** Human answers directly, AI only listens and suggests - see /voice/live-assist. */
+  /** Human answers directly, a greeting plays before the ring - see /voice/live-assist for suggestions, gated separately below. */
   copilot_mode: boolean;
+  /** False even when copilot_mode is on: live transcription + suggestions to staff (/voice/live-assist), the one part of Copilot mode with an ongoing per-second AI cost. */
+  copilot_live_suggestions: boolean;
   /** Calls from this number get the owner voice interface (their own ledger position) instead of the customer-facing agent. */
   owner_phone: string | null;
   /** Whether /trust/voice/{business_id} is publicly viewable. Off by default. */

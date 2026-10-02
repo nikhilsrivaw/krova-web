@@ -114,6 +114,7 @@ export default function VoicePage() {
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
   const [staffNumberDraft, setStaffNumberDraft] = useState("");
   const [copilotModeDraft, setCopilotModeDraft] = useState(false);
+  const [copilotLiveSuggestionsDraft, setCopilotLiveSuggestionsDraft] = useState(false);
   const [ownerNumberDraft, setOwnerNumberDraft] = useState("");
   const [publicTrustPageDraft, setPublicTrustPageDraft] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -164,6 +165,7 @@ export default function VoicePage() {
       setSpeakerDraft(agentRes.value.speaker);
       setStaffNumberDraft(agentRes.value.staff_phone_number || "");
       setCopilotModeDraft(agentRes.value.copilot_mode);
+      setCopilotLiveSuggestionsDraft(agentRes.value.copilot_live_suggestions);
       setOwnerNumberDraft(agentRes.value.owner_phone || "");
       setPublicTrustPageDraft(agentRes.value.public_trust_page_enabled);
     }
@@ -242,6 +244,7 @@ export default function VoicePage() {
         speaker: speakerDraft,
         staff_phone_number: staffNumberDraft,
         copilot_mode: copilotModeDraft,
+        copilot_live_suggestions: copilotLiveSuggestionsDraft,
         owner_phone: ownerNumberDraft,
         public_trust_page_enabled: publicTrustPageDraft,
       });
@@ -999,12 +1002,41 @@ export default function VoicePage() {
                           <p className="text-xs text-white mb-0.5">Live Copilot Mode</p>
                           <p className="text-[10px] font-mono text-os-text-dim leading-relaxed">
                             {staffNumberDraft.trim()
-                              ? "Staff Phone Number rings directly; the agent listens and suggests."
+                              ? "A greeting plays, then Staff Phone Number rings directly."
                               : "Set a Staff Phone Number above first."}
                           </p>
                         </div>
                       </div>
-                      {agentSettings.copilot_mode && (
+
+                      {copilotModeDraft && (
+                        <div className="mt-3 p-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-white mb-0.5">
+                              Live suggestions while staff is on the call
+                            </p>
+                            <p className="text-[11px] text-os-text-dim leading-relaxed">
+                              KROVA listens in and whispers real-time talking points to staff
+                              (Live Assist). This is the one part of Copilot mode that costs AI
+                              usage for as long as the call runs, not just per reply - off by
+                              default. With it off, a call is just the greeting and a warm
+                              hand-off, at no ongoing AI cost.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCopilotLiveSuggestionsDraft((v) => !v)}
+                            className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                              copilotLiveSuggestionsDraft
+                                ? "border-cyan-500/50 bg-cyan-500/10 text-white"
+                                : "border-white/[0.08] bg-white/[0.02] text-os-text-dim hover:text-white"
+                            }`}
+                          >
+                            {copilotLiveSuggestionsDraft ? "On" : "Off"}
+                          </button>
+                        </div>
+                      )}
+
+                      {agentSettings.copilot_mode && agentSettings.copilot_live_suggestions && (
                         <Link
                           href="/voice/live-assist"
                           className="mt-3 inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
