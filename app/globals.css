@@ -177,6 +177,16 @@
   --color-os-bg: #000000;
 }
 
+/* body::before (the paper-grain texture above) has z-index: 0, which
+   paints it above ordinary non-positioned content regardless of document
+   order - so it was showing through as a rough/grainy overlay even with
+   --color-os-bg overridden to black. The app wants flat solid black, not
+   the khata paper texture, so switch it off whenever the app shell is
+   mounted anywhere in the page. */
+body:has(.app-shell-pure-black)::before {
+  display: none;
+}
+
 @layer components {
   .os-card {
     background-color: var(--color-os-card);
