@@ -55,16 +55,21 @@ export function Modal({
             className="fixed inset-0 bg-black/80 backdrop-blur-md"
           />
 
-          {/* Modal Card */}
+          {/* Modal Card - capped to the viewport height and laid out as a
+              column so a tall form (lots of fields) scrolls inside the
+              content area instead of pushing the card past the screen's
+              top/bottom, which `items-center` centering on a too-tall flex
+              child does not handle on its own. The header and close button
+              stay put; only the content area scrolls. */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className={`relative w-full ${MAX_WIDTHS[maxWidth]} rounded-2xl bg-[#0D121F] border border-white/[0.1] shadow-2xl overflow-hidden z-10`}
+            className={`relative w-full ${MAX_WIDTHS[maxWidth]} max-h-[90vh] flex flex-col rounded-2xl bg-[#0D121F] border border-white/[0.1] shadow-2xl overflow-hidden z-10`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#111728]/60">
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#111728]/60">
               <div>
                 <h3 className="text-base font-semibold text-white tracking-tight">
                   {title}
@@ -83,7 +88,7 @@ export function Modal({
             </div>
 
             {/* Content */}
-            <div className="p-6">{children}</div>
+            <div className="p-6 overflow-y-auto">{children}</div>
           </motion.div>
         </div>
       )}
