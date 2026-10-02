@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Inbox, CheckSquare, Menu } from "lucide-react";
+import { Home, Inbox, Wallet, CheckSquare, Menu } from "lucide-react";
 import type { Capability } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 
 /**
- * Four tabs, always the same four - Today, Inbox, Approvals, More. Unlike
- * the desktop sidebar (components/shell/AppSidebar.tsx), which adds a
- * nav item per capability, a phone's bottom bar has no room for that:
+ * Five tabs, always the same five - Today, Inbox, Ledger, Approvals, More.
+ * Ledger gets a permanent tab (not buried in More) because the Commitment
+ * Ledger is KROVA's actual core feature, not a vertical add-on - unlike
+ * the desktop sidebar (components/shell/AppSidebar.tsx), which adds a nav
+ * item per capability, a phone's bottom bar has no room for that:
  * vertical-specific screens (Scheduling, Orders, Queue, ...) live inside
  * "More" instead, gated there the same way the sidebar gates them, so
  * there is still exactly one place (capabilities, from /auth/me) that
@@ -18,6 +20,7 @@ import { appPath } from "@/lib/app-nav";
 const TABS = [
   { path: "/today", label: "Today", icon: Home },
   { path: "/inbox", label: "Inbox", icon: Inbox },
+  { path: "/ledger", label: "Ledger", icon: Wallet },
   { path: "/approvals", label: "Approvals", icon: CheckSquare },
   { path: "/more", label: "More", icon: Menu },
 ] as const;
@@ -41,7 +44,7 @@ export function BottomNav({
       className="fixed bottom-0 left-0 right-0 z-30 bg-os-card border-t border-os-border px-2 pb-[env(safe-area-inset-bottom)]"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
     >
-      <div className="grid grid-cols-4 max-w-md mx-auto">
+      <div className="grid grid-cols-5 max-w-md mx-auto">
         {TABS.map((tab) => {
           const isActive = normalizedPathname.startsWith(tab.path);
           const Icon = tab.icon;

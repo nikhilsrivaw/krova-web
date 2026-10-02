@@ -167,6 +167,16 @@
   }
 }
 
+/* The installable app (app/app/*) runs on solid black, not the khata
+   #121212 used everywhere else on the site - requested distinct from the
+   desktop OS and marketing pages, so it's scoped to this one class rather
+   than touching --color-os-bg at :root. Every bg-os-bg/body-level surface
+   inside the app shell inherits this override automatically, since the
+   Tailwind utility just reads the custom property. */
+.app-shell-pure-black {
+  --color-os-bg: #000000;
+}
+
 @layer components {
   .os-card {
     background-color: var(--color-os-card);

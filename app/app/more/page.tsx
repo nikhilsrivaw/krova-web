@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, BookOpen, BarChart3, Settings, Layers, LogOut,
+  Users, BookOpen, BarChart3, Settings, Siren, LogOut,
   CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
@@ -14,15 +14,20 @@ type Item = {
   href: string;
   icon: typeof Users;
   requiresCapability?: Capability;
+  /** Opens a real screen in this app (appPath) instead of bouncing to the
+   * desktop site (desktopUrl) - Ledger moved out of here entirely, it's
+   * now a permanent bottom-nav tab since it's the core feature, not a
+   * vertical add-on. */
+  native?: boolean;
 };
 
 // Same capability-gating source as the desktop sidebar
 // (components/shell/AppSidebar.tsx) - never a second, phone-specific
-// list of what a business can see. These open the existing desktop
-// pages for now (they already work on a phone's viewport, just not
-// redesigned mobile-first yet) rather than duplicating each one here.
+// list of what a business can see. The non-native ones open the existing
+// desktop pages for now (they already work on a phone's viewport, just
+// not redesigned mobile-first yet) rather than duplicating each one here.
 const ITEMS: Item[] = [
-  { label: "Commitment Ledger", href: "/ledger", icon: Layers },
+  { label: "Escalations", href: "/escalations", icon: Siren, native: true },
   { label: "Customers", href: "/customers", icon: Users },
   { label: "Scheduling", href: "/scheduling", icon: CalendarClock, requiresCapability: "scheduling" },
   { label: "Orders", href: "/orders", icon: Package, requiresCapability: "order_sync" },
@@ -62,7 +67,7 @@ export default function MorePage() {
           return (
             <a
               key={item.href}
-              href={desktopUrl(item.href)}
+              href={item.native ? appPath(item.href) : desktopUrl(item.href)}
               className={`flex items-center gap-3 px-4 py-3.5 active:bg-white/[0.03] transition-colors ${
                 i !== visible.length - 1 ? "border-b border-os-border" : ""
               }`}

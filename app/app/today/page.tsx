@@ -69,7 +69,7 @@ export default function TodayPage() {
           {/* Escalations - most urgent first */}
           {openEscalations !== null && openEscalations > 0 && (
             <Link
-              href={appPath("/approvals")}
+              href={appPath("/escalations")}
               className="flex items-center gap-3 p-4 rounded-2xl bg-thread/10 border border-thread/25 active:scale-[0.98] transition-transform"
             >
               <div className="w-10 h-10 rounded-xl bg-thread/15 flex items-center justify-center shrink-0">
@@ -116,10 +116,14 @@ export default function TodayPage() {
           </Link>
 
           {summary && (
-            <div className="p-4 rounded-2xl bg-os-card border border-os-border">
+            <Link
+              href={appPath("/ledger")}
+              className="block p-4 rounded-2xl bg-os-card border border-os-border active:scale-[0.98] transition-transform"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Wallet className="w-4 h-4 text-teal" />
                 <p className="text-xs font-mono uppercase tracking-wide text-os-text-dim">Ledger</p>
+                <ArrowRight className="w-3.5 h-3.5 text-os-text-dim ml-auto" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -137,7 +141,7 @@ export default function TodayPage() {
                   </p>
                 </div>
               </div>
-            </div>
+            </Link>
           )}
 
           {pending === 0 && (openEscalations ?? 0) === 0 && (

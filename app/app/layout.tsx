@@ -89,7 +89,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
 
   if (isLoginRoute) {
     return (
-      <div className="min-h-screen bg-os-bg">
+      <div className="app-shell-pure-black min-h-screen bg-os-bg">
         <link rel="manifest" href={manifestHref} />
         {children}
       </div>
@@ -98,7 +98,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
 
   if (isLoading || !profile) {
     return (
-      <div className="min-h-screen bg-os-bg flex items-center justify-center">
+      <div className="app-shell-pure-black min-h-screen bg-os-bg flex items-center justify-center">
         <link rel="manifest" href={manifestHref} />
         <div className="h-7 w-7 rounded-full border-2 border-os-border border-t-teal animate-spin" />
       </div>
@@ -106,7 +106,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="min-h-screen bg-os-bg flex flex-col">
+    <div className="app-shell-pure-black min-h-screen bg-os-bg flex flex-col">
       <link rel="manifest" href={manifestHref} />
       <AppTopBar businessName={profile.business_name || "KROVA"} />
       <main className="flex-1 overflow-y-auto pb-20">{children}</main>
