@@ -88,6 +88,10 @@ export default function WhatsAppPage() {
   // own _sample() fallback, but surfaced to the person writing it instead
   // of silently substituted.
   const [newTemplateExamples, setNewTemplateExamples] = useState<Record<string, string>>({});
+  // A transient confirmation after a real Meta submission succeeds - the
+  // modal closing on its own previously looked identical to the modal
+  // closing for any other reason, so submitting read as if nothing happened.
+  const [templateSubmitSuccess, setTemplateSubmitSuccess] = useState<string | null>(null);
 
   // Window Tester & Composer State
   const [targetPhone, setTargetPhone] = useState("+91 98201 44521");
@@ -441,8 +445,9 @@ export default function WhatsAppPage() {
     e.preventDefault();
     setActionError(null);
     try {
+      const name = newTemplateName.toLowerCase().replace(/\s+/g, "_");
       await templates.create({
-        name: newTemplateName.toLowerCase().replace(/\s+/g, "_"),
+        name,
         category: newTemplateCategory,
         body: newTemplateBody,
         header_text: newTemplateHeader.trim() || undefined,
@@ -452,6 +457,11 @@ export default function WhatsAppPage() {
       });
       setIsCreateModalOpen(false);
       resetTemplateForm();
+      setActiveTab("templates");
+      setTemplateSubmitSuccess(
+        `"${name}" was submitted to Meta - it'll show as Pending below until they review it, usually within 24 hours.`,
+      );
+      setTimeout(() => setTemplateSubmitSuccess(null), 8000);
       loadData();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not create template.");
@@ -886,6 +896,12 @@ export default function WhatsAppPage() {
         {/* TAB 2: TEMPLATES MANAGER */}
         {activeTab === "templates" && (
           <div className="space-y-4">
+            {templateSubmitSuccess && (
+              <div className="p-3.5 rounded-xl bg-seal/10 border border-seal/30 flex items-start gap-2 text-[11px] text-seal-bright">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{templateSubmitSuccess}</span>
+              </div>
+            )}
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start gap-2 text-[11px] text-os-text-dim">
               <Info className="w-4 h-4 shrink-0 mt-0.5 text-brass" />
               <span>
