@@ -533,7 +533,7 @@ export default function WhatsAppPage() {
 
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => { setActionError(null); setIsCreateModalOpen(true); }}
             className="px-3 py-1.5 rounded-lg bg-seal hover:bg-seal-dim text-white text-xs font-bold shadow-lg shadow-seal/20 flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -902,7 +902,7 @@ export default function WhatsAppPage() {
                 icon={MessageSquare}
                 title="No templates yet"
                 description="Create one to message customers outside the 24-hour reply window - a booking reminder, an order update, an offer. Meta reviews each one, usually within 24 hours."
-                action={{ label: "Create your first template", onClick: () => setIsCreateModalOpen(true) }}
+                action={{ label: "Create your first template", onClick: () => { setActionError(null); setIsCreateModalOpen(true); } }}
               />
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1413,6 +1413,17 @@ export default function WhatsAppPage() {
                 )}
               </div>
             </div>
+
+            {/* The page-level banner for this same state (line ~560) sits
+                behind the modal's backdrop while this is open, so it was
+                never actually visible - Meta's real rejection reason has to
+                render inside the modal itself. */}
+            {actionError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{actionError}</span>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-3">
               <button
