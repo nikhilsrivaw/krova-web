@@ -1149,7 +1149,7 @@ export default function WhatsAppPage() {
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
                 Category - what kind of message is this?
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
                   {
                     key: "UTILITY" as const,
@@ -1178,19 +1178,13 @@ export default function WhatsAppPage() {
                     <p className="text-[10px] italic opacity-60">{c.examples}</p>
                   </div>
                 ))}
-                {/* Authentication exists on Meta's side (OTP codes) but needs
-                    a different submission shape entirely - Meta writes the
-                    body text itself and requires a dedicated OTP button, not
-                    the free-text body this form builds. Shown so it isn't a
-                    silent gap, not offered until that's built. */}
-                <div className="p-3.5 rounded-xl border border-white/[0.04] bg-white/[0.01] text-os-text-dim/50 cursor-not-allowed">
-                  <p className="text-xs font-bold mb-1">Authentication</p>
-                  <p className="text-[11px] leading-relaxed mb-1.5">
-                    One-time passcodes. Meta writes the message text itself and requires its own OTP button type.
-                  </p>
-                  <p className="text-[10px] italic">Coming soon - not yet supported here</p>
-                </div>
               </div>
+              {/* Authentication (OTP) exists on Meta's side but needs a
+                  different submission shape entirely - Meta writes the body
+                  text itself and requires a dedicated OTP button, not the
+                  free-text body this form builds. Left out rather than
+                  offered half-built; build it properly if a business
+                  actually needs OTP sending. */}
               <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-300/80">
                 <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                 <span>Labelling a promotional message as Utility is against Meta's policy and risks your account's quality rating - when in doubt, pick Marketing.</span>
