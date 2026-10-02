@@ -715,6 +715,23 @@ export const channels = {
   sendInstagramCarousel: (to: string, elements: InstagramCarouselElement[]) =>
     api.post<SendResult>("/messages/instagram/carousel", { to, elements }),
 
+  /**
+   * Saved, reusable carousels - the agent (shared/ai/agent.py's
+   * share_carousel) picks one of these by name during a live reply, and
+   * a staff member can re-send one without rebuilding it card by card.
+   */
+  listSavedInstagramCarousels: () =>
+    api.get<SavedInstagramCarousel[]>("/messages/instagram/carousels"),
+
+  saveInstagramCarousel: (name: string, description: string, elements: InstagramCarouselElement[]) =>
+    api.post<SavedInstagramCarousel>("/messages/instagram/carousels", { name, description, elements }),
+
+  deleteSavedInstagramCarousel: (id: string) =>
+    api.delete<void>(`/messages/instagram/carousels/${id}`),
+
+  sendSavedInstagramCarousel: (id: string, to: string) =>
+    api.post<SendResult>(`/messages/instagram/carousels/${id}/send`, { to }),
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
@@ -815,6 +832,13 @@ export type InstagramCarouselElement = {
   subtitle?: string;
   image_url?: string;
   buttons?: InstagramCarouselButton[];
+};
+
+export type SavedInstagramCarousel = {
+  id: string;
+  name: string;
+  description: string;
+  elements: InstagramCarouselElement[];
 };
 
 export const templates = {

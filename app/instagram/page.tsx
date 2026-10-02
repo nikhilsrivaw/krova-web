@@ -12,6 +12,7 @@ import {
   type InstagramConversation,
   type InstagramInsights,
   type InstagramCarouselElement,
+  type SavedInstagramCarousel,
 } from "@/lib/api";
 
 const MIN_CAROUSEL_CARDS = 1;
@@ -172,26 +173,28 @@ export default function InstagramPage() {
         (!c.buttonEnabled || (c.buttonTitle.trim() && (c.buttonType === "web_url" ? c.buttonUrl.trim() : c.buttonPayload.trim()))),
     );
 
+  const buildCarouselElements = (): InstagramCarouselElement[] =>
+    carouselCards.map((c) => ({
+      title: c.title.trim(),
+      subtitle: c.subtitle.trim() || undefined,
+      image_url: c.imageUrl || undefined,
+      buttons: c.buttonEnabled
+        ? [{
+            type: c.buttonType,
+            title: c.buttonTitle.trim(),
+            url: c.buttonType === "web_url" ? c.buttonUrl.trim() : undefined,
+            payload: c.buttonType === "postback" ? c.buttonPayload.trim() : undefined,
+          }]
+        : [],
+    }));
+
   const handleSendCarousel = async () => {
     if (!canSendCarousel) return;
     setIsSendingCarousel(true);
     setCarouselError(null);
     setCarouselResult(null);
     try {
-      const elements: InstagramCarouselElement[] = carouselCards.map((c) => ({
-        title: c.title.trim(),
-        subtitle: c.subtitle.trim() || undefined,
-        image_url: c.imageUrl || undefined,
-        buttons: c.buttonEnabled
-          ? [{
-              type: c.buttonType,
-              title: c.buttonTitle.trim(),
-              url: c.buttonType === "web_url" ? c.buttonUrl.trim() : undefined,
-              payload: c.buttonType === "postback" ? c.buttonPayload.trim() : undefined,
-            }]
-          : [],
-      }));
-      const res = await channels.sendInstagramCarousel(carouselTo.trim(), elements);
+      const res = await channels.sendInstagramCarousel(carouselTo.trim(), buildCarouselElements());
       if (res?.sent) {
         setCarouselResult(`Sent — message id ${res.message_id}`);
         setCarouselCards([{ ...EMPTY_CAROUSEL_CARD }, { ...EMPTY_CAROUSEL_CARD }]);
@@ -202,6 +205,78 @@ export default function InstagramPage() {
       setCarouselError(err instanceof Error ? err.message : "Could not send this carousel.");
     } finally {
       setIsSendingCarousel(false);
+    }
+  };
+
+  // Saved, reusable carousels - shared/ai/agent.py's share_carousel picks
+  // one of these by name during a live reply, same idea as a WhatsApp
+  // catalog a business sets up once and the agent offers when it fits.
+  const [savedCarousels, setSavedCarousels] = useState<SavedInstagramCarousel[]>([]);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveDescription, setSaveDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingResultId, setSavingResultId] = useState<string | null>(null);
+
+  const loadSavedCarousels = useCallback(async () => {
+    setIsLoadingSaved(true);
+    try {
+      const rows = await channels.listSavedInstagramCarousels();
+      setSavedCarousels(rows ?? []);
+    } catch {
+      // Quiet fallback - this list is a convenience, not load-bearing for
+      // the page itself.
+    } finally {
+      setIsLoadingSaved(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSavedCarousels();
+  }, [loadSavedCarousels]);
+
+  const handleSaveCarousel = async () => {
+    if (!saveName.trim() || !canSendCarousel) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const saved = await channels.saveInstagramCarousel(
+        saveName.trim(), saveDescription.trim(), buildCarouselElements(),
+      );
+      setSavedCarousels((prev) => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      setSaveName("");
+      setSaveDescription("");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save this carousel.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSendSavedCarousel = async (carousel: SavedInstagramCarousel) => {
+    if (!carouselTo.trim()) {
+      setCarouselError("Pick a recipient above first.");
+      return;
+    }
+    setSavingResultId(carousel.id);
+    setCarouselError(null);
+    try {
+      const res = await channels.sendSavedInstagramCarousel(carousel.id, carouselTo.trim());
+      setCarouselResult(res?.sent ? `Sent "${carousel.name}" — message id ${res.message_id}` : "Send did not confirm");
+    } catch (err) {
+      setCarouselError(err instanceof Error ? err.message : "Could not send this carousel.");
+    } finally {
+      setSavingResultId(null);
+    }
+  };
+
+  const handleDeleteSavedCarousel = async (id: string) => {
+    try {
+      await channels.deleteSavedInstagramCarousel(id);
+      setSavedCarousels((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not delete this carousel.");
     }
   };
 
@@ -708,6 +783,83 @@ export default function InstagramPage() {
                 >
                   {isSendingCarousel ? "Sending…" : "Send carousel"}
                 </button>
+
+                <div className="pt-3 border-t border-white/[0.06] space-y-2">
+                  <p className="text-[11px] text-os-text-dim">
+                    Save these cards under a name, and KROVA's AI can offer this same carousel on
+                    its own during a live reply - when a customer's message matches what it's for.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      placeholder="Name (e.g. new_arrivals)"
+                      className="w-40 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    />
+                    <input
+                      type="text"
+                      value={saveDescription}
+                      onChange={(e) => setSaveDescription(e.target.value)}
+                      placeholder="What it's for, e.g. our 4 bestselling kurtas"
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveCarousel}
+                      disabled={!saveName.trim() || !canSendCarousel || isSaving}
+                      className="shrink-0 px-4 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                    >
+                      {isSaving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                  {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
+                </div>
+              </GlassCard>
+            )}
+
+            {connection.status === "active" && savedCarousels.length > 0 && (
+              <GlassCard className="p-6 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Saved carousels</p>
+                  <p className="text-[11px] text-os-text-dim">
+                    What the AI can choose from when it decides a reply should include one
+                    ("Available Instagram carousels" in its own instructions). Send one by hand
+                    here too, to the recipient picked above.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {savedCarousels.map((c) => (
+                    <div
+                      key={c.id}
+                      className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.08] flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold font-mono text-white">{c.name}</p>
+                        <p className="text-[11px] text-os-text-dim truncate">
+                          {c.description || `${c.elements.length} card${c.elements.length === 1 ? "" : "s"}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSendSavedCarousel(c)}
+                          disabled={savingResultId === c.id}
+                          className="px-3 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 text-white text-[11px] font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
+                        >
+                          {savingResultId === c.id ? "Sending…" : "Send"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSavedCarousel(c.id)}
+                          className="p-1.5 rounded-lg text-os-text-dim hover:text-thread-bright hover:bg-white/[0.06] cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </GlassCard>
             )}
           </>
