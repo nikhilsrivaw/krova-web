@@ -31,10 +31,12 @@ import {
   Clock,
   FileCheck2,
   Siren,
+  Smartphone,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { AutonomyPill } from "../ui/AutonomyPill";
+import { GetAppModal } from "./GetAppModal";
 
 interface SidebarProps {
   businessName?: string;
@@ -54,6 +56,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [openEscalationCount, setOpenEscalationCount] = useState<number>(0);
+  const [isGetAppOpen, setIsGetAppOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -376,7 +379,16 @@ export function AppSidebar({
       </div>
 
       {/* Bottom Footer User/SignOut */}
-      <div className="p-3 border-t border-white/[0.06] bg-[#0A0E17]/60">
+      <div className="p-3 border-t border-white/[0.06] bg-[#0A0E17]/60 space-y-2">
+        <button
+          type="button"
+          onClick={() => setIsGetAppOpen(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] transition-colors"
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>Get the App</span>
+        </button>
+
         <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-mono font-bold text-white/80 shrink-0">
@@ -405,6 +417,8 @@ export function AppSidebar({
           </button>
         </div>
       </div>
+
+      <GetAppModal isOpen={isGetAppOpen} onClose={() => setIsGetAppOpen(false)} />
     </aside>
   );
 }

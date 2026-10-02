@@ -24,6 +24,7 @@ import {
 import { TypingAnimation } from "@/components/magicui/typing-animation";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
+import { installUrl as getInstallUrl } from "@/lib/app-nav";
 
 /** Example exchanges that auto-cycle in the phone mockup. */
 const EXAMPLES = [
@@ -163,19 +164,13 @@ export default function MobilePage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
     // The installable app has its own subdomain (app.krova.space) so it
     // can be a fully self-contained product - clean URLs, its own
     // scope/manifest (public/app-manifest-root.json), no bounce back to
     // this marketing/desktop site. Falls back to the /app path on whatever
     // origin we're actually on for local dev, where the subdomain doesn't
     // resolve - see middleware.ts + lib/app-nav.ts for both halves of this.
-    const { hostname, origin } = window.location;
-    setInstallUrl(
-      hostname === "krova.space" || hostname === "www.krova.space"
-        ? "https://app.krova.space"
-        : `${origin}/app`,
-    );
+    setInstallUrl(getInstallUrl());
   }, []);
 
   const copy = () => {
