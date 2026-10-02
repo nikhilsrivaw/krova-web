@@ -105,6 +105,10 @@ function phoneOf(identities: { kind: string; value: string }[]): string | null {
   return identities.find((i) => i.kind === "phone")?.value || null;
 }
 
+function igsidOf(identities: { kind: string; value: string }[]): string | null {
+  return identities.find((i) => i.kind === "instagram")?.value || null;
+}
+
 export default function ConversationsPage() {
   const [threadList, setThreadList] = useState<ConversationItem[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -144,6 +148,17 @@ export default function ConversationsPage() {
   const [isCannedPickerOpen, setIsCannedPickerOpen] = useState(false);
   const [isSendingCanned, setIsSendingCanned] = useState(false);
   const [cannedError, setCannedError] = useState<string | null>(null);
+
+  // Reply - a human's own typed message, sent as-is, same "not an AI
+  // draft, bypasses Approvals" reasoning as Canned Reply above. Works for
+  // both WhatsApp (window_open) and Instagram (24h normally, up to 7 days
+  // as a human agent - messages.py's POST /instagram/text decides and
+  // tags it automatically, so the error it returns on a closed window is
+  // shown directly rather than re-checked here).
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [isBookingToken, setIsBookingToken] = useState(false);
@@ -243,6 +258,34 @@ export default function ConversationsPage() {
       setCannedError(err instanceof Error ? err.message : "Could not send this reply.");
     } finally {
       setIsSendingCanned(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!activeThread || !replyBody.trim()) return;
+    const phone = phoneOf(activeThread.identities);
+    const igsid = igsidOf(activeThread.identities);
+    setIsSendingReply(true);
+    setReplyError(null);
+    try {
+      if (phone) {
+        await channels.sendText(phone, replyBody.trim());
+      } else if (igsid) {
+        await channels.sendInstagramText(igsid, replyBody.trim());
+      } else {
+        setReplyError("No WhatsApp or Instagram identity on this conversation.");
+        return;
+      }
+      setReplyBody("");
+      setIsReplyOpen(false);
+    } catch (err) {
+      // The backend's own message is already specific here (WhatsApp:
+      // "24-hour window closed, use a template" / Instagram: "never
+      // messaged" | "over 7 days" | a real Meta rejection) - shown as-is
+      // rather than re-derived.
+      setReplyError(err instanceof Error ? err.message : "Could not send this reply.");
+    } finally {
+      setIsSendingReply(false);
     }
   };
 
@@ -739,6 +782,62 @@ export default function ConversationsPage() {
                     </>
                   )}
                 </button>
+
+                {/* Reply: a human's own typed message. Shown whenever this
+                    customer has a WhatsApp or Instagram identity at all -
+                    not gated on window_open the way Canned/Quick Send
+                    below are, since Instagram's own window has a third,
+                    human-agent-only state window_open alone can't express;
+                    the backend decides and the real reason shows inline
+                    on a closed window instead. */}
+                {(phoneOf(activeThread.identities) || igsidOf(activeThread.identities)) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReplyError(null);
+                        setIsReplyOpen((v) => !v);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Type your own reply"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Reply</span>
+                    </button>
+                    {isReplyOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card/95 backdrop-blur-xl shadow-2xl overflow-hidden p-3 space-y-2">
+                        <textarea
+                          autoFocus
+                          rows={3}
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          placeholder="Type your reply..."
+                          className="w-full p-2.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none resize-none"
+                        />
+                        {replyError && (
+                          <p className="text-[11px] text-red-400">{replyError}</p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsReplyOpen(false)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!replyBody.trim() || isSendingReply}
+                            onClick={handleSendReply}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSendingReply ? "Sending..." : "Send"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Canned Reply: a saved template sent as-is, a person's own click -
                     not an AI draft, so it doesn't go through Approvals. */}
