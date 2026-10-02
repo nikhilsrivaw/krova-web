@@ -164,13 +164,10 @@ export default function MobilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // Default to localhost in dev; the app lives on its own subdomain in production.
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      setInstallUrl("http://localhost:3001");
-    } else {
-      setInstallUrl(`https://app.${host.replace(/^www\./, "")}`);
-    }
+    // The installable app lives at /app on this same origin (its own
+    // scoped manifest/service worker - public/app-manifest.json,
+    // public/sw-app.js) - not a separate subdomain.
+    setInstallUrl(`${window.location.origin}/app`);
   }, []);
 
   const copy = () => {
