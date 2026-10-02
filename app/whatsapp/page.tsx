@@ -10,6 +10,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
+  Info,
   Clock,
   Send,
   Sparkles,
@@ -41,6 +42,7 @@ import {
   type EmbeddedSignupResult,
   type MigrationReadiness,
   type Template,
+  type TemplateButton,
   type WhatsAppWindow,
 } from "@/lib/api";
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
@@ -77,6 +79,15 @@ export default function WhatsAppPage() {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateCategory, setNewTemplateCategory] = useState<"MARKETING" | "UTILITY">("UTILITY");
   const [newTemplateBody, setNewTemplateBody] = useState("");
+  const [newTemplateHeader, setNewTemplateHeader] = useState("");
+  const [newTemplateFooter, setNewTemplateFooter] = useState("");
+  const [newTemplateButtons, setNewTemplateButtons] = useState<TemplateButton[]>([]);
+  // Meta rejects a template whose {{variable}} has no sample value - keyed
+  // by the variable name/number so each gets its own example as the body
+  // is typed, same discipline as shared/channels/whatsapp/templates.py's
+  // own _sample() fallback, but surfaced to the person writing it instead
+  // of silently substituted.
+  const [newTemplateExamples, setNewTemplateExamples] = useState<Record<string, string>>({});
 
   // Window Tester & Composer State
   const [targetPhone, setTargetPhone] = useState("+91 98201 44521");
@@ -416,6 +427,16 @@ export default function WhatsAppPage() {
     }
   };
 
+  const resetTemplateForm = () => {
+    setNewTemplateName("");
+    setNewTemplateCategory("UTILITY");
+    setNewTemplateBody("");
+    setNewTemplateHeader("");
+    setNewTemplateFooter("");
+    setNewTemplateButtons([]);
+    setNewTemplateExamples({});
+  };
+
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError(null);
@@ -424,13 +445,37 @@ export default function WhatsAppPage() {
         name: newTemplateName.toLowerCase().replace(/\s+/g, "_"),
         category: newTemplateCategory,
         body: newTemplateBody,
+        header_text: newTemplateHeader.trim() || undefined,
+        footer: newTemplateFooter.trim() || undefined,
+        buttons: newTemplateButtons.length ? newTemplateButtons : undefined,
+        examples: Object.keys(newTemplateExamples).length ? newTemplateExamples : undefined,
       });
       setIsCreateModalOpen(false);
+      resetTemplateForm();
       loadData();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not create template.");
     }
   };
+
+  // {{customer_name}} or {{1}} - matches the backend's own extraction
+  // (shared/channels/whatsapp/templates.py's variables_in), so what this
+  // form asks an example for is exactly what Meta will demand one for.
+  const extractVariables = (text: string): string[] => {
+    const seen: string[] = [];
+    const re = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (!seen.includes(m[1])) seen.push(m[1]);
+    }
+    return seen;
+  };
+
+  const templateBodyVariables = extractVariables(newTemplateBody);
+  const templateHeaderVariables = extractVariables(newTemplateHeader);
+  const allTemplateVariables = Array.from(
+    new Set([...templateHeaderVariables, ...templateBodyVariables]),
+  );
 
   const checkWindow = async () => {
     setIsCheckingWindow(true);
@@ -841,6 +886,25 @@ export default function WhatsAppPage() {
         {/* TAB 2: TEMPLATES MANAGER */}
         {activeTab === "templates" && (
           <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start gap-2 text-[11px] text-os-text-dim">
+              <Info className="w-4 h-4 shrink-0 mt-0.5 text-brass" />
+              <span>
+                A template is a message Meta approves in advance so you can send it any time -
+                even outside the 24-hour window (see the Compose tab). <span className="text-white font-semibold">Pending</span> means
+                Meta is still reviewing (usually under 24 hours). Only <span className="text-seal-bright font-semibold">Approved</span> templates
+                can actually be sent. If something you created here doesn't show up, use
+                "Sync Meta Templates" above to pull the real status straight from Meta.
+              </span>
+            </div>
+
+            {templateList.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No templates yet"
+                description="Create one to message customers outside the 24-hour reply window - a booking reminder, an order update, an offer. Meta reviews each one, usually within 24 hours."
+                action={{ label: "Create your first template", onClick: () => setIsCreateModalOpen(true) }}
+              />
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {templateList.map((tpl) => (
                 <GlassCard key={tpl.id} className="p-5 flex flex-col justify-between">
@@ -851,7 +915,13 @@ export default function WhatsAppPage() {
                           {tpl.name}
                         </span>
                         <Badge
-                          variant={tpl.status === "APPROVED" ? "emerald" : "amber"}
+                          variant={
+                            tpl.status === "APPROVED"
+                              ? "emerald"
+                              : tpl.status === "REJECTED"
+                                ? "rose"
+                                : "amber"
+                          }
                           size="sm"
                         >
                           {tpl.status}
@@ -865,6 +935,18 @@ export default function WhatsAppPage() {
                     <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06] text-xs text-white/90 font-mono leading-relaxed mb-4">
                       {tpl.body_text}
                     </div>
+
+                    {tpl.status === "REJECTED" && tpl.rejection_reason && (
+                      <div className="mb-4 p-2.5 rounded-lg bg-thread/10 border border-thread/30 text-[11px] text-thread-bright flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{tpl.rejection_reason}</span>
+                      </div>
+                    )}
+                    {tpl.status === "PENDING" && (
+                      <p className="mb-4 text-[11px] text-os-text-dim">
+                        Meta is reviewing this - usually under 24 hours. It can't be sent until Approved.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[11px] text-os-text-dim font-mono">
@@ -879,6 +961,7 @@ export default function WhatsAppPage() {
                 </GlassCard>
               ))}
             </div>
+            )}
           </div>
         )}
 
@@ -1053,12 +1136,67 @@ export default function WhatsAppPage() {
         {/* Create Template Modal */}
         <Modal
           isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => { setIsCreateModalOpen(false); resetTemplateForm(); }}
           title="Create WhatsApp Template"
-          subtitle="Submit a new template to Meta for approval."
-          maxWidth="lg"
+          subtitle="A template is a pre-written message Meta reviews once, then WhatsApp lets you send it any time - even outside the 24-hour window the Compose tab explains. Review takes up to 24 hours; you'll see the result here and under Sync Meta Templates."
+          maxWidth="xl"
         >
-          <form onSubmit={handleCreateTemplate} className="space-y-4">
+          <form onSubmit={handleCreateTemplate} className="space-y-5">
+            {/* Category - the single most common cause of a template being
+                rejected is picking the wrong one, so this gets real estate
+                and real definitions, not a one-line <option>. */}
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+                Category - what kind of message is this?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    key: "UTILITY" as const,
+                    title: "Utility",
+                    desc: "About something the customer already did or has coming up - an order, a booking, an account update.",
+                    examples: "\"Your order #4521 has shipped.\" · \"Reminder: your appointment is tomorrow at 4pm.\"",
+                  },
+                  {
+                    key: "MARKETING" as const,
+                    title: "Marketing",
+                    desc: "Promotes something - an offer, a new product, a reason to come back. Costs more per message than Utility.",
+                    examples: "\"20% off this weekend only.\" · \"We miss you - here's 10% off your next order.\"",
+                  },
+                ].map((c) => (
+                  <div
+                    key={c.key}
+                    onClick={() => setNewTemplateCategory(c.key)}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      newTemplateCategory === c.key
+                        ? "border-brass/50 bg-brass/10 text-white"
+                        : "border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
+                    }`}
+                  >
+                    <p className="text-xs font-bold text-white mb-1">{c.title}</p>
+                    <p className="text-[11px] leading-relaxed opacity-80 mb-1.5">{c.desc}</p>
+                    <p className="text-[10px] italic opacity-60">{c.examples}</p>
+                  </div>
+                ))}
+                {/* Authentication exists on Meta's side (OTP codes) but needs
+                    a different submission shape entirely - Meta writes the
+                    body text itself and requires a dedicated OTP button, not
+                    the free-text body this form builds. Shown so it isn't a
+                    silent gap, not offered until that's built. */}
+                <div className="p-3.5 rounded-xl border border-white/[0.04] bg-white/[0.01] text-os-text-dim/50 cursor-not-allowed">
+                  <p className="text-xs font-bold mb-1">Authentication</p>
+                  <p className="text-[11px] leading-relaxed mb-1.5">
+                    One-time passcodes. Meta writes the message text itself and requires its own OTP button type.
+                  </p>
+                  <p className="text-[10px] italic">Coming soon - not yet supported here</p>
+                </div>
+              </div>
+              <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-300/80">
+                <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>Labelling a promotional message as Utility is against Meta's policy and risks your account's quality rating - when in doubt, pick Marketing.</span>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
                 Template Name (lowercase & underscores):
@@ -1071,40 +1209,221 @@ export default function WhatsAppPage() {
                 placeholder="e.g. appointment_reminder"
                 className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
               />
+              <p className="text-[10px] text-os-text-dim mt-1">
+                For your own reference only - the customer never sees this name.
+              </p>
             </div>
 
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                Category:
+                Header (optional):
               </label>
-              <select
-                value={newTemplateCategory}
-                onChange={(e) => setNewTemplateCategory(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-              >
-                <option value="UTILITY">Utility (Account updates, reminders, receipts)</option>
-                <option value="MARKETING">Marketing (Promotions, offers, announcements)</option>
-              </select>
+              <input
+                type="text"
+                maxLength={60}
+                value={newTemplateHeader}
+                onChange={(e) => setNewTemplateHeader(e.target.value)}
+                placeholder="e.g. Appointment Confirmed"
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+              />
+              <p className="text-[10px] text-os-text-dim mt-1">
+                Bold text above the message. At most one {"{{variable}}"}. {newTemplateHeader.length}/60 characters.
+              </p>
             </div>
 
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                Template Body Text (Use {"{{1}}"}, {"{{2}}"} for dynamic variables):
+                Message Body:
               </label>
               <textarea
                 rows={4}
                 required
                 value={newTemplateBody}
                 onChange={(e) => setNewTemplateBody(e.target.value)}
-                placeholder="Hello {{1}}, your consultation with {{2}} is confirmed for {{3}}."
+                placeholder="Hello {{customer_name}}, your consultation with {{doctor_name}} is confirmed for {{date}}."
                 className="w-full p-3 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
               />
+              <p className="text-[10px] text-os-text-dim mt-1">
+                Write {"{{customer_name}}"} (or {"{{1}}"}, {"{{2}}"}...) anywhere the actual message will fill in a real value - the customer's name, an amount, a date. {newTemplateBody.length}/1024 characters.
+              </p>
+            </div>
+
+            {/* Meta rejects a template outright if any {{variable}} has no
+                example - the form now asks for one instead of letting a
+                generic fallback go in silently and risk a confusing
+                rejection a day later. */}
+            {allTemplateVariables.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2.5">
+                <div className="flex items-start gap-1.5 text-[11px] text-os-text-dim">
+                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-brass" />
+                  <span>Meta's reviewer reads these examples to understand what the template is for - give a realistic value, not a placeholder.</span>
+                </div>
+                {allTemplateVariables.map((v) => (
+                  <div key={v} className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-brass-bright w-32 shrink-0">{`{{${v}}}`}</span>
+                    <input
+                      type="text"
+                      value={newTemplateExamples[v] || ""}
+                      onChange={(e) =>
+                        setNewTemplateExamples((prev) => ({ ...prev, [v]: e.target.value }))
+                      }
+                      placeholder={/^\d+$/.test(v) ? "e.g. Rahul Sharma" : v.replace(/_/g, " ")}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                Footer (optional):
+              </label>
+              <input
+                type="text"
+                maxLength={60}
+                value={newTemplateFooter}
+                onChange={(e) => setNewTemplateFooter(e.target.value)}
+                placeholder="e.g. Reply STOP to opt out"
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+              />
+              <p className="text-[10px] text-os-text-dim mt-1">
+                Small grey text below the message. No variables allowed. {newTemplateFooter.length}/60 characters.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-mono uppercase text-os-text-dim">
+                  Buttons (optional, up to 10):
+                </label>
+                {newTemplateButtons.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewTemplateButtons((prev) => [...prev, { type: "QUICK_REPLY", text: "" }])
+                    }
+                    className="text-[11px] font-semibold text-brass hover:text-brass-bright flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Add button
+                  </button>
+                )}
+              </div>
+              {newTemplateButtons.length === 0 ? (
+                <p className="text-[10px] text-os-text-dim">
+                  Quick Reply (a tap that sends a fixed reply back), a link, or a phone number to call.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {newTemplateButtons.map((btn, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                      <select
+                        value={btn.type}
+                        onChange={(e) =>
+                          setNewTemplateButtons((prev) =>
+                            prev.map((b, idx) => (idx === i ? { ...b, type: e.target.value as TemplateButton["type"] } : b)),
+                          )
+                        }
+                        className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none shrink-0"
+                      >
+                        <option value="QUICK_REPLY">Quick Reply</option>
+                        <option value="URL">Open a link</option>
+                        <option value="PHONE_NUMBER">Call a number</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={btn.text}
+                        onChange={(e) =>
+                          setNewTemplateButtons((prev) =>
+                            prev.map((b, idx) => (idx === i ? { ...b, text: e.target.value } : b)),
+                          )
+                        }
+                        placeholder="Button text"
+                        maxLength={25}
+                        className="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                      />
+                      {btn.type === "URL" && (
+                        <input
+                          type="text"
+                          value={btn.url || ""}
+                          onChange={(e) =>
+                            setNewTemplateButtons((prev) =>
+                              prev.map((b, idx) => (idx === i ? { ...b, url: e.target.value } : b)),
+                            )
+                          }
+                          placeholder="https://..."
+                          className="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-brass focus:outline-none"
+                        />
+                      )}
+                      {btn.type === "PHONE_NUMBER" && (
+                        <input
+                          type="text"
+                          value={btn.phone_number || ""}
+                          onChange={(e) =>
+                            setNewTemplateButtons((prev) =>
+                              prev.map((b, idx) => (idx === i ? { ...b, phone_number: e.target.value } : b)),
+                            )
+                          }
+                          placeholder="+91..."
+                          className="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-brass focus:outline-none"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setNewTemplateButtons((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="p-1.5 rounded-lg text-os-text-dim hover:text-thread-bright hover:bg-white/[0.06] cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* A plain preview, not pixel-perfect, so someone who has never
+                opened WhatsApp Manager can see roughly what they're about
+                to submit before they do. */}
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
+                Roughly how this will look:
+              </label>
+              <div className="max-w-xs p-3 rounded-2xl rounded-tl-sm bg-[#005C4B] text-white text-xs leading-relaxed shadow-md">
+                {newTemplateHeader && (
+                  <p className="font-bold mb-1">
+                    {allTemplateVariables.reduce(
+                      (text, v) => text.replace(`{{${v}}}`, newTemplateExamples[v] || `[${v}]`),
+                      newTemplateHeader,
+                    )}
+                  </p>
+                )}
+                <p className="whitespace-pre-wrap">
+                  {newTemplateBody
+                    ? allTemplateVariables.reduce(
+                        (text, v) => text.replace(`{{${v}}}`, newTemplateExamples[v] || `[${v}]`),
+                        newTemplateBody,
+                      )
+                    : "Your message will appear here as you type it above."}
+                </p>
+                {newTemplateFooter && (
+                  <p className="mt-1.5 text-[10px] opacity-70">{newTemplateFooter}</p>
+                )}
+                {newTemplateButtons.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-white/20 space-y-1">
+                    {newTemplateButtons.map((b, i) => (
+                      <p key={i} className="text-center text-[11px] font-semibold text-[#53BDEB]">
+                        {b.text || "Button"}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-3">
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={() => { setIsCreateModalOpen(false); resetTemplateForm(); }}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white"
               >
                 Cancel

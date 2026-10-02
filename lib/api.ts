@@ -799,6 +799,8 @@ export const templates = {
     header_text?: string;
     footer?: string;
     buttons?: TemplateButton[];
+    /** Sample value per {{variable}} - Meta rejects a template whose variable has none. */
+    examples?: Record<string, string>;
     /** 2-10 cards makes this a carousel template - header_text/footer/buttons above are ignored. */
     carousel_cards?: CarouselCardDraft[];
   }) => api.post<Template>("/templates", data),
