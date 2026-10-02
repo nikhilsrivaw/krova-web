@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Inbox, CheckSquare, Menu } from "lucide-react";
 import type { Capability } from "@/lib/api";
+import { appPath } from "@/lib/app-nav";
 
 /**
  * Four tabs, always the same four - Today, Inbox, Approvals, More. Unlike
@@ -15,10 +16,10 @@ import type { Capability } from "@/lib/api";
  * decides what a business sees - never a second, phone-specific list.
  */
 const TABS = [
-  { href: "/app/today", label: "Today", icon: Home },
-  { href: "/app/inbox", label: "Inbox", icon: Inbox },
-  { href: "/app/approvals", label: "Approvals", icon: CheckSquare },
-  { href: "/app/more", label: "More", icon: Menu },
+  { path: "/today", label: "Today", icon: Home },
+  { path: "/inbox", label: "Inbox", icon: Inbox },
+  { path: "/approvals", label: "Approvals", icon: CheckSquare },
+  { path: "/more", label: "More", icon: Menu },
 ] as const;
 
 export function BottomNav({
@@ -28,6 +29,12 @@ export function BottomNav({
   pendingCount: number;
 }) {
   const pathname = usePathname();
+  // pathname is whatever the browser actually shows - "/inbox" on the app
+  // subdomain (middleware.ts rewrites it server-side, invisibly), "/app/inbox"
+  // under the /app/* fallback. Stripping any "/app" prefix before comparing
+  // means tab-highlighting works the same under either.
+  const strippedPathname = pathname.startsWith("/app") ? pathname.slice(4) || "/" : pathname;
+  const normalizedPathname = strippedPathname === "/" ? "/today" : strippedPathname;
 
   return (
     <nav
@@ -36,12 +43,13 @@ export function BottomNav({
     >
       <div className="grid grid-cols-4 max-w-md mx-auto">
         {TABS.map((tab) => {
-          const isActive = pathname.startsWith(tab.href);
+          const isActive = normalizedPathname.startsWith(tab.path);
           const Icon = tab.icon;
+          const href = appPath(tab.path);
           return (
             <Link
-              key={tab.href}
-              href={tab.href}
+              key={tab.path}
+              href={href}
               className="relative flex flex-col items-center gap-1 py-2.5 transition-colors"
             >
               <div className="relative">
@@ -51,7 +59,7 @@ export function BottomNav({
                   }`}
                   strokeWidth={isActive ? 2.4 : 1.8}
                 />
-                {tab.href === "/app/approvals" && pendingCount > 0 && (
+                {tab.path === "/approvals" && pendingCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-teal text-os-bg text-[9px] font-bold font-mono flex items-center justify-center">
                     {pendingCount > 9 ? "9+" : pendingCount}
                   </span>

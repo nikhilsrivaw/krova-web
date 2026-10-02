@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { signIn } from "@/lib/auth";
+import { appPath } from "@/lib/app-nav";
 
 export default function AppLoginPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function AppLoginPage() {
     setError(null);
     try {
       await signIn(email.trim(), password);
-      router.replace("/app/today");
+      router.replace(appPath("/today"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in.");
     } finally {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, Siren, Wallet, ArrowRight, Inbox as InboxIcon } from "lucide-react";
 import { approvals, escalations, ledger, type LedgerSummary } from "@/lib/api";
+import { appPath } from "@/lib/app-nav";
 
 function formatPaise(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -68,7 +69,7 @@ export default function TodayPage() {
           {/* Escalations - most urgent first */}
           {openEscalations !== null && openEscalations > 0 && (
             <Link
-              href="/app/approvals"
+              href={appPath("/approvals")}
               className="flex items-center gap-3 p-4 rounded-2xl bg-thread/10 border border-thread/25 active:scale-[0.98] transition-transform"
             >
               <div className="w-10 h-10 rounded-xl bg-thread/15 flex items-center justify-center shrink-0">
@@ -85,7 +86,7 @@ export default function TodayPage() {
           )}
 
           <Link
-            href="/app/approvals"
+            href={appPath("/approvals")}
             className="flex items-center gap-3 p-4 rounded-2xl bg-os-card border border-os-border active:scale-[0.98] transition-transform"
           >
             <div className="w-10 h-10 rounded-xl bg-teal/10 flex items-center justify-center shrink-0">
@@ -101,7 +102,7 @@ export default function TodayPage() {
           </Link>
 
           <Link
-            href="/app/inbox"
+            href={appPath("/inbox")}
             className="flex items-center gap-3 p-4 rounded-2xl bg-os-card border border-os-border active:scale-[0.98] transition-transform"
           >
             <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">

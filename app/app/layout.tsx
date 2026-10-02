@@ -4,25 +4,29 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account, approvals, type UserProfile } from "@/lib/api";
 import { isSignedIn, clearSession } from "@/lib/auth";
+import { appPath, isAppSubdomain } from "@/lib/app-nav";
 import { BottomNav } from "@/components/app-shell/BottomNav";
 import { AppTopBar } from "@/components/app-shell/AppTopBar";
 
 /**
- * Shell for the installable KROVA app (scope /app/) - the PWA the
- * marketing page at /mobile promises. Separate layout from the desktop
- * OS (components/shell/AppLayout.tsx): same auth/capabilities source
- * (GET /auth/me), but a mobile-first shell - bottom tab bar instead of a
- * sidebar, one screen at a time instead of a dense multi-column desktop
- * view. /app/login is the one route here that doesn't need a session.
+ * Shell for the installable KROVA app - its own self-contained product
+ * (separate from the desktop OS, components/shell/AppLayout.tsx) that
+ * serves at the app.krova.space subdomain with a /app/* fallback on the
+ * main site. Same auth/capabilities source (GET /auth/me), but a
+ * mobile-first shell - bottom tab bar instead of a sidebar, one screen at
+ * a time, and screens that render their own data in place (the inbox's
+ * thread view, approvals) rather than ever bouncing out to a desktop page.
+ * appPath()'s login route is the one route here that doesn't need a session.
  */
 export default function AppShellLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isLoginRoute = pathname === "/app/login";
+  const isLoginRoute = pathname === appPath("/login") || pathname === "/app/login" || pathname === "/login";
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [onSubdomain, setOnSubdomain] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -30,7 +34,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
       setProfile(data);
     } catch {
       clearSession();
-      router.replace("/app/login");
+      router.replace(appPath("/login"));
       return;
     } finally {
       setIsLoading(false);
@@ -38,10 +42,15 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   }, [router]);
 
   useEffect(() => {
+    setOnSubdomain(isAppSubdomain());
     // Register the app-scoped service worker once - manifest + SW together
-    // are what make a browser offer "Install" at all.
+    // are what make a browser offer "Install" at all. Scope matches
+    // whichever manifest is linked below (public/app-manifest.json vs
+    // -root.json), so "installed from here" always controls exactly the
+    // paths this shell actually serves.
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw-app.js", { scope: "/app/" }).catch(() => {});
+      const scope = isAppSubdomain() ? "/" : "/app/";
+      navigator.serviceWorker.register("/sw-app.js", { scope }).catch(() => {});
     }
   }, []);
 
@@ -51,7 +60,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
       return;
     }
     if (!isSignedIn()) {
-      router.replace("/app/login");
+      router.replace(appPath("/login"));
       return;
     }
     load();
@@ -76,10 +85,12 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
     };
   }, [isLoginRoute, profile]);
 
+  const manifestHref = onSubdomain ? "/app-manifest-root.json" : "/app-manifest.json";
+
   if (isLoginRoute) {
     return (
       <div className="min-h-screen bg-os-bg">
-        <link rel="manifest" href="/app-manifest.json" />
+        <link rel="manifest" href={manifestHref} />
         {children}
       </div>
     );
@@ -88,7 +99,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   if (isLoading || !profile) {
     return (
       <div className="min-h-screen bg-os-bg flex items-center justify-center">
-        <link rel="manifest" href="/app-manifest.json" />
+        <link rel="manifest" href={manifestHref} />
         <div className="h-7 w-7 rounded-full border-2 border-os-border border-t-teal animate-spin" />
       </div>
     );
@@ -96,7 +107,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="min-h-screen bg-os-bg flex flex-col">
-      <link rel="manifest" href="/app-manifest.json" />
+      <link rel="manifest" href={manifestHref} />
       <AppTopBar businessName={profile.business_name || "KROVA"} />
       <main className="flex-1 overflow-y-auto pb-20">{children}</main>
       <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, Instagram, Phone, Mail, Lock } from "lucide-react";
 import { conversations, type ConversationItem } from "@/lib/api";
+import { appPath } from "@/lib/app-nav";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -54,7 +55,7 @@ export default function InboxPage() {
             return (
               <a
                 key={c.customer_id}
-                href={`/conversations?customer=${c.customer_id}`}
+                href={appPath(`/inbox/${c.customer_id}`)}
                 className="flex items-start gap-3 p-3.5 rounded-xl bg-os-card border border-os-border active:bg-white/[0.03] transition-colors"
               >
                 <div className="w-9 h-9 rounded-lg bg-teal/10 flex items-center justify-center shrink-0 mt-0.5">

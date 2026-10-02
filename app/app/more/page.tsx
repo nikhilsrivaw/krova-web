@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
+import { appPath, desktopUrl } from "@/lib/app-nav";
 
 type Item = {
   label: string;
@@ -61,7 +62,7 @@ export default function MorePage() {
           return (
             <a
               key={item.href}
-              href={item.href}
+              href={desktopUrl(item.href)}
               className={`flex items-center gap-3 px-4 py-3.5 active:bg-white/[0.03] transition-colors ${
                 i !== visible.length - 1 ? "border-b border-os-border" : ""
               }`}
@@ -77,7 +78,7 @@ export default function MorePage() {
         type="button"
         onClick={() => {
           signOut();
-          window.location.href = "/app/login";
+          window.location.href = appPath("/login");
         }}
         className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl bg-os-card border border-os-border text-sm font-semibold text-thread-bright active:bg-white/[0.03] transition-colors"
       >

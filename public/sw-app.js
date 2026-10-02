@@ -1,4 +1,7 @@
-// Minimal service worker for the KROVA app PWA (scope: /app/).
+// Minimal service worker for the KROVA app PWA. Registered with scope "/"
+// on the app.krova.space subdomain and scope "/app/" as a fallback on the
+// main site (see lib/app-nav.ts) - self.registration.scope tells us which,
+// so one file covers both instead of shipping two near-identical workers.
 // Just enough to make the browser consider this installable and to let
 // already-visited pages keep working with no signal - no aggressive
 // precaching, since the app's data is never static.
@@ -22,8 +25,9 @@ self.addEventListener("activate", (event) => {
 // shows stale data when a connection is actually available.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const scopePath = new URL(self.registration.scope).pathname; // "/" or "/app/"
   const url = new URL(event.request.url);
-  if (!url.pathname.startsWith("/app")) return;
+  if (scopePath !== "/" && !url.pathname.startsWith(scopePath)) return;
 
   event.respondWith(
     fetch(event.request)
