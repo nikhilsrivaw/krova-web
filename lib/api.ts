@@ -700,6 +700,21 @@ export const channels = {
     return api.post<PublishPhotoResult>("/messages/instagram/publish", formData, true);
   },
 
+  /**
+   * Instagram's "Generic Template" - a horizontally-scrollable carousel
+   * of up to 10 cards, each with its own picture/title/subtitle/up to 3
+   * buttons. Unlike a WhatsApp carousel template, this needs no Meta
+   * review - it sends instantly, like any other Instagram message.
+   */
+  uploadInstagramCarouselImage: (file: File) => {
+    const formData = new FormData();
+    formData.set("file", file);
+    return api.post<{ image_url: string }>("/messages/instagram/carousel/image", formData, true);
+  },
+
+  sendInstagramCarousel: (to: string, elements: InstagramCarouselElement[]) =>
+    api.post<SendResult>("/messages/instagram/carousel", { to, elements }),
+
   gmailConnectUrl: () =>
     api.get<{ authorize_url: string }>("/channels/gmail/connect"),
 
@@ -786,6 +801,20 @@ export type InstagramInsights = {
 export type PublishPhotoResult = {
   media_id: string;
   image_url: string;
+};
+
+export type InstagramCarouselButton = {
+  type: "web_url" | "postback";
+  title: string;
+  url?: string;
+  payload?: string;
+};
+
+export type InstagramCarouselElement = {
+  title: string;
+  subtitle?: string;
+  image_url?: string;
+  buttons?: InstagramCarouselButton[];
 };
 
 export const templates = {

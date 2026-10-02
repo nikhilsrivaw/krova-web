@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Instagram, RefreshCw, ImagePlus } from "lucide-react";
+import { Instagram, RefreshCw, ImagePlus, GalleryHorizontal, Plus, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -11,7 +11,29 @@ import {
   type ChannelConnection,
   type InstagramConversation,
   type InstagramInsights,
+  type InstagramCarouselElement,
 } from "@/lib/api";
+
+const MIN_CAROUSEL_CARDS = 1;
+const MAX_CAROUSEL_CARDS = 10;
+
+type CarouselCardState = {
+  title: string;
+  subtitle: string;
+  imageUrl: string | null;
+  isUploading: boolean;
+  uploadError: string | null;
+  buttonEnabled: boolean;
+  buttonType: "web_url" | "postback";
+  buttonTitle: string;
+  buttonUrl: string;
+  buttonPayload: string;
+};
+
+const EMPTY_CAROUSEL_CARD: CarouselCardState = {
+  title: "", subtitle: "", imageUrl: null, isUploading: false, uploadError: null,
+  buttonEnabled: false, buttonType: "web_url", buttonTitle: "", buttonUrl: "", buttonPayload: "",
+};
 
 const INSTAGRAM_METRIC_LABELS: Record<string, string> = {
   reach: "Reach",
@@ -105,6 +127,83 @@ export default function InstagramPage() {
   const [igConversations, setIgConversations] = useState<InstagramConversation[]>([]);
   const [igLoadingConversations, setIgLoadingConversations] = useState(false);
   const [igConversationsError, setIgConversationsError] = useState<string | null>(null);
+
+  // Carousel ("Generic Template") composer - no Meta review needed, sends
+  // instantly, so no draft/pending state the way WhatsApp templates have.
+  const [carouselTo, setCarouselTo] = useState("");
+  const [carouselCards, setCarouselCards] = useState<CarouselCardState[]>([
+    { ...EMPTY_CAROUSEL_CARD },
+    { ...EMPTY_CAROUSEL_CARD },
+  ]);
+  const [isSendingCarousel, setIsSendingCarousel] = useState(false);
+  const [carouselError, setCarouselError] = useState<string | null>(null);
+  const [carouselResult, setCarouselResult] = useState<string | null>(null);
+
+  const updateCarouselCard = (index: number, patch: Partial<CarouselCardState>) => {
+    setCarouselCards((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  };
+
+  const addCarouselCard = () =>
+    setCarouselCards((prev) => (prev.length < MAX_CAROUSEL_CARDS ? [...prev, { ...EMPTY_CAROUSEL_CARD }] : prev));
+
+  const removeCarouselCard = (index: number) =>
+    setCarouselCards((prev) => (prev.length > MIN_CAROUSEL_CARDS ? prev.filter((_, i) => i !== index) : prev));
+
+  const handleCarouselImagePick = async (index: number, file: File) => {
+    updateCarouselCard(index, { isUploading: true, uploadError: null });
+    try {
+      const uploaded = await channels.uploadInstagramCarouselImage(file);
+      updateCarouselCard(index, { imageUrl: uploaded.image_url, isUploading: false });
+    } catch (err) {
+      updateCarouselCard(index, {
+        isUploading: false,
+        uploadError: err instanceof Error ? err.message : "Could not upload this image.",
+      });
+    }
+  };
+
+  const canSendCarousel =
+    carouselTo.trim() &&
+    carouselCards.length >= MIN_CAROUSEL_CARDS &&
+    carouselCards.every(
+      (c) =>
+        c.title.trim() &&
+        !c.isUploading &&
+        (!c.buttonEnabled || (c.buttonTitle.trim() && (c.buttonType === "web_url" ? c.buttonUrl.trim() : c.buttonPayload.trim()))),
+    );
+
+  const handleSendCarousel = async () => {
+    if (!canSendCarousel) return;
+    setIsSendingCarousel(true);
+    setCarouselError(null);
+    setCarouselResult(null);
+    try {
+      const elements: InstagramCarouselElement[] = carouselCards.map((c) => ({
+        title: c.title.trim(),
+        subtitle: c.subtitle.trim() || undefined,
+        image_url: c.imageUrl || undefined,
+        buttons: c.buttonEnabled
+          ? [{
+              type: c.buttonType,
+              title: c.buttonTitle.trim(),
+              url: c.buttonType === "web_url" ? c.buttonUrl.trim() : undefined,
+              payload: c.buttonType === "postback" ? c.buttonPayload.trim() : undefined,
+            }]
+          : [],
+      }));
+      const res = await channels.sendInstagramCarousel(carouselTo.trim(), elements);
+      if (res?.sent) {
+        setCarouselResult(`Sent — message id ${res.message_id}`);
+        setCarouselCards([{ ...EMPTY_CAROUSEL_CARD }, { ...EMPTY_CAROUSEL_CARD }]);
+      } else {
+        setCarouselResult("Send did not confirm");
+      }
+    } catch (err) {
+      setCarouselError(err instanceof Error ? err.message : "Could not send this carousel.");
+    } finally {
+      setIsSendingCarousel(false);
+    }
+  };
 
   const loadIgConversations = useCallback(async () => {
     setIgLoadingConversations(true);
@@ -422,6 +521,160 @@ export default function InstagramPage() {
                 {igSendResult && (
                   <p className="text-[11px] text-os-text-dim font-mono">{igSendResult}</p>
                 )}
+              </GlassCard>
+            )}
+
+            {connection.status === "active" && (
+              <GlassCard className="p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                    <GalleryHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Send a carousel</p>
+                    <p className="text-[11px] text-os-text-dim">
+                      Up to 10 swipeable cards - a picture, a title, an optional line and a button
+                      each. Unlike a WhatsApp template, this needs no Meta review - it sends
+                      instantly, to anyone who's messaged {connection.handle || "this account"} in
+                      the last 24 hours.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
+                    Recipient ID
+                  </label>
+                  <input
+                    type="text"
+                    value={carouselTo}
+                    onChange={(e) => setCarouselTo(e.target.value)}
+                    placeholder="Paste an Instagram-scoped ID, or pick one from the card above"
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  {carouselCards.map((card, i) => (
+                    <div key={i} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                      <div className="flex items-start gap-3">
+                        <label className="w-16 h-16 shrink-0 rounded-lg border border-dashed border-white/20 flex items-center justify-center cursor-pointer bg-black/30 overflow-hidden relative">
+                          {card.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={card.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 text-os-text-dim" />
+                          )}
+                          {card.isUploading && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                            </div>
+                          )}
+                          <input
+                            type="file" accept="image/jpeg,image/png" className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleCarouselImagePick(i, file);
+                            }}
+                          />
+                        </label>
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase text-os-text-dim">Card {i + 1}</span>
+                            <button
+                              type="button" onClick={() => removeCarouselCard(i)}
+                              disabled={carouselCards.length <= MIN_CAROUSEL_CARDS}
+                              className="text-os-text-dim hover:text-thread-bright disabled:opacity-30 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input
+                            type="text" maxLength={80} value={card.title}
+                            onChange={(e) => updateCarouselCard(i, { title: e.target.value })}
+                            placeholder="Title (max 80 characters)"
+                            className="w-full px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                          />
+                          <input
+                            type="text" maxLength={80} value={card.subtitle}
+                            onChange={(e) => updateCarouselCard(i, { subtitle: e.target.value })}
+                            placeholder="Subtitle, optional (max 80 characters)"
+                            className="w-full px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                          />
+                          {card.uploadError && <p className="text-[10px] text-red-400">{card.uploadError}</p>}
+                        </div>
+                      </div>
+
+                      <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim cursor-pointer">
+                        <input
+                          type="checkbox" checked={card.buttonEnabled}
+                          onChange={(e) => updateCarouselCard(i, { buttonEnabled: e.target.checked })}
+                        />
+                        Add a button
+                      </label>
+                      {card.buttonEnabled && (
+                        <div className="flex items-center gap-1.5 pl-5">
+                          <select
+                            value={card.buttonType}
+                            onChange={(e) => updateCarouselCard(i, { buttonType: e.target.value as "web_url" | "postback" })}
+                            className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-[11px] text-white focus:border-brass focus:outline-none shrink-0"
+                          >
+                            <option value="web_url">Open a link</option>
+                            <option value="postback">Postback (custom reply)</option>
+                          </select>
+                          <input
+                            type="text" maxLength={20} value={card.buttonTitle}
+                            onChange={(e) => updateCarouselCard(i, { buttonTitle: e.target.value })}
+                            placeholder="Button text"
+                            className="w-24 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-[11px] text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                          />
+                          {card.buttonType === "web_url" ? (
+                            <input
+                              type="text" value={card.buttonUrl}
+                              onChange={(e) => updateCarouselCard(i, { buttonUrl: e.target.value })}
+                              placeholder="https://..."
+                              className="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-[11px] text-white font-mono placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                            />
+                          ) : (
+                            <input
+                              type="text" value={card.buttonPayload}
+                              onChange={(e) => updateCarouselCard(i, { buttonPayload: e.target.value })}
+                              placeholder="Payload your bot will receive"
+                              className="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-[11px] text-white font-mono placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {carouselCards.length < MAX_CAROUSEL_CARDS && (
+                    <button
+                      type="button" onClick={addCarouselCard}
+                      className="text-[11px] text-brass-bright hover:text-brass flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Add another card
+                    </button>
+                  )}
+                </div>
+
+                {carouselError && (
+                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                    {carouselError}
+                  </div>
+                )}
+                {carouselResult && (
+                  <p className="text-[11px] text-os-text-dim font-mono">{carouselResult}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSendCarousel}
+                  disabled={!canSendCarousel || isSendingCarousel}
+                  className="px-4 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
+                >
+                  {isSendingCarousel ? "Sending…" : "Send carousel"}
+                </button>
               </GlassCard>
             )}
           </>
