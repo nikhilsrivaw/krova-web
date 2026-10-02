@@ -541,6 +541,35 @@ export default function InstagramPage() {
                   </div>
                 </div>
 
+                {igConversations.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
+                      Recipient
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {igConversations.flatMap((conversation) =>
+                        conversation.participants.map((person) => {
+                          const selected = carouselTo === person.id;
+                          return (
+                            <button
+                              key={`carousel-${conversation.id}-${person.id}`}
+                              type="button"
+                              onClick={() => setCarouselTo(person.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+                                selected
+                                  ? "bg-pink-500/[0.15] border-pink-500/[0.4] text-white"
+                                  : "bg-white/[0.04] border-white/[0.08] text-os-text-dim hover:text-white hover:bg-white/[0.07]"
+                              }`}
+                            >
+                              @{person.username || person.id}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
                     Recipient ID
@@ -549,7 +578,11 @@ export default function InstagramPage() {
                     type="text"
                     value={carouselTo}
                     onChange={(e) => setCarouselTo(e.target.value)}
-                    placeholder="Paste an Instagram-scoped ID, or pick one from the card above"
+                    placeholder={
+                      igConversations.length > 0
+                        ? "Or paste an Instagram-scoped ID directly"
+                        : "Paste an Instagram-scoped ID, or click Load conversations above to pick someone"
+                    }
                     className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
                   />
                 </div>
