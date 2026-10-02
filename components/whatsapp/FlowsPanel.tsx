@@ -301,6 +301,21 @@ export function FlowsPanel() {
     e.preventDefault();
     setCreateError(null);
 
+    // Checked here rather than left to <input required> - this modal's
+    // content scrolls inside components/ui/Modal.tsx's max-h-[90vh]
+    // container, and a browser's native validation bubble does not
+    // reliably appear (or scroll the field into view) inside a nested
+    // overflow-y-auto area, which can silently block the submit event
+    // entirely. Same fix already applied to the Create Template modal.
+    if (!name.trim()) {
+      setCreateError("Give the flow a name.");
+      return;
+    }
+    if (builderMode === "json" && !flowJsonText.trim()) {
+      setCreateError("Paste the flow's JSON, or switch to Build a form.");
+      return;
+    }
+
     let parsed: Record<string, unknown>;
     if (builderMode === "guided") {
       if (builderFields.length === 0) {
@@ -403,6 +418,16 @@ export function FlowsPanel() {
     if (!sendTarget) return;
     setSendError(null);
     setSendOk(null);
+    // Same reason as handleCreate above - native required validation is
+    // unreliable inside this modal's scrollable content area.
+    if (!sendCustomerId) {
+      setSendError("Choose a customer.");
+      return;
+    }
+    if (!sendBody.trim() || !sendScreen.trim() || !sendCta.trim()) {
+      setSendError("Message body, entry screen id and button text are all required.");
+      return;
+    }
     setIsSending(true);
     try {
       const result = await flowsApi.send(sendTarget.id, {
@@ -591,7 +616,7 @@ export function FlowsPanel() {
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Name</label>
             <input
-              type="text" required value={name} onChange={(e) => setName(e.target.value)}
+              type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Appointment Booking"
               className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
             />
@@ -624,7 +649,7 @@ export function FlowsPanel() {
                 </button>
               </div>
               <textarea
-                required rows={10} value={flowJsonText} onChange={(e) => setFlowJsonText(e.target.value)}
+                rows={10} value={flowJsonText} onChange={(e) => setFlowJsonText(e.target.value)}
                 placeholder="{ ... }"
                 className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-[11px] font-mono text-white focus:border-brass focus:outline-none"
               />
@@ -745,7 +770,7 @@ export function FlowsPanel() {
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Customer</label>
             <select
-              required value={sendCustomerId} onChange={(e) => setSendCustomerId(e.target.value)}
+              value={sendCustomerId} onChange={(e) => setSendCustomerId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
             >
               <option value="">Choose a customer</option>
@@ -757,7 +782,7 @@ export function FlowsPanel() {
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Message body</label>
             <textarea
-              required rows={2} value={sendBody} onChange={(e) => setSendBody(e.target.value)}
+              rows={2} value={sendBody} onChange={(e) => setSendBody(e.target.value)}
               className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
             />
           </div>
@@ -765,14 +790,14 @@ export function FlowsPanel() {
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Entry screen id</label>
               <input
-                type="text" required value={sendScreen} onChange={(e) => setSendScreen(e.target.value)}
+                type="text" value={sendScreen} onChange={(e) => setSendScreen(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Button text</label>
               <input
-                type="text" required maxLength={20} value={sendCta} onChange={(e) => setSendCta(e.target.value)}
+                type="text" maxLength={20} value={sendCta} onChange={(e) => setSendCta(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
               />
             </div>
