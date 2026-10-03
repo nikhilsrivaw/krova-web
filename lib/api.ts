@@ -2989,3 +2989,24 @@ export type EmailConnection = {
   connected_at: string | null;
 };
 
+
+// ── Ask KROVA (owner text chat, in the app) ───────────────────────────────────
+
+export type OwnerTurn = { role: "user" | "assistant"; text: string };
+
+export const owner = {
+  ask: (question: string, history: OwnerTurn[] = []) =>
+    api.post<{ answer: string }>("/owner/ask", { question, history }),
+};
+
+// ── Push notifications (Web Push / VAPID) ─────────────────────────────────────
+
+export const push = {
+  vapidPublicKey: () => api.get<{ public_key: string }>("/push/vapid-public-key"),
+
+  subscribe: (endpoint: string, keys: { p256dh: string; auth: string }) =>
+    api.post<void>("/push/subscribe", { endpoint, keys }),
+
+  unsubscribe: (endpoint: string) =>
+    api.delete<void>(`/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`),
+};

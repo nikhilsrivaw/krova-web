@@ -121,11 +121,14 @@ export async function register(input: {
  */
 export async function googleStart(
   businessName?: string,
-  vertical?: string
+  vertical?: string,
+  fromApp = false
 ): Promise<string> {
   const params = new URLSearchParams();
   if (businessName) params.set("business_name", businessName);
   if (vertical) params.set("vertical", vertical);
+  // The app subdomain gets the browser back to its own /auth/google/complete.
+  if (fromApp) params.set("app", "1");
   const qs = params.toString();
   const res = await fetch(
     `${API_BASE}/api/v1/auth/google/start${qs ? `?${qs}` : ""}`

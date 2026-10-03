@@ -39,3 +39,41 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// Web Push: a short notification for the owner. The backend sends paths as
+// "/app/..."; on the app subdomain the scope is "/", so the prefix is dropped.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "KROVA", {
+      body: data.body || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/app/today" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const scopePath = new URL(self.registration.scope).pathname;
+  let target = (event.notification.data && event.notification.data.url) || "/app/today";
+  if (scopePath === "/" && target.startsWith("/app/")) target = target.slice(4);
+  const absolute = new URL(target, self.registration.scope).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.navigate(absolute);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(absolute);
+    })
+  );
+});

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { signIn } from "@/lib/auth";
+import { signIn, googleStart } from "@/lib/auth";
 import { appPath } from "@/lib/app-nav";
 
 export default function AppLoginPage() {
@@ -12,6 +12,18 @@ export default function AppLoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  const continueWithGoogle = async () => {
+    setGoogleBusy(true);
+    setError(null);
+    try {
+      window.location.href = await googleStart(undefined, undefined, true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
+      setGoogleBusy(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +95,21 @@ export default function AppLoginPage() {
           {!isLoading && <ArrowRight className="w-4 h-4" />}
         </button>
       </form>
+
+      <div className="flex items-center gap-3 my-6">
+        <div className="h-px flex-1 bg-os-border" />
+        <span className="text-[10px] font-mono uppercase tracking-wide text-os-text-dim">or</span>
+        <div className="h-px flex-1 bg-os-border" />
+      </div>
+
+      <button
+        type="button"
+        onClick={continueWithGoogle}
+        disabled={googleBusy}
+        className="w-full py-3.5 rounded-xl bg-os-card border border-os-border text-os-ink text-sm font-semibold flex items-center justify-center gap-2 active:bg-white/[0.03] disabled:opacity-50"
+      >
+        {googleBusy ? "Redirecting..." : "Continue with Google"}
+      </button>
 
       <p className="text-center text-xs text-os-text-dim mt-8">
         This is the same KROVA account you use on the web.

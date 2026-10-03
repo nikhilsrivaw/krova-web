@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, BookOpen, BarChart3, Settings, Siren, LogOut,
+  Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles,
   CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
@@ -27,8 +27,9 @@ type Item = {
 // desktop pages for now (they already work on a phone's viewport, just
 // not redesigned mobile-first yet) rather than duplicating each one here.
 const ITEMS: Item[] = [
+  { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
-  { label: "Customers", href: "/customers", icon: Users },
+  { label: "Customers", href: "/customers", icon: Users, native: true },
   { label: "Scheduling", href: "/scheduling", icon: CalendarClock, requiresCapability: "scheduling" },
   { label: "Orders", href: "/orders", icon: Package, requiresCapability: "order_sync" },
   { label: "Queue", href: "/queue", icon: Clock, requiresCapability: "opd_queue" },
@@ -38,7 +39,7 @@ const ITEMS: Item[] = [
   { label: "Properties", href: "/properties", icon: Building2, requiresCapability: "property_listings" },
   { label: "Knowledge & Gaps", href: "/knowledge", icon: BookOpen },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Settings", href: "/settings", icon: Settings, native: true },
 ];
 
 export default function MorePage() {
