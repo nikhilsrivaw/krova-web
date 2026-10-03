@@ -17,7 +17,7 @@ export function isAppSubdomain(hostname?: string): boolean {
 
 /** path must start with "/" and be relative to the app shell's own root, e.g. "/today", "/inbox/abc123". */
 export function appPath(path: string): string {
-  return isAppSubdomain() ? path : `/app${path}`;
+  return `/app${path}`;
 }
 
 /**

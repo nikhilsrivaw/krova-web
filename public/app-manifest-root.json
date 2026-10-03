@@ -2,7 +2,7 @@
   "name": "KROVA",
   "short_name": "KROVA",
   "description": "Your AI business partner, in your pocket.",
-  "start_url": "/today",
+  "start_url": "/app/today",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

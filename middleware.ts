@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Serves the KROVA app shell (app/app/*) at its own subdomain with clean
- * paths - app.krova.space/inbox, not app.krova.space/app/inbox - while the
- * actual routes stay at /app/* on disk. A request to the apex/www domain is
- * untouched (the full marketing site + desktop OS lives there, unchanged);
- * a request to the app subdomain gets its pathname rewritten to /app/* on
- * the way to Next's router, invisibly, so the browser's own address bar
- * keeps showing the clean path. See lib/app-nav.ts's appPath() for the
- * client-side half of this (building links that work on both).
+ * On the app subdomain, the root goes straight to the app's home. Every other
+ * path already lives under /app (appPath() builds them that way everywhere),
+ * so nothing is rewritten: a rewrite here used to lose to desktop routes that
+ * share a path (/approvals, /login, /ledger), and the desktop page showed up.
  */
 const APP_HOSTS = ["app.krova.space"];
 
@@ -19,18 +15,15 @@ function isAppHost(host: string): boolean {
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   if (!isAppHost(host)) return NextResponse.next();
-
-  const { pathname } = req.nextUrl;
-  if (pathname.startsWith("/app")) return NextResponse.next();
-
-  const url = req.nextUrl.clone();
-  url.pathname = pathname === "/" ? "/app/today" : `/app${pathname}`;
-  return NextResponse.rewrite(url);
+  if (req.nextUrl.pathname === "/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/app/today";
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
 }
 
 export const config = {
-  // Skip Next internals, API routes and anything that looks like a static
-  // file (has a dot - icons, manifest, the service worker itself) - those
-  // must keep resolving from the real public/ root on the app subdomain too.
-  matcher: ["/((?!_next|api|.*\\..*).*)"],
+  // Skip Next internals, API routes and static files (anything with a dot).
+  matcher: ["/((?!_next|api|.*\..*).*)"],
 };

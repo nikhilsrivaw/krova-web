@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
-import { appPath, desktopUrl } from "@/lib/app-nav";
+import { appPath } from "@/lib/app-nav";
 
 type Item = {
   label: string;
@@ -30,15 +30,6 @@ const ITEMS: Item[] = [
   { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
   { label: "Customers", href: "/customers", icon: Users, native: true },
-  { label: "Scheduling", href: "/scheduling", icon: CalendarClock, requiresCapability: "scheduling" },
-  { label: "Orders", href: "/orders", icon: Package, requiresCapability: "order_sync" },
-  { label: "Queue", href: "/queue", icon: Clock, requiresCapability: "opd_queue" },
-  { label: "Cases", href: "/cases", icon: Scale, requiresCapability: "case_tracking" },
-  { label: "Claims", href: "/claims", icon: FileCheck2, requiresCapability: "tpa_claim_tracking" },
-  { label: "Quotations", href: "/quotations", icon: FileText, requiresCapability: "quotations" },
-  { label: "Properties", href: "/properties", icon: Building2, requiresCapability: "property_listings" },
-  { label: "Knowledge & Gaps", href: "/knowledge", icon: BookOpen },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Settings", href: "/settings", icon: Settings, native: true },
 ];
 
@@ -68,7 +59,7 @@ export default function MorePage() {
           return (
             <a
               key={item.href}
-              href={item.native ? appPath(item.href) : desktopUrl(item.href)}
+              href={appPath(item.href)}
               className={`flex items-center gap-3 px-4 py-3.5 active:bg-white/[0.03] transition-colors ${
                 i !== visible.length - 1 ? "border-b border-os-border" : ""
               }`}

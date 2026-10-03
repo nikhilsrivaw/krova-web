@@ -29,8 +29,7 @@ self.addEventListener("fetch", (event) => {
   // Only our own http(s) pages. Browser extensions also send requests through
   // this worker (chrome-extension://), and the Cache API refuses those.
   if (url.origin !== self.location.origin) return;
-  const scopePath = new URL(self.registration.scope).pathname; // "/" or "/app/"
-  if (scopePath !== "/" && !url.pathname.startsWith(scopePath)) return;
+  if (!url.pathname.startsWith("/app")) return;
 
   event.respondWith(
     fetch(event.request)
@@ -64,10 +63,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const scopePath = new URL(self.registration.scope).pathname;
-  let target = (event.notification.data && event.notification.data.url) || "/app/today";
-  if (scopePath === "/" && target.startsWith("/app/")) target = target.slice(4);
-  const absolute = new URL(target, self.registration.scope).href;
+  const target = (event.notification.data && event.notification.data.url) || "/app/today";
+  const absolute = new URL(target, self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {
