@@ -21,7 +21,11 @@ import { AppTopBar } from "@/components/app-shell/AppTopBar";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isLoginRoute = pathname === appPath("/login") || pathname === "/app/login" || pathname === "/login";
+  // Public routes skip the session guard: the login page, and the Google
+  // callback, which has to finish its code exchange before a session exists.
+  const isLoginRoute =
+    pathname === appPath("/login") || pathname === "/app/login" || pathname === "/login" ||
+    pathname.endsWith("/auth/google/complete");
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
