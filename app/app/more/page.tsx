@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles,
+  Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles, Terminal,
   CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
@@ -27,6 +27,7 @@ type Item = {
 // desktop pages for now (they already work on a phone's viewport, just
 // not redesigned mobile-first yet) rather than duplicating each one here.
 const ITEMS: Item[] = [
+  { label: "Command", href: "/command", icon: Terminal, native: true },
   { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
   { label: "Customers", href: "/customers", icon: Users, native: true },

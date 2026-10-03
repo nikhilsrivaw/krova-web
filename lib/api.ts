@@ -3041,3 +3041,14 @@ export const commands = {
   confirm: (id: string) => api.post<CommandRecord>(`/commands/${id}/confirm`),
   cancel: (id: string) => api.post<CommandRecord>(`/commands/${id}/cancel`),
 };
+
+export type UnderstandResult = {
+  source: "pattern" | "ai" | "unavailable";
+  tool: string | null;
+  args: Record<string, unknown>;
+  message: string | null;
+};
+
+export const commandBar = {
+  understand: (text: string) => api.post<UnderstandResult>("/commands/understand", { text }),
+};
