@@ -25,15 +25,18 @@ self.addEventListener("activate", (event) => {
 // shows stale data when a connection is actually available.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const scopePath = new URL(self.registration.scope).pathname; // "/" or "/app/"
   const url = new URL(event.request.url);
+  // Only our own http(s) pages. Browser extensions also send requests through
+  // this worker (chrome-extension://), and the Cache API refuses those.
+  if (url.origin !== self.location.origin) return;
+  const scopePath = new URL(self.registration.scope).pathname; // "/" or "/app/"
   if (scopePath !== "/" && !url.pathname.startsWith(scopePath)) return;
 
   event.respondWith(
     fetch(event.request)
       .then((res) => {
         const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => {});
         return res;
       })
       .catch(() => caches.match(event.request))
