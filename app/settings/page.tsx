@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { SettingsControls } from "@/components/commands/SettingsControls";
 import { Badge } from "@/components/ui/Badge";
 import {
   account,
@@ -631,6 +632,11 @@ export default function SettingsPage() {
             {loadError}
           </div>
         )}
+        {/* BUSINESS RULES: owner commands, each change confirmed first */}
+        <GlassCard className="p-6">
+          <SettingsControls canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+        </GlassCard>
+
         {/* SECTION 1: BUSINESS PROFILE & VERTICAL */}
         <form onSubmit={handleSaveProfile}>
           <GlassCard className="p-6 space-y-6">

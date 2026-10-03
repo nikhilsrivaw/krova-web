@@ -3010,3 +3010,34 @@ export const push = {
   unsubscribe: (endpoint: string) =>
     api.delete<void>(`/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`),
 };
+
+// ── Owner commands (command layer, phase 1) ───────────────────────────────────
+
+export type CommandStatus = "pending" | "done" | "failed" | "cancelled";
+
+export type CommandRecord = {
+  id: string;
+  tool: string;
+  status: CommandStatus;
+  preview: string[];
+  result: Record<string, unknown> | null;
+  error: string | null;
+};
+
+export type RegistrySetting = {
+  key: string;
+  label: string;
+  kind: "int" | "bool" | "choice" | "int_list";
+  value: number | boolean | string | number[];
+  choices: string[];
+  minimum: number | null;
+  maximum: number | null;
+};
+
+export const commands = {
+  settings: () => api.get<RegistrySetting[]>("/commands/settings"),
+  preview: (tool: string, args: Record<string, unknown>) =>
+    api.post<CommandRecord>("/commands/preview", { tool, args }),
+  confirm: (id: string) => api.post<CommandRecord>(`/commands/${id}/confirm`),
+  cancel: (id: string) => api.post<CommandRecord>(`/commands/${id}/cancel`),
+};
