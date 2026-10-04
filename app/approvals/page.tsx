@@ -476,15 +476,29 @@ export default function ApprovalsPage() {
                   )}
 
                   {/* AI Proposed Response Body */}
-                  <div className="my-4 p-4 rounded-xl bg-brass/10 border border-brass/20 text-sm">
-                    <div className="text-[10px] uppercase font-mono text-brass-bright font-bold mb-1.5 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-brass" />
-                      AI Proposed Reply (Ready to Send):
+                  {draft.action === "escalate" ? (
+                    <div className="my-4 p-4 rounded-xl bg-rose-500/10 border border-rose-400/30 text-sm">
+                      <div className="text-[10px] uppercase font-mono text-rose-300 font-bold mb-1.5">
+                        AI could not answer - needs a person
+                      </div>
+                      <p className="text-white leading-relaxed font-sans">
+                        {draft.gap ?? "The AI did not have enough to reply to this message."}
+                      </p>
+                      <p className="text-xs text-os-text-dim mt-2">
+                        Write the reply yourself with "Write Reply", or reject this item.
+                      </p>
                     </div>
-                    <p className="text-white leading-relaxed whitespace-pre-wrap font-sans">
-                      {draft.body}
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="my-4 p-4 rounded-xl bg-brass/10 border border-brass/20 text-sm">
+                      <div className="text-[10px] uppercase font-mono text-brass-bright font-bold mb-1.5 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-brass" />
+                        AI Proposed Reply (Ready to Send):
+                      </div>
+                      <p className="text-white leading-relaxed whitespace-pre-wrap font-sans">
+                        {draft.body}
+                      </p>
+                    </div>
+                  )}
 
                   {/* AI Stated Reasoning & Gaps (Critical for Trust) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-xs">
@@ -535,22 +549,24 @@ export default function ApprovalsPage() {
                             type="button"
                             onClick={() => {
                               setEditingDraft(draft);
-                              setEditedText(draft.body);
+                              setEditedText(draft.body ?? "");
                             }}
                             className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] transition-all flex items-center gap-1.5 cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                            Edit Before Send
+                            {draft.action === "escalate" ? "Write Reply" : "Edit Before Send"}
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(draft.id)}
-                            className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-seal hover:bg-seal-dim shadow-lg shadow-seal/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Check className="w-4 h-4" />
-                            Approve & Send
-                          </button>
+                          {draft.action !== "escalate" && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(draft.id)}
+                              className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-seal hover:bg-seal-dim shadow-lg shadow-seal/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Check className="w-4 h-4" />
+                              Approve & Send
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -601,7 +617,7 @@ export default function ApprovalsPage() {
               </button>
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !editedText.trim()}
                 onClick={() => {
                   if (editingDraft) handleApprove(editingDraft.id, editedText);
                 }}
