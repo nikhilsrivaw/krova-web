@@ -916,6 +916,8 @@ export type DocumentType = { id: string; name: string };
 export type ComplianceRequirement = {
   requirement_id: string;
   document_types: DocumentType[];
+  /** Each inner list is one "any one of these is enough" group (e.g. Udyam, COI or GST). */
+  groups?: DocumentType[][];
 };
 
 export type VoiceApplication = {

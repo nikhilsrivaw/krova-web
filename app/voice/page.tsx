@@ -42,6 +42,7 @@ import {
   type CallLog,
   type ChannelConnection,
   type AgentSettings,
+  type DocumentType,
 } from "@/lib/api";
 
 const STATUS_LABEL: Record<VoiceApplication["status"], string> = {
@@ -295,8 +296,16 @@ export default function VoicePage() {
       setOwnedNumbers((prev) => prev.filter((n) => n.number !== number));
     });
 
-  const documentTypesRemaining =
-    requirement?.document_types.filter((d) => !uploadedDocTypeIds.has(d.id)) ?? [];
+  // Plivo asks for groups of alternatives - ONE document from each group is
+  // enough (e.g. Udyam, COI or GST). Falls back to one group per type if the
+  // backend has not sent groups yet.
+  const docGroups: DocumentType[][] =
+    requirement?.groups && requirement.groups.length > 0
+      ? requirement.groups
+      : (requirement?.document_types ?? []).map((d) => [d]);
+  const groupsRemaining = docGroups.filter(
+    (group) => !group.some((d) => uploadedDocTypeIds.has(d.id)),
+  );
 
   return (
     <AppLayout
@@ -421,31 +430,45 @@ export default function VoicePage() {
                     {hasEndUser && requirement && !application && (
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
                         <p className="text-xs font-bold text-white">3. Upload Documents</p>
-                        {requirement.document_types.map((docType) => {
-                          const done = uploadedDocTypeIds.has(docType.id);
+                        {docGroups.map((group) => {
+                          const groupDone = group.some((d) => uploadedDocTypeIds.has(d.id));
                           return (
-                            <div
-                              key={docType.id}
-                              className="flex items-center justify-between text-xs"
-                            >
-                              <span className="text-os-text-dim">{docType.name}</span>
-                              {done ? (
-                                <CheckCircle2 className="w-4 h-4 text-seal-bright" />
-                              ) : (
-                                <label className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white font-semibold cursor-pointer flex items-center gap-1.5">
-                                  <Upload className="w-3.5 h-3.5" />
-                                  {busy === `doc-${docType.id}` ? "Uploading..." : "Upload"}
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    disabled={busy === `doc-${docType.id}`}
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleUploadDocument(docType.id, docType.name, file);
-                                    }}
-                                  />
-                                </label>
+                            <div key={group.map((d) => d.id).join("|")} className="space-y-2">
+                              {group.length > 1 && (
+                                <p className="text-[11px] text-os-text-dim">
+                                  Upload any one of these:
+                                </p>
                               )}
+                              {group.map((docType) => {
+                                const done = uploadedDocTypeIds.has(docType.id);
+                                return (
+                                  <div
+                                    key={docType.id}
+                                    className="flex items-center justify-between text-xs"
+                                  >
+                                    <span className="text-os-text-dim">{docType.name}</span>
+                                    {done ? (
+                                      <CheckCircle2 className="w-4 h-4 text-seal-bright" />
+                                    ) : groupDone ? (
+                                      <span className="text-[11px] text-os-text-dim">Not needed</span>
+                                    ) : (
+                                      <label className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white font-semibold cursor-pointer flex items-center gap-1.5">
+                                        <Upload className="w-3.5 h-3.5" />
+                                        {busy === `doc-${docType.id}` ? "Uploading..." : "Upload"}
+                                        <input
+                                          type="file"
+                                          className="hidden"
+                                          disabled={busy === `doc-${docType.id}`}
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleUploadDocument(docType.id, docType.name, file);
+                                          }}
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           );
                         })}
@@ -456,7 +479,7 @@ export default function VoicePage() {
                     {hasEndUser &&
                       requirement &&
                       !application &&
-                      documentTypesRemaining.length === 0 && (
+                      groupsRemaining.length === 0 && (
                         <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                           <p className="text-xs font-bold text-white">4. Submit for Review</p>
                           <button
