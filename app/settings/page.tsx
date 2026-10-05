@@ -36,6 +36,7 @@ import {
   account,
   approvals,
   channels,
+  escalations,
   waAccount,
   integrations,
   dataExport,
@@ -382,6 +383,51 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
   }, []);
+
+  // Escalation due-time window and the outbound number series. Both live in
+  // Business.settings on the backend; the blank SLA field means "no due time".
+  const [slaHoursInput, setSlaHoursInput] = useState("");
+  const [outboundSeries, setOutboundSeries] = useState<"" | "080" | "022" | "140">("");
+  const [isSavingEscalation, setIsSavingEscalation] = useState(false);
+  const [escalationSaved, setEscalationSaved] = useState(false);
+  const [escalationError, setEscalationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    escalations.settings().then((s) => {
+      if (!mounted) return;
+      setSlaHoursInput(s.escalation_sla_hours ? String(s.escalation_sla_hours) : "");
+      setOutboundSeries(s.outbound_number_series ?? "");
+    }).catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSaveEscalationSettings = async () => {
+    const trimmed = slaHoursInput.trim();
+    const hours = trimmed === "" ? null : Number(trimmed);
+    if (hours !== null && (!Number.isInteger(hours) || hours < 1 || hours > 168)) {
+      setEscalationError("Enter a whole number of hours between 1 and 168, or leave it blank.");
+      return;
+    }
+    setIsSavingEscalation(true);
+    setEscalationError(null);
+    setEscalationSaved(false);
+    try {
+      const saved = await escalations.updateSettings({
+        escalation_sla_hours: hours,
+        outbound_number_series: outboundSeries || null,
+      });
+      setSlaHoursInput(saved.escalation_sla_hours ? String(saved.escalation_sla_hours) : "");
+      setOutboundSeries(saved.outbound_number_series ?? "");
+      setEscalationSaved(true);
+    } catch (err) {
+      setEscalationError(err instanceof Error ? err.message : "Could not save these settings.");
+    } finally {
+      setIsSavingEscalation(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -1010,6 +1056,72 @@ export default function SettingsPage() {
                 (app/instagram/page.tsx) - see this settings page's own
                 channel cards for WhatsApp/Gmail/etc. above and below for
                 the ones still managed from here. */}
+          </div>
+        </GlassCard>
+
+        {/* SECTION 2y: ESCALATIONS & OUTBOUND CALLING */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Escalations &amp; outbound calls</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Set how long an escalation may stay open before the owner gets an SMS, and which number series outbound calls use. Indian outbound calls must come from the series that matches their purpose.
+          </p>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="sla-hours" className="text-xs font-semibold text-white">
+                Escalation due time (hours)
+              </label>
+              <input
+                id="sla-hours"
+                type="number"
+                min={1}
+                max={168}
+                inputMode="numeric"
+                value={slaHoursInput}
+                onChange={(e) => setSlaHoursInput(e.target.value)}
+                placeholder="Not set - no due-time alerts"
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
+              />
+              <p className="text-[11px] text-os-text-dim font-mono">
+                When an open escalation passes this many hours, the owner gets an SMS. Leave blank to turn this off.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="outbound-series" className="text-xs font-semibold text-white">
+                Outbound number series
+              </label>
+              <select
+                id="outbound-series"
+                value={outboundSeries}
+                onChange={(e) => setOutboundSeries(e.target.value as "" | "080" | "022" | "140")}
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
+              >
+                <option value="">Not set</option>
+                <option value="080">080 - service calls</option>
+                <option value="022">022 - service calls</option>
+                <option value="140">140 - promotional calls</option>
+              </select>
+              <p className="text-[11px] text-os-text-dim font-mono">
+                Campaigns are blocked from sending unless their purpose matches this series. BFSI (160) is not offered here - it needs its own approval.
+              </p>
+            </div>
+
+            {escalationError && <p className="text-xs text-red-400">{escalationError}</p>}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveEscalationSettings}
+                disabled={isSavingEscalation}
+                className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSavingEscalation ? "Saving..." : "Save"}
+              </button>
+              {escalationSaved && <span className="text-xs text-os-accent">Saved</span>}
+            </div>
           </div>
         </GlassCard>
 

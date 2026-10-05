@@ -246,9 +246,17 @@ export type EscalationRow = {
   escalated_further_at: string | null;
 };
 
+export type EscalationSettings = {
+  escalation_sla_hours: number | null;
+  outbound_number_series: "080" | "022" | "140" | null;
+};
+
 export const escalations = {
   list: (acknowledged = false) =>
     api.get<EscalationRow[]>(`/escalations?acknowledged=${acknowledged}`),
+  settings: () => api.get<EscalationSettings>("/escalations/settings"),
+  updateSettings: (body: EscalationSettings) =>
+    api.patch<EscalationSettings>("/escalations/settings", body),
   acknowledge: (id: string) => api.post<EscalationRow>(`/escalations/${id}/acknowledge`),
   setStatus: (id: string, status: "in_progress" | "resolved" | "dismissed", resolutionNote?: string) =>
     api.patch<EscalationRow>(`/escalations/${id}/status`, {
