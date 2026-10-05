@@ -299,6 +299,12 @@ export default function VoicePage() {
   // Plivo asks for groups of alternatives - ONE document from each group is
   // enough (e.g. Udyam, COI or GST). Falls back to one group per type if the
   // backend has not sent groups yet.
+  // What Plivo accepts under each document type, shown under the name so the
+  // owner knows which certificate to upload (Plivo's own wording).
+  const DOC_HINTS: Record<string, string> = {
+    "Registration Certificate": "Certificate of Incorporation or Udyam Registration",
+    "GST certificate": "GST Registration Certificate (Form GST REG-06)",
+  };
   const docGroups: DocumentType[][] =
     requirement?.groups && requirement.groups.length > 0
       ? requirement.groups
@@ -446,7 +452,12 @@ export default function VoicePage() {
                                     key={docType.id}
                                     className="flex items-center justify-between text-xs"
                                   >
-                                    <span className="text-os-text-dim">{docType.name}</span>
+                                    <div className="space-y-0.5">
+                                      <span className="text-os-text-dim">{docType.name}</span>
+                                      {DOC_HINTS[docType.name] && (
+                                        <p className="text-[11px] text-os-text-dim/70">{DOC_HINTS[docType.name]}</p>
+                                      )}
+                                    </div>
                                     {done ? (
                                       <CheckCircle2 className="w-4 h-4 text-seal-bright" />
                                     ) : groupDone ? (
