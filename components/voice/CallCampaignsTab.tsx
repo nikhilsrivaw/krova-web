@@ -14,6 +14,7 @@ import {
   type CallCampaignPreview,
   type CallCampaign,
   type CallScript,
+  type CallCampaignPurpose,
 } from "@/lib/api";
 
 const STATUS_VARIANT: Record<CallCampaign["status"], "emerald" | "amber" | "rose" | "cyan"> = {
@@ -37,6 +38,7 @@ export function CallCampaignsTab() {
   const [objective, setObjective] = useState("");
   const [scripts, setScripts] = useState<CallScript[]>([]);
   const [callScriptId, setCallScriptId] = useState<string | null>(null);
+  const [purpose, setPurpose] = useState<CallCampaignPurpose | "">("");
 
   const [previewData, setPreviewData] = useState<CallCampaignPreview | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -110,7 +112,7 @@ export function CallCampaignsTab() {
   }, [audience, tag, gonequietDays, objective]);
 
   const handleLaunch = async () => {
-    if (!audience) return;
+    if (!audience || !purpose) return;
     setIsLaunching(true);
     setLaunchError(null);
     try {
@@ -120,6 +122,7 @@ export function CallCampaignsTab() {
         audience_params: audienceParams(),
         objective: objective.trim(),
         call_script_id: callScriptId ?? undefined,
+        purpose,
       });
       await callCampaigns.send(created.id);
       setIsConfirmOpen(false);
@@ -127,6 +130,7 @@ export function CallCampaignsTab() {
       setAudience(null);
       setObjective("");
       setCallScriptId(null);
+      setPurpose("");
       setPreviewData(null);
       await loadData();
     } catch (err) {
@@ -225,6 +229,24 @@ export function CallCampaignsTab() {
 
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
+              Purpose - which number series to call from
+            </label>
+            <select
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value as CallCampaignPurpose | "")}
+              className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="">Choose a purpose</option>
+              <option value="service">Service call (080 / 022 series)</option>
+              <option value="promotional">Promotional call (140 series)</option>
+            </select>
+            <p className="text-[11px] text-os-text-dim mt-1.5">
+              Indian rules require the number series to match the purpose. Set your series in Settings.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
               Objective - a brief, not a script
             </label>
             <textarea
@@ -293,7 +315,7 @@ export function CallCampaignsTab() {
           <div className="pt-2 flex justify-end">
             <button
               type="button"
-              disabled={!previewData || previewData.will_reach === 0 || isPreviewing}
+              disabled={!previewData || previewData.will_reach === 0 || isPreviewing || !purpose}
               onClick={() => setIsConfirmOpen(true)}
               className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-md shadow-cyan-600/20 cursor-pointer"
             >

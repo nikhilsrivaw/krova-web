@@ -1606,7 +1606,11 @@ export type CallCampaignRequest = {
   objective: string;
   /** Set to run a fixed CallScript instead of an improvised call. */
   call_script_id?: string;
+  /** Must match the business's outbound number series (service = 080/022, promotional = 140). */
+  purpose?: CallCampaignPurpose;
 };
+
+export type CallCampaignPurpose = "service" | "promotional";
 
 export type CallRecipientPreview = {
   customer_id: string;
@@ -1630,6 +1634,7 @@ export type CallCampaign = {
   audience_label: string;
   objective: string;
   call_script_id: string | null;
+  purpose?: CallCampaignPurpose | null;
   status: "draft" | "sending" | "sent" | "paused" | "cancelled" | "failed";
   recipients: number;
   /** Calls actually placed (jobs enqueued), not calls that were answered. */
