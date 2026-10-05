@@ -402,7 +402,7 @@ export default function SchedulingPage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-scheduling space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -414,7 +414,7 @@ export default function SchedulingPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           {[
             { key: "providers", label: `${providerLabelPlural} (${doctors.filter((d) => d.active).length})` },
             { key: "appointments", label: `${capitalize(labels.booking_noun_plural)} (${appointments.length})` },
@@ -452,8 +452,8 @@ export default function SchedulingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {doctors.map((d) => (
                   <GlassCard key={d.id} className={`p-5 ${!d.active ? "opacity-50" : ""}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
+                    <div className="workspace-card-heading justify-between mb-4">
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-white">{d.name}</span>
                           {!d.active && <Badge variant="outline" size="sm">Inactive</Badge>}
@@ -468,7 +468,7 @@ export default function SchedulingPage() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                    <div className="workspace-actions justify-between pt-4 border-t border-white/[0.06]">
                       <button
                         type="button"
                         onClick={() => openHoursModal(d)}

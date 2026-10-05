@@ -140,7 +140,7 @@ export default function EscalationsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="workspace-escalations space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
@@ -163,7 +163,7 @@ export default function EscalationsPage() {
           </Link>
         </div>
 
-        <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
+        <div className="workspace-tabs rounded-xl border border-white/[0.08] bg-white/[0.02] p-1 w-fit">
           {(["open", "acknowledged"] as const).map((mode) => (
             <button
               key={mode}
@@ -211,7 +211,7 @@ export default function EscalationsPage() {
             <GlassCard
               key={e.id}
               onClick={() => setSelected(e)}
-              className="p-4 flex items-start justify-between gap-4 cursor-pointer hover:bg-white/[0.03] transition-all"
+              className="p-5 flex flex-col sm:flex-row items-start justify-between gap-4 cursor-pointer hover:bg-white/[0.03] transition-colors"
             >
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">

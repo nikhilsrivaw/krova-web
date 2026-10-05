@@ -116,8 +116,8 @@ export default function LiveAssistPage() {
       title="Live Assist"
       subtitle="Real-time suggestions while you're on a call - the AI listens, you talk"
     >
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
+      <div className="workspace-live-assist grid items-start gap-5 xl:grid-cols-2">
+        <div className="workspace-toolbar xl:col-span-2 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
           <span
             className={`h-2 w-2 rounded-full ${
               status === "live"

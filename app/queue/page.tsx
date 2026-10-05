@@ -233,7 +233,7 @@ export default function QueuePage() {
   if (!labels) {
     return (
       <AppLayout title="Queue" subtitle="Who's waiting right now, and how many are ahead of them.">
-        <div className="space-y-3 max-w-4xl mx-auto">
+        <div className="workspace-queue space-y-3">
           {isLoading ? (
             <>
               <Skeleton className="h-20 w-full" />
@@ -254,7 +254,7 @@ export default function QueuePage() {
       title="Queue"
       subtitle={`Who's waiting right now, and how many are ahead of them - a place in the line, not a booked slot.`}
     >
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="workspace-queue space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -266,7 +266,7 @@ export default function QueuePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {SHIFTS.map((shift) => {
             const session = openSessionFor(shift);
             const isOpen = !!session;
@@ -413,7 +413,7 @@ export default function QueuePage() {
               <div className="space-y-2">
                 <h4 className="text-[10px] font-mono uppercase text-os-text-dim">{labels.serving}</h4>
                 {active.map((entry) => (
-                  <GlassCard key={entry.id} className="p-4 flex items-center justify-between gap-4">
+                  <GlassCard key={entry.id} className="workspace-card-heading justify-between p-5">
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold font-mono text-brass-bright">{labels.shifts[entry.shift]} #{entry.queue_number}</span>
                       <div>

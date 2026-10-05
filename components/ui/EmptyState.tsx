@@ -2,6 +2,7 @@
 
 import React from "react";
 import { LucideIcon } from "lucide-react";
+import { useWorkspaceAppearance } from "./WorkspaceDesign";
 
 interface EmptyStateProps {
   icon: LucideIcon;
@@ -19,13 +20,14 @@ export function EmptyState({
   description,
   action,
 }: EmptyStateProps) {
+  const appearance = useWorkspaceAppearance();
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-white/[0.08] rounded-2xl bg-white/[0.01]">
-      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-os-text-dim mb-4">
-        <Icon className="w-8 h-8 opacity-80 text-white/70" />
+    <div className={appearance === "refined" ? "workspace-empty flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-5 py-10 text-center sm:px-8 sm:py-12" : "flex flex-col items-center justify-center p-12 text-center border border-dashed border-white/[0.08] rounded-2xl bg-white/[0.01]"}>
+      <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-os-text-dim mb-4">
+        <Icon className={`w-6 h-6 ${appearance === "refined" ? "text-teal-bright" : "opacity-80 text-white/70"}`} />
       </div>
       <h4 className="text-base font-semibold text-white mb-1.5">{title}</h4>
-      <p className="text-xs text-os-text-dim max-w-sm leading-relaxed mb-6">
+      <p className="text-sm text-os-text-dim max-w-md leading-6 mb-6">
         {description}
       </p>
       {action && (

@@ -169,7 +169,7 @@ export default function KnowledgePage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-knowledge space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -183,7 +183,7 @@ export default function KnowledgePage() {
 
         {/* Token Budget Telemetry Card */}
         {status && (
-          <GlassCard className="p-4 bg-gradient-to-r from-[#0B0F17] to-brass/10 border-brass/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <GlassCard className="p-5 border-teal/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
                 <Sparkles className="w-4 h-4" />
@@ -209,7 +209,7 @@ export default function KnowledgePage() {
         )}
 
         {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           {[
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
             { key: "items", label: `Knowledge Entries (${items.length})` },
@@ -233,7 +233,7 @@ export default function KnowledgePage() {
         {/* TAB 1: GAPS QUEUE (THE DIFFERENTIATING QUEUE) */}
         {activeTab === "gaps" && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-brass/10 border border-brass/20 text-xs text-os-text-dim flex items-center justify-between">
+            <div className="workspace-card-heading justify-between p-5 rounded-xl bg-teal/[0.05] border border-teal/20 text-xs text-os-text-dim">
               <span>
                 <strong>The Gaps Queue</strong> lists real questions asked by your customers that the AI didn't have answers for. Click <strong>Answer This</strong> to instantly add knowledge and close the loop.
               </span>
@@ -256,7 +256,7 @@ export default function KnowledgePage() {
                 {gaps.map((gap) => (
                   <GlassCard key={gap.gap} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1 overflow-hidden">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-bold text-white truncate">
                           {gap.gap}
                         </span>

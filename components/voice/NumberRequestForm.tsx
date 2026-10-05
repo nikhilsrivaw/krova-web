@@ -149,13 +149,13 @@ export function NumberRequestForm() {
           {requests.map((r) => (
             <div
               key={r.id}
-              className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3"
+              className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex flex-wrap items-start justify-between gap-3"
             >
               <div className="min-w-0">
                 <p className="text-xs text-white truncate">
                   {r.request_type === "promotional_140" ? "140-series" : "160-series"}
                 </p>
-                <p className="text-[10px] text-os-text-dim truncate">{r.justification}</p>
+                <p className="text-[10px] text-os-text-dim">{r.justification}</p>
                 {r.provisioned_number && (
                   <p className="text-[10px] font-mono text-cyan-400 mt-0.5">{r.provisioned_number}</p>
                 )}

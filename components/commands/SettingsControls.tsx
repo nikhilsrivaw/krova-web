@@ -49,7 +49,7 @@ export function SettingsControls({ canEdit }: { canEdit: boolean }) {
       <div className="rounded-2xl bg-os-card border border-os-border overflow-hidden">
         {settings.map((s, i) => (
           <div key={s.key} className={`px-4 py-3.5 ${i !== settings.length - 1 ? "border-b border-os-border" : ""}`}>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-os-ink min-w-0">{s.label}</p>
               <SettingEditor
                 setting={s}
@@ -94,6 +94,8 @@ function SettingEditor({
         type="button"
         disabled={disabled}
         onClick={() => onPropose(!on)}
+        aria-label={setting.label}
+        aria-pressed={on}
         className={`px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40 ${on ? "bg-teal text-os-bg" : "bg-white/[0.06] text-os-ink"}`}
       >
         {on ? "Haan" : "Nahi"}
@@ -106,6 +108,7 @@ function SettingEditor({
       <select
         disabled={disabled}
         value={String(setting.value)}
+        aria-label={setting.label}
         onChange={(e) => onPropose(e.target.value)}
         className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-os-border text-xs text-os-ink focus:border-teal focus:outline-none disabled:opacity-40"
       >
@@ -127,6 +130,7 @@ function SettingEditor({
           disabled={disabled}
           value={value}
           onChange={(e) => onDraft(e.target.value)}
+          aria-label={setting.label}
           className={`${inputClass} w-28`}
           placeholder="24, 2"
         />
@@ -153,6 +157,7 @@ function SettingEditor({
         max={setting.maximum ?? undefined}
         value={value}
         onChange={(e) => onDraft(e.target.value)}
+        aria-label={setting.label}
         className={inputClass}
       />
       <button

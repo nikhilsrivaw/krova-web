@@ -81,7 +81,7 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
   if (!board) return null;
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="workspace-pipeline flex w-full min-w-0 snap-x snap-proximity gap-4 overflow-x-auto pb-3">
       {board.columns.map((col) => (
         <div
           key={col.stage ?? "__unstaged"}
@@ -98,13 +98,13 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
             const { card, fromStage } = JSON.parse(raw) as { card: PipelineCard; fromStage: string | null };
             moveCard(card, fromStage, col.stage);
           }}
-          className={`w-64 shrink-0 rounded-xl border transition-colors ${
+          className={`w-72 max-w-full shrink-0 snap-start rounded-2xl border transition-colors ${
             dragOverStage === (col.stage ?? "__unstaged")
               ? "border-brass/50 bg-brass/[0.04]"
               : "border-white/[0.06] bg-os-card"
           }`}
         >
-          <div className="p-3 border-b border-white/[0.06]">
+          <div className="p-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white">{col.stage ?? "Unstaged"}</span>
               <span className="text-[10px] font-mono text-os-text-dim">{col.customers.length}</span>
@@ -117,7 +117,7 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
             )}
           </div>
 
-          <div className="p-2 space-y-2 min-h-[6rem]">
+          <div className="p-3 space-y-3 min-h-[6rem]">
             {col.customers.map((card) => (
               <div
                 key={card.customer_id}
@@ -138,7 +138,7 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
                 <div className="flex items-start gap-1.5">
                   <GripVertical className="w-3 h-3 text-os-text-dim mt-0.5 opacity-0 group-hover:opacity-100 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-white truncate">
+                    <p className="break-words text-sm font-semibold text-white">
                       {card.name || "Unnamed contact"}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">

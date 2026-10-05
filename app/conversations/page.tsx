@@ -29,8 +29,10 @@ import {
   AlertCircle,
   Check,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { WorkspaceInboxActions } from "@/components/shell/WorkspaceInboxActions";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
@@ -110,6 +112,7 @@ function igsidOf(identities: { kind: string; value: string }[]): string | null {
 }
 
 export default function ConversationsPage() {
+  const [mobilePane, setMobilePane] = useState<"list" | "thread">("list");
   const [threadList, setThreadList] = useState<ConversationItem[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [activeThread, setActiveThread] = useState<ConversationThread | null>(null);
@@ -543,11 +546,11 @@ export default function ConversationsPage() {
           <div className="absolute bottom-0 left-[6%] w-[380px] h-[380px] rounded-full bg-seal/[0.05] blur-[130px]" />
         </div>
 
-      <div className="h-[calc(100vh-140px)] flex border border-white/[0.08] rounded-2xl overflow-hidden bg-os-card/40 backdrop-blur-xl shadow-2xl">
+      <div className="workspace-inbox flex h-[calc(100dvh-250px)] min-h-[520px] overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111111]">
         {/* Left Pane: High-Density Thread List */}
-        <div className="w-80 lg:w-96 border-r border-white/[0.07] bg-os-card/70 backdrop-blur-xl flex flex-col shrink-0">
+        <div className={`workspace-inbox-list w-full shrink-0 flex-col border-r border-white/[0.07] bg-[#111111] md:w-72 xl:w-80 ${mobilePane === "thread" ? "hidden md:flex" : "flex"}`}>
           {/* Search & Channel Filter Header */}
-          <div className="p-3 border-b border-white/[0.06] space-y-2">
+          <div className="p-4 border-b border-white/[0.06] space-y-3">
             <div className="flex items-center px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
               <Search className="w-3.5 h-3.5 text-os-text-dim mr-2 shrink-0" />
               <input
@@ -623,10 +626,14 @@ export default function ConversationsPage() {
                 return (
                   <div
                     key={thread.customer_id}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+                    onClickCapture={() => setMobilePane("thread")}
                     onClick={() => setSelectedCustomerId(thread.customer_id)}
-                    className={`p-3.5 cursor-pointer transition-all ${
+                    className={`p-4 cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-white/[0.08] border-l-2 border-brass"
+                         ? "bg-teal/[0.08] border-l-2 border-teal"
                         : "hover:bg-white/[0.03]"
                     }`}
                   >
@@ -709,16 +716,17 @@ export default function ConversationsPage() {
         </div>
 
         {/* Center/Right: Full Interleaved Timeline */}
-        <div className="flex-1 flex flex-col bg-os-card/45 backdrop-blur-xl overflow-hidden">
+        <div className={`workspace-inbox-thread min-w-0 flex-1 flex-col overflow-hidden bg-[#0D0D0D] ${mobilePane === "list" ? "hidden md:flex" : "flex"}`}>
+          <button type="button" onClick={() => setMobilePane("list")} className="flex min-h-11 items-center gap-2 border-b border-white/[0.07] px-4 text-sm text-teal-bright md:hidden"><ArrowLeft className="h-4 w-4" /> All conversations</button>
           {/* Thread Header */}
           {activeThread ? (
-            <div className="px-6 py-3.5 border-b border-white/[0.07] bg-white/[0.02] flex items-center justify-between">
+            <div className="workspace-inbox-heading flex flex-col gap-4 border-b border-white/[0.07] bg-white/[0.02] px-4 py-4 xl:px-6">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brass to-slate-800 border border-white/20 flex items-center justify-center font-bold text-sm text-white">
+                <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-brass to-slate-800 border border-white/20 flex items-center justify-center font-bold text-sm text-white">
                   {activeThread.name?.charAt(0) || "C"}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-bold text-white">
                       {activeThread.name || "Customer"}
                     </h3>
@@ -743,7 +751,7 @@ export default function ConversationsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <WorkspaceInboxActions>
                 {/* Assign to teammate */}
                 {teamMembers.length > 1 && (
                   <select
@@ -791,7 +799,7 @@ export default function ConversationsPage() {
                     the backend decides and the real reason shows inline
                     on a closed window instead. */}
                 {(phoneOf(activeThread.identities) || igsidOf(activeThread.identities)) && (
-                  <div className="relative">
+                  <div className="workspace-inbox-primary relative">
                     <button
                       type="button"
                       onClick={() => {
@@ -805,7 +813,7 @@ export default function ConversationsPage() {
                       <span>Reply</span>
                     </button>
                     {isReplyOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card/95 backdrop-blur-xl shadow-2xl overflow-hidden p-3 space-y-2">
+                      <div className="workspace-inbox-popover absolute left-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-64px)] rounded-xl border border-white/[0.1] bg-[#171717] shadow-2xl p-3 space-y-2">
                         <textarea
                           autoFocus
                           rows={3}
@@ -856,7 +864,7 @@ export default function ConversationsPage() {
                       <span>Canned Reply</span>
                     </button>
                     {isCannedPickerOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-80 z-20 rounded-xl border border-white/[0.1] bg-os-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+                      <div className="workspace-inbox-popover absolute left-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-64px)] rounded-xl border border-white/[0.1] bg-[#171717] shadow-2xl overflow-hidden">
                         <div className="p-2 max-h-72 overflow-y-auto">
                           {cannedList.length === 0 ? (
                             <p className="p-3 text-[11px] text-os-text-dim">
@@ -913,12 +921,12 @@ export default function ConversationsPage() {
                   <User className="w-3.5 h-3.5" />
                   <span>Customer 360</span>
                 </button>
-              </div>
+              </WorkspaceInboxActions>
             </div>
           ) : null}
 
           {/* Messages Scroll View */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
             {isLoadingThread ? (
               <div className="space-y-4">
                 <Skeleton className="h-16 w-3/4" />
@@ -954,12 +962,12 @@ export default function ConversationsPage() {
 
                     {/* Message Bubble Card */}
                     <div
-                      className={`max-w-xl p-4 rounded-2xl text-xs leading-relaxed ${
+                      className={`max-w-[92%] break-words p-4 rounded-2xl text-sm leading-relaxed ${
                         msg.channel === "voice"
                           ? "bg-cyan-950/30 border border-cyan-500/30 text-white rounded-tl-sm"
                           : isOutbound
-                          ? "bg-brass text-white rounded-tr-sm shadow-md"
-                          : "bg-[#111728] border border-white/[0.08] text-white/90 rounded-tl-sm"
+                           ? "bg-teal/15 border border-teal/25 text-white rounded-tr-sm"
+                           : "bg-[#1A1A1A] border border-white/[0.08] text-white/90 rounded-tl-sm"
                       }`}
                     >
                       {msg.channel === "voice" && (
@@ -977,7 +985,7 @@ export default function ConversationsPage() {
           </div>
 
           {/* Context Footer Banner */}
-          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-xs text-os-text-dim">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] bg-white/[0.02] p-4 text-xs text-os-text-dim">
             <span className="flex items-center gap-1.5 font-mono text-[11px]">
               <Shield className="w-3.5 h-3.5 text-brass" />
               Human-in-the-loop: Replies are proposed in the <strong>Approvals</strong> queue.

@@ -578,7 +578,7 @@ export default function WhatsAppPage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-whatsapp space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -590,7 +590,7 @@ export default function WhatsAppPage() {
           </div>
         )}
         {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           {[
             { key: "overview", label: "Connection & Health" },
             { key: "templates", label: `Meta Templates (${templateList.length})` },
@@ -622,7 +622,7 @@ export default function WhatsAppPage() {
                 description="Connect a WhatsApp Business number through Meta's Embedded Signup to start receiving and sending messages."
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 <GlassCard className="p-5">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono uppercase text-os-text-dim">
@@ -684,8 +684,8 @@ export default function WhatsAppPage() {
                 pattern the ad-tracking dataset id already uses. */}
             {connection?.status === "active" && (
               <GlassCard className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+                <div className="workspace-card-heading justify-between mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-white">WhatsApp Payments (India)</span>
                     <Badge variant="amber" size="sm">Beta - verify with Meta before real use</Badge>
                   </div>

@@ -109,9 +109,9 @@ export function PostCallRulesTab() {
   return (
     <div className="space-y-6">
       <GlassCard className="p-6 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+        <div className="workspace-card-heading justify-between">
+          <div className="flex min-w-0 flex-1 basis-64 items-start gap-3">
+            <div className="shrink-0 p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
               <Zap className="w-5 h-5" />
             </div>
             <div>
@@ -148,7 +148,7 @@ export function PostCallRulesTab() {
           <div className="space-y-2">
             {voiceRules.map((rule) => (
               <div key={rule.id} className="p-3.5 rounded-xl bg-black/20 border border-white/[0.06] space-y-2">
-                <div className="flex items-start justify-between gap-3">
+                <div className="workspace-card-heading justify-between">
                   <div className="min-w-0">
                     {rule.name && <p className="text-xs font-semibold text-white">{rule.name}</p>}
                     <p className="text-xs text-white">

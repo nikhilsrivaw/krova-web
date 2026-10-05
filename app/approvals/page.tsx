@@ -189,9 +189,9 @@ export default function ApprovalsPage() {
           <div className="absolute -top-20 right-[10%] w-[440px] h-[440px] rounded-full bg-brass/[0.06] blur-[130px]" />
           <div className="absolute bottom-0 left-[8%] w-[380px] h-[380px] rounded-full bg-seal/[0.05] blur-[130px]" />
         </div>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="workspace-approvals space-y-6">
         {/* Status Bar & Info Callout */}
-        <div className="p-4 rounded-xl border border-brass/20 bg-brass/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="workspace-panel flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-brass/20 border border-brass/30 text-brass">
               <Shield className="w-5 h-5" />
@@ -214,7 +214,7 @@ export default function ApprovalsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="workspace-tabs flex items-center gap-2">
             {["pending", "approved", "rejected"].map((s) => (
               <button
                 key={s}
@@ -222,7 +222,7 @@ export default function ApprovalsPage() {
                 onClick={() => setStatusFilter(s)}
                 className={`px-3 py-1 rounded-lg text-xs font-mono capitalize transition-all border ${
                   statusFilter === s
-                    ? "bg-black border-brass/50 text-brass-bright font-bold shadow-[0_0_0_1px_rgba(201,151,63,0.15)]"
+                     ? "bg-teal/10 border-teal/30 text-teal-bright font-medium"
                     : "bg-white/[0.04] border-transparent text-os-text-dim hover:text-white hover:bg-white/[0.08]"
                 }`}
               >
@@ -292,7 +292,7 @@ export default function ApprovalsPage() {
                   </div>
 
                   {/* Track record, for context - not a hard gate */}
-                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center gap-4 text-xs">
+                  <div className="workspace-toolbar p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
                     <span className="text-os-text-dim">Last 30 days:</span>
                     <span className="text-white font-mono">{rules.drafted_last_30d} drafted</span>
                     {rules.approval_rate_last_30d != null && (
@@ -410,7 +410,7 @@ export default function ApprovalsPage() {
                 <GlassCard
                   key={draft.id}
                   isAiArtifact={true}
-                  className="p-6 overflow-hidden transition-all hover:border-brass/50"
+                  className="p-5 sm:p-6 overflow-hidden transition-colors hover:border-teal/30"
                 >
                   {/* Top Bar: Customer Info + Confidence Meter */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.06]">
@@ -489,7 +489,7 @@ export default function ApprovalsPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="my-4 p-4 rounded-xl bg-brass/10 border border-brass/20 text-sm">
+                    <div className="my-5 rounded-xl border-l-2 border-teal bg-teal/[0.05] p-5 text-sm">
                       <div className="text-[10px] uppercase font-mono text-brass-bright font-bold mb-1.5 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-brass" />
                         AI Proposed Reply (Ready to Send):
@@ -544,7 +544,7 @@ export default function ApprovalsPage() {
                           This reply's window has closed - it can no longer be sent.
                         </p>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="workspace-actions flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() => {

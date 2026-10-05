@@ -2,6 +2,7 @@
 
 import React from "react";
 import { clsx } from "clsx";
+import { useWorkspaceAppearance } from "./WorkspaceDesign";
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -53,10 +54,11 @@ export function Badge({
   dot = false,
   className,
 }: BadgeProps) {
+  const appearance = useWorkspaceAppearance();
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1.5 font-mono font-medium rounded-full border tracking-wide whitespace-nowrap",
+        appearance === "refined" ? "workspace-badge inline-flex max-w-full items-center gap-1.5 rounded-md border font-medium leading-5" : "inline-flex items-center gap-1.5 font-mono font-medium rounded-full border tracking-wide whitespace-nowrap",
         BADGE_STYLES[variant],
         size === "sm"
           ? "px-2 py-0.5 text-[10px]"

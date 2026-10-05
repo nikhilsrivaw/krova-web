@@ -340,7 +340,7 @@ export default function InstagramPage() {
 
   return (
     <AppLayout title="Instagram" subtitle="Connection, DMs & Comments">
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="workspace-instagram space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -357,7 +357,7 @@ export default function InstagramPage() {
               description="Connect through either Meta login route below to start receiving DMs and comments."
             />
             <GlassCard className="p-6">
-              <div className="flex items-center gap-3">
+              <div className="workspace-actions">
                 <button
                   type="button"
                   onClick={handleConnectInstagram}
@@ -378,7 +378,7 @@ export default function InstagramPage() {
         ) : (
           <>
             <GlassCard className="p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="workspace-card-heading justify-between mb-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
                     <Instagram className="w-5 h-5" />
@@ -395,7 +395,7 @@ export default function InstagramPage() {
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-5">
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Username</p>
                   <p className="text-sm text-white font-mono font-semibold">{connection.handle || "—"}</p>
@@ -420,7 +420,7 @@ export default function InstagramPage() {
                   login is how a business switches which Instagram account
                   is linked, and how anyone demonstrates the grant flow
                   without first tearing the connection down. */}
-              <div className="flex items-center gap-2 pt-3 border-t border-white/[0.06]">
+              <div className="workspace-actions pt-4 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={handleConnectInstagram}

@@ -117,7 +117,7 @@ export default function QuotationsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="workspace-quotations space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Quotations</h1>
@@ -180,7 +180,7 @@ export default function QuotationsPage() {
           </GlassCard>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="workspace-tabs">
           {[
             { label: "Open", value: true },
             { label: "All", value: false },
@@ -255,7 +255,7 @@ export default function QuotationsPage() {
                     </div>
 
                     {isOpen && (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="workspace-actions shrink-0">
                         <button
                           onClick={() => handleOutcome(q.id, "won")}
                           disabled={busy !== null}

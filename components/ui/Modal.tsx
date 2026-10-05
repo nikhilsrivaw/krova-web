@@ -4,6 +4,9 @@ import React, { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useOverlayFocus } from "./useOverlayFocus";
+import { createPortal } from "react-dom";
+import { useWorkspaceAppearance } from "./WorkspaceDesign";
+import { WorkspaceContent } from "../shell/WorkspaceContent";
 
 interface ModalProps {
   appearance?: "default" | "refined";
@@ -23,7 +26,7 @@ const MAX_WIDTHS = {
 };
 
 export function Modal({
-  appearance = "default",
+  appearance: appearanceOverride,
   isOpen,
   onClose,
   title,
@@ -31,6 +34,8 @@ export function Modal({
   children,
   maxWidth = "md",
 }: ModalProps) {
+  const inheritedAppearance = useWorkspaceAppearance();
+  const appearance = appearanceOverride ?? inheritedAppearance;
   const panelRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(isOpen && appearance === "refined", panelRef);
   useEffect(() => {
@@ -47,7 +52,7 @@ export function Modal({
     };
   }, [isOpen, onClose]);
 
-  return (
+  const content = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
@@ -79,12 +84,12 @@ export function Modal({
           >
             {/* Header */}
             <div className={`shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-white/[0.08] ${appearance === "refined" ? "bg-white/[0.02]" : "bg-[#111728]/60"}`}>
-              <div>
-                <h3 className="text-base font-semibold text-white tracking-tight">
+              <div className="min-w-0 flex-1">
+                <h3 className="break-words text-base font-semibold text-white tracking-tight">
                   {title}
                 </h3>
                 {subtitle && (
-                  <p className="text-xs text-os-text-dim mt-0.5">{subtitle}</p>
+                  <p className="break-words text-xs text-os-text-dim mt-0.5">{subtitle}</p>
                 )}
               </div>
               <button
@@ -98,10 +103,13 @@ export function Modal({
             </div>
 
             {/* Content */}
-            <div className="min-h-0 p-5 sm:p-6 overflow-y-auto">{children}</div>
+            <div className="min-h-0 p-5 sm:p-6 overflow-y-auto">{appearance === "refined" ? <WorkspaceContent route="dialog">{children}</WorkspaceContent> : children}</div>
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
+  return appearance === "refined" && typeof document !== "undefined"
+    ? createPortal(<div className="workspace-refined workspace-overlay">{content}</div>, document.body)
+    : content;
 }

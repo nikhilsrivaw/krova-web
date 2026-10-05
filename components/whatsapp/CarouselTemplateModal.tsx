@@ -176,7 +176,7 @@ export function CarouselTemplateModal({
           <div className="flex items-center gap-1.5 text-xs font-bold text-brass-bright">
             <Sparkles className="w-3.5 h-3.5" /> Draft the cards
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <input
               type="text" value={brief} onChange={(e) => setBrief(e.target.value)}
               placeholder="What's this carousel for? e.g. a retention offer for customers who haven't ordered in 60 days"
@@ -206,7 +206,7 @@ export function CarouselTemplateModal({
         {cards.length > 0 && (
           <div className="space-y-3">
             {cards.map((card, i) => (
-              <div key={i} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.08] flex gap-3">
+              <div key={i} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.08] flex flex-col gap-3 sm:flex-row">
                 <label className="w-20 h-20 shrink-0 rounded-lg border border-dashed border-white/20 flex items-center justify-center cursor-pointer bg-black/30 overflow-hidden relative">
                   {card.imagePreviewUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element

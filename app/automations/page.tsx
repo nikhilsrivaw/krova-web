@@ -1259,13 +1259,13 @@ export default function AutomationsPage() {
       title="Automations"
       subtitle="When something real happens in a conversation, do something about it automatically - build a step at a time."
     >
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="workspace-automations space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">{loadError}</div>
         )}
 
         <GlassCard className="p-6 space-y-4">
-          <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
+          <div className="workspace-tabs rounded-xl border border-white/[0.08] bg-white/[0.02] p-1 w-fit">
             {(["rules", "scheduling", "activity"] as const).map((tab) => (
               <button
                 key={tab}
@@ -1301,7 +1301,7 @@ export default function AutomationsPage() {
             </div>
           ) : (
           <>
-          <div className="flex items-center justify-between">
+          <div className="workspace-card-heading justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
                 <Zap className="w-5 h-5" />
@@ -1327,7 +1327,7 @@ export default function AutomationsPage() {
           </div>
 
           {builderOpen && (
-            <div className="p-4 rounded-xl bg-black/30 border border-white/[0.08] space-y-3">
+            <div className="workspace-automation-builder rounded-xl border border-white/[0.08] bg-[#0A0A0A] p-3 sm:p-5 space-y-5">
               {editingRuleId && (
                 <p className="text-[11px] text-cyan-400/80">Editing an existing rule</p>
               )}
@@ -1462,7 +1462,7 @@ export default function AutomationsPage() {
                   {rule.name && (
                     <p className="text-xs font-semibold text-white mb-2">{rule.name}</p>
                   )}
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="workspace-card-heading justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="default">
                         {rule.channel ? CHANNEL_LABEL[rule.channel] : "Any channel"}

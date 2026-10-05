@@ -173,10 +173,10 @@ export function RuleTester({
                 key={step.position}
                 className="p-3 rounded-lg bg-black/30 border border-white/[0.06] space-y-1.5"
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="workspace-card-heading justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <Icon className="w-3.5 h-3.5 text-os-text-dim shrink-0" />
-                    <span className="text-[11px] text-white truncate">
+                    <span className="min-w-0 break-words text-[11px] text-white">
                       Step {step.position + 1} · {actionLabel[step.action_type] ?? step.action_type}
                     </span>
                   </div>

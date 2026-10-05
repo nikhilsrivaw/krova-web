@@ -318,7 +318,7 @@ export default function VoicePage() {
       title="Voice Phone Agent"
       subtitle="Indian Regulatory Compliance, Phone Numbers & Cost Telemetry"
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-voice space-y-6">
         {actionError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {actionError}
@@ -326,7 +326,7 @@ export default function VoicePage() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           {[
             { key: "compliance", label: "Regulatory KYC & Compliance" },
             { key: "numbers", label: `Phone Numbers (${voiceConnections.length})` },
@@ -382,7 +382,7 @@ export default function VoicePage() {
 
                   {/* Step 1: Subaccount */}
                   <div className="mt-6 space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className="workspace-card-heading justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                       <div>
                         <p className="text-xs font-bold text-white">1. Create Voice Subaccount</p>
                         <p className="text-[11px] text-os-text-dim mt-0.5">
@@ -410,7 +410,7 @@ export default function VoicePage() {
 
                     {/* Step 2: End-user identity */}
                     {(subaccount || application) && (
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="workspace-card-heading justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                         <div>
                           <p className="text-xs font-bold text-white">2. Register Identity</p>
                           <p className="text-[11px] text-os-text-dim mt-0.5">
@@ -450,7 +450,7 @@ export default function VoicePage() {
                                 return (
                                   <div
                                     key={docType.id}
-                                    className="flex items-center justify-between text-xs"
+                                    className="workspace-card-heading justify-between text-xs"
                                   >
                                     <div className="space-y-0.5">
                                       <span className="text-os-text-dim">{docType.name}</span>
@@ -567,15 +567,15 @@ export default function VoicePage() {
                       {voiceConnections.map((conn) => (
                         <div
                           key={conn.id}
-                          className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 flex items-center justify-between gap-4"
+                          className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300">
+                          <div className="flex min-w-0 max-w-full items-center gap-3">
+                            <div className="shrink-0 p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300">
                               <Phone className="w-5 h-5" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h5 className="text-sm font-bold font-mono text-white">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h5 className="break-all text-sm font-bold font-mono text-white">
                                   {conn.external_account_id}
                                 </h5>
                                 <Badge variant={conn.status === "active" ? "cyan" : "amber"} size="sm">
@@ -588,7 +588,7 @@ export default function VoicePage() {
                             type="button"
                             onClick={() => handleReleaseNumber(conn.external_account_id)}
                             disabled={busy === `release-${conn.external_account_id}`}
-                            className="text-xs text-os-text-dim hover:text-thread-bright transition-colors"
+                            className="shrink-0 rounded-lg border border-white/[0.08] px-3 text-xs text-os-text-dim hover:text-thread-bright transition-colors"
                           >
                             Release Number
                           </button>
@@ -614,14 +614,14 @@ export default function VoicePage() {
                         .map((n) => (
                           <div
                             key={n.number}
-                            className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 flex items-center justify-between gap-4"
+                            className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                            <div className="flex min-w-0 max-w-full items-center gap-3">
+                              <div className="shrink-0 p-2 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300">
                                 <Phone className="w-5 h-5" />
                               </div>
-                              <div>
-                                <h5 className="text-sm font-bold font-mono text-white">
+                              <div className="min-w-0">
+                                <h5 className="break-all text-sm font-bold font-mono text-white">
                                   {n.number}
                                 </h5>
                                 {(n.city || n.region) && (
@@ -635,7 +635,7 @@ export default function VoicePage() {
                               type="button"
                               onClick={() => handleReleaseNumber(n.number)}
                               disabled={busy === `release-${n.number}`}
-                              className="text-xs text-os-text-dim hover:text-thread-bright transition-colors"
+                              className="shrink-0 rounded-lg border border-white/[0.08] px-3 text-xs text-os-text-dim hover:text-thread-bright transition-colors"
                             >
                               {busy === `release-${n.number}` ? "Releasing..." : "Release Number"}
                             </button>
@@ -677,7 +677,7 @@ export default function VoicePage() {
                         {searchResults.map((num) => (
                           <div
                             key={num.number}
-                            className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] flex items-center justify-between"
+                            className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] flex flex-wrap items-center justify-between gap-3"
                           >
                             <div>
                               <p className="text-xs font-bold font-mono text-white">{num.number}</p>

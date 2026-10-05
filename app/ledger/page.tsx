@@ -248,7 +248,7 @@ export default function LedgerPage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="workspace-ledger space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -261,7 +261,7 @@ export default function LedgerPage() {
         )}
 
         {/* Metric Summary Ribbon */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
             title="Owed to You"
             value={formatPaise(summary?.owed_to_us_paise ?? 0)}
@@ -298,7 +298,7 @@ export default function LedgerPage() {
         </div>
 
         {/* Filter Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 overflow-x-auto">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -318,7 +318,7 @@ export default function LedgerPage() {
         {/* Unconfirmed AI Extractions Quarantine Bucket (If viewing All or Unconfirmed) */}
         {(filter === "all" || filter === "unconfirmed") && unconfirmedList.length > 0 && (
           <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="workspace-card-heading justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300">
                   <HelpCircle className="w-4 h-4" />
@@ -382,7 +382,7 @@ export default function LedgerPage() {
 
         {/* Regular Confirmed Commitments Table */}
         <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="workspace-card-heading justify-between mb-5">
             <h4 className="text-sm font-bold text-white">
               Confirmed Commitment Records
             </h4>
@@ -520,13 +520,13 @@ export default function LedgerPage() {
             <div className="space-y-6">
               {/* Financial Detail Card */}
               <GlassCard className="p-4 bg-white/[0.02]">
-                <div className="flex items-center justify-between mb-2">
+                <div className="workspace-card-heading justify-between mb-2">
                   <span className="text-xs font-mono uppercase text-os-text-dim">
                     {selectedCommitment.direction === "they_owe"
                       ? "Receivable Amount"
                       : "Payable Obligation"}
                   </span>
-                  <span className="text-xl font-bold font-mono text-seal-bright">
+                  <span className="max-w-full break-all text-xl font-bold font-mono text-seal-bright">
                     {selectedCommitment.amount_display ||
                       (selectedCommitment.amount_paise
                         ? formatPaise(selectedCommitment.amount_paise)
@@ -534,7 +534,7 @@ export default function LedgerPage() {
                   </span>
                 </div>
                 {selectedCommitment.amount_received_paise > 0 && (
-                  <div className="flex items-center justify-between mb-2 text-xs font-mono">
+                  <div className="workspace-toolbar justify-between mb-2 text-xs font-mono">
                     <span className="text-seal-bright">
                       {formatPaise(selectedCommitment.amount_received_paise)} received
                     </span>

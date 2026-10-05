@@ -127,7 +127,7 @@ export default function ProductsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="workspace-products space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Catalogue</h1>
@@ -233,7 +233,7 @@ export default function ProductsPage() {
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="text-sm font-semibold text-white truncate">
                           {product.title}
@@ -264,7 +264,7 @@ export default function ProductsPage() {
                       {product.variants.map((variant) => (
                         <div
                           key={variant.id}
-                          className="flex items-center justify-between gap-3 p-2 rounded-lg bg-black/20 border border-white/[0.05]"
+                          className="workspace-card-heading justify-between gap-3 p-3 rounded-lg bg-black/20 border border-white/[0.05]"
                         >
                           <div className="min-w-0 flex items-center gap-2">
                             <span className="text-[11px] text-white/80 truncate">

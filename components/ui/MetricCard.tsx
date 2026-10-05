@@ -3,6 +3,7 @@
 import React from "react";
 import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
 import { GlassCard } from "./GlassCard";
+import { useWorkspaceAppearance } from "./WorkspaceDesign";
 
 interface MetricCardProps {
   title: string;
@@ -61,17 +62,18 @@ export function MetricCard({
   badgeText,
   onClick,
 }: MetricCardProps) {
+  const appearance = useWorkspaceAppearance();
   const styles = ACCENT_STYLES[accentColor];
 
   return (
     <GlassCard
       onClick={onClick}
-      className={`p-5 group cursor-default transition-all duration-200 ${
+      className={`workspace-metric p-5 group cursor-default transition-all duration-200 ${
         onClick ? "cursor-pointer active:scale-[0.99]" : ""
       } ${styles.glow}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <span className="text-xs font-semibold text-os-text-dim uppercase tracking-wider">
+        <span className={appearance === "refined" ? "text-xs font-medium leading-5 text-os-text-dim" : "text-xs font-semibold text-os-text-dim uppercase tracking-wider"}>
           {title}
         </span>
         <div className="flex items-center gap-2">
@@ -92,14 +94,14 @@ export function MetricCard({
 
       <div className="flex items-baseline gap-2">
         <span
-          className={`text-2xl lg:text-3xl font-serif font-semibold tracking-tight ${styles.valueColor}`}
+          className={appearance === "refined" ? `min-w-0 break-words text-[28px] font-medium tracking-tight tabular-nums ${accentColor === "rose" ? "text-rose-300" : "text-white"}` : `text-2xl lg:text-3xl font-serif font-semibold tracking-tight ${styles.valueColor}`}
         >
           {value}
         </span>
       </div>
 
       {(subtitle || trend) && (
-        <div className="mt-2 flex items-center justify-between text-xs text-os-text-dim">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-os-text-dim">
           {subtitle && <span>{subtitle}</span>}
           {trend && (
             <span

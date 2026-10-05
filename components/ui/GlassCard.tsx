@@ -2,6 +2,7 @@
 
 import React from "react";
 import { clsx } from "clsx";
+import { useWorkspaceAppearance } from "./WorkspaceDesign";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -17,12 +18,15 @@ export function GlassCard({
   isAiArtifact = false,
   ...props
 }: GlassCardProps) {
+  const appearance = useWorkspaceAppearance();
   return (
     <div
       className={clsx(
         "relative rounded-xl transition-all duration-200",
         // AI artifact distinction (Human-in-the-loop requirement)
-        isAiArtifact
+        appearance === "refined"
+          ? `workspace-panel min-w-0 ${isAiArtifact ? "workspace-ai-artifact" : ""}`
+          : isAiArtifact
           ? "border border-brass/25 bg-gradient-to-b from-brass/[0.06] via-os-card/90 to-os-card shadow-[0_0_24px_-8px_rgba(201,151,63,0.15)]"
           : variant === "subtle"
           ? "border border-os-border/60 bg-os-bg/60 backdrop-blur-md"
@@ -37,8 +41,8 @@ export function GlassCard({
     >
       {isAiArtifact && (
         <div
-          className="absolute -top-3 right-3 z-10 select-none font-serif text-[10px] font-bold uppercase tracking-[0.15em] text-brass-bright px-2.5 py-1 -rotate-3"
-          style={{
+          className={appearance === "refined" ? "workspace-ai-label mb-4 inline-flex rounded-md border border-teal/20 bg-teal/10 px-2 py-1 text-[10px] font-medium text-teal-bright" : "absolute -top-3 right-3 z-10 select-none font-serif text-[10px] font-bold uppercase tracking-[0.15em] text-brass-bright px-2.5 py-1 -rotate-3"}
+          style={appearance === "refined" ? undefined : {
             border: "1.5px double currentColor",
             borderRadius: "3px",
             background: "rgba(20, 21, 31, 0.85)",

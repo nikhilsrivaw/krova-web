@@ -132,7 +132,7 @@ export default function SignalsPage() {
       title="Signals"
       subtitle="What's worth knowing right now - product feedback signals, or overdue follow-ups and uncollected reports, depending on your business."
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-signals space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -150,9 +150,9 @@ export default function SignalsPage() {
             const Icon = meta.icon;
             return (
               <GlassCard key={kind} className="p-4">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Icon className="w-3.5 h-3.5 text-os-text-dim" />
-                  <span className="text-[10px] font-mono uppercase text-os-text-dim">{meta.label}</span>
+                <div className="flex min-w-0 items-start gap-2 mb-1.5">
+                  <Icon className="w-3.5 h-3.5 shrink-0 text-os-text-dim" />
+                  <span className="min-w-0 break-words text-[10px] text-os-text-dim">{meta.label}</span>
                 </div>
                 <span className="text-2xl font-bold text-white">{counts[kind] || 0}</span>
               </GlassCard>
@@ -208,11 +208,11 @@ export default function SignalsPage() {
               const meta = KIND_META[s.kind];
               const Icon = meta.icon;
               return (
-                <GlassCard key={s.id} className="p-5 flex items-start gap-4">
+                <GlassCard key={s.id} className="p-5 flex flex-wrap items-start gap-4">
                   <div className={`p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] shrink-0`}>
                     <Icon className="w-4 h-4 text-os-text-dim" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1 basis-40">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-sm font-bold text-white">{s.title}</span>
                       <Badge variant={meta.badge} size="sm">{meta.label}</Badge>
@@ -223,6 +223,7 @@ export default function SignalsPage() {
                       {customerName(s.customer_id)} · {new Date(s.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                     </p>
                   </div>
+                  <div className="workspace-actions w-full sm:ml-auto sm:w-auto">
                   {s.kind === "bug" && (
                     <button
                       type="button"
@@ -253,6 +254,7 @@ export default function SignalsPage() {
                   >
                     <Check className="w-4 h-4" />
                   </button>
+                  </div>
                 </GlassCard>
               );
             })}

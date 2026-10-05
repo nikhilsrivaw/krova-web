@@ -557,11 +557,11 @@ export default function CustomersPage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-customers space-y-6">
       {view === "list" && (
       <>
         {/* Search & Filter Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-os-card border border-white/[0.06]">
+        <div className="workspace-panel workspace-toolbar justify-between p-5">
           <div className="flex items-center px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.08] w-full sm:w-80">
             <Search className="w-4 h-4 text-os-text-dim mr-2 shrink-0" />
             <input
@@ -573,7 +573,7 @@ export default function CustomersPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="workspace-toolbar w-full sm:w-auto">
             <span className="text-xs font-mono text-os-text-dim">Health:</span>
             {(["all", "high", "low"] as const).map((h) => (
               <button
@@ -623,7 +623,7 @@ export default function CustomersPage() {
 
         {/* Bulk Tag Bar - appears once at least one row is selected */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-brass/10 border border-brass/20">
+          <div className="workspace-toolbar p-3 rounded-xl bg-brass/10 border border-brass/20">
             <span className="text-xs font-mono text-white font-semibold shrink-0">
               {selectedIds.size} selected
             </span>
@@ -633,7 +633,7 @@ export default function CustomersPage() {
               onChange={(e) => setBulkTagLabel(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleBulkTag()}
               placeholder="Tag to apply to all selected..."
-              className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
+              className="min-w-0 flex-1 basis-40 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
             />
             <button
               type="button"
@@ -683,8 +683,10 @@ export default function CustomersPage() {
                 <thead className="border-b border-white/[0.06] text-os-text-dim font-mono uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-3 w-8">
+                      <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
                       <input
                         type="checkbox"
+                        aria-label="Select all visible customers"
                         checked={filteredCustomers.length > 0 && filteredCustomers.every((c) => selectedIds.has(c.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -695,6 +697,7 @@ export default function CustomersPage() {
                         }}
                         className="cursor-pointer"
                       />
+                      </label>
                     </th>
                     <th className="py-3 px-3">Customer</th>
                     <th className="py-3 px-3">Identity / Contact</th>
@@ -714,12 +717,15 @@ export default function CustomersPage() {
                         onClick={() => setSelectedCustomer(cust)}
                       >
                         <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                          <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
                           <input
                             type="checkbox"
+                            aria-label={`Select ${cust.name || "customer"}`}
                             checked={selectedIds.has(cust.id)}
                             onChange={() => toggleSelected(cust.id)}
                             className="cursor-pointer"
                           />
+                          </label>
                         </td>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">

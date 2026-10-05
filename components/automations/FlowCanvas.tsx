@@ -46,6 +46,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Plus, Zap, Filter, Clock } from "lucide-react";
+import { ResponsiveFlowViewport } from "./ResponsiveFlowViewport";
 import type { LucideIcon } from "lucide-react";
 import type {
   AutomationAction,
@@ -115,7 +116,7 @@ function TriggerNode({ id, data }: NodeProps) {
   const d = data as unknown as TriggerNodeData;
   const ref = useAutoResize(id);
   return (
-    <div ref={ref} className="!pointer-events-auto w-64 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/30 shadow-lg shadow-black/40 nodrag">
+    <div ref={ref} className="workspace-flow-node !pointer-events-auto w-64 p-3 rounded-xl bg-[#131313] border border-cyan-500/30 shadow-lg shadow-black/40 nodrag">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
           <Zap className="w-3 h-3" />
@@ -194,7 +195,7 @@ function StepNode({ id, data }: NodeProps) {
 
   if (d.mode === "editing") {
     return (
-      <div ref={ref} className="!pointer-events-auto w-80 p-3 rounded-xl bg-[#0b0f14] border border-cyan-500/40 shadow-lg shadow-black/40 nodrag nowheel">
+      <div ref={ref} className="workspace-flow-editor !pointer-events-auto w-80 p-3 rounded-xl bg-[#131313] border border-cyan-500/40 shadow-lg shadow-black/40 nodrag nowheel">
         <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">{d.title}</p>
         {d.renderForm?.()}
         <Handle type="target" position={Position.Left} className="!bg-cyan-500 !border-cyan-300" />
@@ -205,7 +206,7 @@ function StepNode({ id, data }: NodeProps) {
 
   const Icon = d.step ? d.actionIcon[d.step.action_type] : Zap;
   return (
-    <div ref={ref} className="!pointer-events-auto w-64 p-3 rounded-xl bg-[#0b0f14] border border-white/[0.12] shadow-lg shadow-black/40 nodrag">
+    <div ref={ref} className="workspace-flow-node !pointer-events-auto w-64 p-3 rounded-xl bg-[#131313] border border-white/[0.12] shadow-lg shadow-black/40 nodrag">
       <div className="flex items-start gap-2">
         <div className="w-6 h-6 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-os-text-dim shrink-0">
           <Icon className="w-3 h-3" />
@@ -237,12 +238,14 @@ function StepNode({ id, data }: NodeProps) {
       <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.06]">
         <button
           type="button" onClick={d.onMoveUp} disabled={d.locked || !d.canMoveUp}
+          aria-label="Move step earlier"
           className="p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
         >
           ↑
         </button>
         <button
           type="button" onClick={d.onMoveDown} disabled={d.locked || !d.canMoveDown}
+          aria-label="Move step later"
           className="p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
         >
           ↓
@@ -255,6 +258,7 @@ function StepNode({ id, data }: NodeProps) {
         </button>
         <button
           type="button" onClick={d.onRemove} disabled={d.locked}
+          aria-label="Remove step"
           className="p-1 rounded bg-white/[0.04] hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-red-400 transition-all cursor-pointer"
         >
           ✕
@@ -301,7 +305,8 @@ function InsertableEdge({
               type="button"
               onClick={d.onInsert}
               title="Insert a step here"
-              className="w-5 h-5 rounded-full bg-black/90 border border-white/20 hover:border-cyan-500 hover:bg-cyan-500/20 text-os-text-dim hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
+              aria-label="Insert a step here"
+              className="w-9 h-9 rounded-full bg-black/90 border border-white/20 hover:border-cyan-500 hover:bg-cyan-500/20 text-os-text-dim hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -454,9 +459,10 @@ function CanvasInner(props: FlowCanvasProps) {
       nodesConnectable={false}
       elementsSelectable={false}
       proOptions={{ hideAttribution: true }}
-      minZoom={0.4}
+      minZoom={0.2}
       maxZoom={1.5}
     >
+      <ResponsiveFlowViewport />
       <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="rgba(255,255,255,0.08)" />
       <Controls showInteractive={false} className="!bg-black/60 !border !border-white/10 [&_button]:!bg-transparent [&_button]:!border-white/10 [&_button]:!text-white/70" />
     </ReactFlow>
@@ -465,10 +471,13 @@ function CanvasInner(props: FlowCanvasProps) {
 
 export function FlowCanvas(props: FlowCanvasProps) {
   return (
-    <div className="h-[420px] rounded-xl overflow-hidden border border-white/[0.08] bg-[#05070a]">
-      <ReactFlowProvider>
-        <CanvasInner {...props} />
-      </ReactFlowProvider>
+    <div className="space-y-2">
+      <div className="workspace-flow-canvas h-[520px] sm:h-[460px] rounded-xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
+        <ReactFlowProvider>
+          <CanvasInner {...props} />
+        </ReactFlowProvider>
+      </div>
+      <p className="text-[11px] text-os-text-dim">Drag the canvas to move between steps. Use +/− to zoom and the fit control to see the whole flow.</p>
     </div>
   );
 }

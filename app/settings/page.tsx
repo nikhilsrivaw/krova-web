@@ -31,6 +31,7 @@ import {
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SettingsControls } from "@/components/commands/SettingsControls";
+import { WorkspaceSectionNav } from "@/components/shell/WorkspaceSectionNav";
 import { Badge } from "@/components/ui/Badge";
 import {
   account,
@@ -725,7 +726,8 @@ export default function SettingsPage() {
       title="Settings & Connectors"
       subtitle="Business profile, vertical defaults, autonomy level & channel credentials"
     >
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="workspace-settings space-y-6">
+        <WorkspaceSectionNav />
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -1551,7 +1553,7 @@ export default function SettingsPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="workspace-actions">
                   <span className="text-[10px] uppercase tracking-wide text-os-text-dim font-mono">Format</span>
                   {WEBHOOK_FORMATS.map((fmt) => (
                     <button
@@ -1646,7 +1648,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Data export */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                   <Download className="w-5 h-5" />
@@ -1658,7 +1660,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="workspace-actions max-w-full">
                 <button
                   type="button"
                   onClick={handleExportCustomers}

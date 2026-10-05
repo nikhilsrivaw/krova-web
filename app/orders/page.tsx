@@ -195,7 +195,7 @@ export default function OrdersPage() {
         </div>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-orders space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -254,7 +254,7 @@ export default function OrdersPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs border-b border-white/[0.08]">
           <button
             type="button"
             onClick={() => setStatusFilter("all")}

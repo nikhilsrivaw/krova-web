@@ -502,7 +502,7 @@ export function FlowsPanel() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="workspace-actions max-w-full">
                   <button
                     type="button"
                     onClick={() => handleRefresh(flow)}
@@ -576,6 +576,7 @@ export function FlowsPanel() {
         onClose={() => setIsCreateOpen(false)}
         title="New Flow"
         subtitle="Build it here, or paste Flow JSON authored in Meta's own Flow Builder (Business Manager -> WhatsApp Manager -> Flows). Either way this creates it in DRAFT - you publish separately once it validates clean."
+        maxWidth="lg"
       >
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="flex gap-1.5 p-1 rounded-lg bg-black/30 border border-white/[0.08] w-fit">
@@ -661,33 +662,36 @@ export function FlowsPanel() {
                 <div className="space-y-2">
                   {builderFields.map((field, i) => (
                     <div key={field.key} className="p-2.5 rounded-lg bg-black/30 border border-white/[0.08] space-y-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
                         <input
                           type="text"
                           value={field.label}
                           onChange={(e) => updateField(field.key, { label: e.target.value })}
                           placeholder="Field label, e.g. Full name"
-                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                          className="col-span-3 w-full min-w-0 sm:flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
                         />
                         <select
                           value={field.type}
                           onChange={(e) => updateField(field.key, { type: e.target.value as BuilderFieldType })}
-                          className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
+                          className="col-span-3 w-full sm:w-auto px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white focus:border-brass focus:outline-none"
                         >
                           {(Object.keys(FIELD_TYPE_LABEL) as BuilderFieldType[]).map((t) => (
                             <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
                           ))}
                         </select>
                         <button type="button" onClick={() => moveField(i, -1)} disabled={i === 0}
-                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
+                          aria-label="Move field up"
+                          className="flex min-h-11 items-center justify-center sm:w-11 sm:shrink-0 p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
                           <ArrowUp className="w-3 h-3" />
                         </button>
                         <button type="button" onClick={() => moveField(i, 1)} disabled={i === builderFields.length - 1}
-                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
+                          aria-label="Move field down"
+                          className="flex min-h-11 items-center justify-center sm:w-11 sm:shrink-0 p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim disabled:opacity-30 cursor-pointer">
                           <ArrowDown className="w-3 h-3" />
                         </button>
                         <button type="button" onClick={() => removeField(field.key)}
-                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 cursor-pointer">
+                          aria-label="Remove field"
+                          className="flex min-h-11 items-center justify-center sm:w-11 sm:shrink-0 p-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-os-text-dim hover:text-red-400 cursor-pointer">
                           <X className="w-3 h-3" />
                         </button>
                       </div>

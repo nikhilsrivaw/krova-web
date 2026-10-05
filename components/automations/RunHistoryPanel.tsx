@@ -163,16 +163,16 @@ function RunRow({
 }) {
   return (
     <div className="p-3 rounded-xl bg-black/20 border border-white/[0.06] space-y-1.5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {showRule && (
-            <p className="text-xs font-semibold text-white truncate">
+            <p className="text-xs font-semibold text-white">
               {/* An unnamed rule falls back to what it reacts to, which is
                   the only other thing the business would recognise it by. */}
               {run.rule_name || triggerLabel[run.trigger_type] || run.trigger_type}
             </p>
           )}
-          <p className="text-[11px] text-os-text-dim truncate">
+          <p className="text-[11px] text-os-text-dim">
             Step {run.step_position + 1} · {actionLabel[run.action_type] || run.action_type}
           </p>
         </div>

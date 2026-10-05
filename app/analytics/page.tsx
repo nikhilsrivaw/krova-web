@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
       title="Analytics & Intelligence"
       subtitle="Receivables aging, promise fulfillment & AI agent performance benchmark"
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-analytics space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* SECTION 1: AGENT PERFORMANCE (THE "IS IT SAFE FOR ACT MODE?" BENCHMARK) */}
-        <div className="p-6 rounded-2xl border border-brass/30 bg-gradient-to-br from-[#0B0F17] to-brass/10 space-y-4 shadow-2xl">
+        <div className="workspace-panel border-teal/20 p-5 sm:p-7 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-brass/20 border border-brass/30 text-brass-bright">
@@ -229,7 +229,7 @@ export default function AnalyticsPage() {
                 .map((b) => (
                   <div
                     key={b.label}
-                    className="p-2.5 rounded-lg bg-black/20 border border-white/[0.05] flex items-center justify-between gap-3"
+                    className="workspace-response-bucket grid gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 sm:grid-cols-[112px_1fr_128px] sm:items-center"
                   >
                     <span className="text-[11px] text-white/80 w-28 shrink-0">
                       {RESPONSE_BUCKET_LABELS[b.label]}
@@ -240,7 +240,7 @@ export default function AnalyticsPage() {
                         style={{ width: `${Math.round((b.conversion_rate ?? 0) * 100)}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-mono text-os-text-dim shrink-0 w-32 text-right">
+                    <span className="text-xs text-os-text-dim sm:text-right">
                       {b.conversion_rate != null
                         ? `${Math.round(b.conversion_rate * 100)}% ordered`
                         : "—"}{" "}
@@ -291,9 +291,9 @@ export default function AnalyticsPage() {
             </div>
 
             {trustReport.samples.length > 0 && (
-              <div className="space-y-1.5">
+                <div className="space-y-3">
                 {trustReport.samples.slice(0, 5).map((s, i) => (
-                  <div key={i} className="p-2.5 rounded-lg bg-black/20 border border-white/[0.05] flex items-center justify-between gap-3">
+                  <div key={i} className="workspace-toolbar justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                     <p className="text-[11px] text-white/80 truncate flex-1">{s.body || "(no text)"}</p>
                     <span className="text-[10px] font-mono text-os-text-dim shrink-0">
                       {Math.round(s.confidence * 100)}% · cites {s.cited_message_count} msg{s.cited_message_count === 1 ? "" : "s"}
@@ -364,7 +364,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Receivables Aging Buckets */}
           <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="workspace-card-heading justify-between mb-5">
               <div>
                 <h4 className="text-sm font-bold text-white">Receivables Aging (CA-Readable)</h4>
                 <p className="text-xs text-os-text-dim">Outstanding promises grouped by days overdue</p>
@@ -399,7 +399,7 @@ export default function AnalyticsPage() {
             </div>
 
             {receivables?.worst_customer && (
-              <div className="mt-4 p-3 rounded-xl bg-thread/10 border border-thread/20 flex items-center justify-between text-xs">
+              <div className="workspace-card-heading justify-between mt-5 p-4 rounded-xl bg-thread/10 border border-thread/20 text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-mono text-thread-bright block">
                     Highest Overdue Customer:
@@ -417,7 +417,7 @@ export default function AnalyticsPage() {
 
           {/* Promise-Keeping Rate */}
           <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="workspace-card-heading justify-between mb-5">
               <div>
                 <h4 className="text-sm font-bold text-white">Promise-Keeping Reliability</h4>
                 <p className="text-xs text-os-text-dim">Customer fulfillment rate of stated payment commitments</p>

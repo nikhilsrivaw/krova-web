@@ -177,7 +177,7 @@ export default function CasesPage() {
         </button>
       }
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-cases space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -197,8 +197,8 @@ export default function CasesPage() {
             </div>
             <div className="space-y-2">
               {upcoming.map((c) => (
-                <div key={c.id} className="flex items-center justify-between text-xs">
-                  <span className="text-white/90">
+                <div key={c.id} className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-words text-white/90">
                     {c.title}
                     {c.case_number && <span className="text-os-text-dim font-mono"> ({c.case_number})</span>}
                   </span>
@@ -215,7 +215,7 @@ export default function CasesPage() {
           </GlassCard>
         )}
 
-        <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+        <div className="workspace-tabs items-center border-b border-white/[0.06]">
           {(["all", "intake", "active", "on_hold", "closed"] as const).map((s) => (
             <button
               key={s}
@@ -253,7 +253,7 @@ export default function CasesPage() {
                 onClick={() => openEditModal(c)}
               >
                 <div className="space-y-1 overflow-hidden">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-white">{c.title}</span>
                     {c.case_number && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-os-text-dim">

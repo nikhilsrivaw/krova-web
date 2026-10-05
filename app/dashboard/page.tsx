@@ -101,7 +101,7 @@ export default function DashboardPage() {
   const unconfirmedCount = ledgerSummary?.unconfirmed_count ?? 0;
 
   return (
-    <AppLayout title="Command Center" subtitle="Your business overview" appearance="refined">
+    <AppLayout title="Command Center" subtitle="Your business overview" appearance="refined" showPageIntro={false}>
       <DashboardOverview
         owedToUs={owedToUs}
         overduePaise={overduePaise}

@@ -95,12 +95,12 @@ export function CallScriptsTab() {
   return (
     <div className="space-y-6">
       <GlassCard className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+        <div className="workspace-card-heading justify-between">
+          <div className="flex min-w-0 flex-1 basis-64 items-start gap-3">
+            <div className="shrink-0 p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
               <ClipboardList className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-bold text-white">Call Scripts</h3>
               <p className="text-xs text-os-text-dim">
                 A fixed question list an outbound call works through - for lead qualification
@@ -125,7 +125,7 @@ export function CallScriptsTab() {
 
         {isCreating && (
           <div className="p-4 rounded-xl bg-black/30 border border-white/[0.08] space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
                   Name

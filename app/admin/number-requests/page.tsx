@@ -75,7 +75,7 @@ export default function NumberRequestsAdminPage() {
       title="Number Request Queue"
       subtitle="Every business's 140/160-series requests - work through these whenever you're coordinating with Plivo"
     >
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="workspace-number-requests space-y-5">
         {error && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />

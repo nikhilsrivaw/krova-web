@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { CommandPalette } from "./CommandPalette";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
+import { WorkspaceDesign } from "../ui/WorkspaceDesign";
+import { WorkspaceContent } from "./WorkspaceContent";
+import { WorkspacePageIntro } from "./WorkspacePageIntro";
 import {
   account,
   approvals,
@@ -18,6 +21,7 @@ import { isSignedIn, clearSession } from "@/lib/auth";
 
 interface AppLayoutProps {
   appearance?: "default" | "refined";
+  showPageIntro?: boolean;
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
@@ -25,13 +29,15 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({
-  appearance = "default",
+  appearance = "refined",
+  showPageIntro = true,
   title,
   subtitle,
   actions,
   children,
 }: AppLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const navigation = useWorkspaceNavigation(appearance === "refined");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
@@ -115,6 +121,7 @@ export function AppLayout({
   }
 
   return (
+    <WorkspaceDesign.Provider value={appearance}>
     <div className={`min-h-screen text-white flex ${appearance === "refined" ? "workspace-refined" : "bg-[#030712]"}`}>
       {appearance === "refined" && navigation.isOpen && (
         <button type="button" tabIndex={-1} aria-label="Close navigation backdrop" onClick={navigation.close} className="fixed inset-0 z-50 bg-black/75 lg:hidden" />
@@ -142,10 +149,16 @@ export function AppLayout({
           autonomy={autonomy}
           onSetAutonomy={handleSetAutonomy}
           onOpenCommand={() => setIsCommandOpen(true)}
-          actions={actions}
+          actions={appearance === "default" ? actions : undefined}
         />
 
-        <main id={appearance === "refined" ? "workspace-content" : undefined} className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:px-7 sm:py-8 xl:px-9" : "flex-1 p-6 overflow-y-auto"}>{children}</main>
+        <main id={appearance === "refined" ? "workspace-content" : undefined} className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:px-7 sm:py-8 xl:px-9" : "flex-1 p-6 overflow-y-auto"}>
+          {appearance === "refined" ? <div className="mx-auto max-w-[1440px]">
+            {showPageIntro && title && <WorkspacePageIntro title={title} subtitle={subtitle} actions={actions} />}
+            {!showPageIntro && actions && <div className="workspace-page-actions mb-5 flex flex-wrap gap-2">{actions}</div>}
+            <WorkspaceContent route={pathname}>{children}</WorkspaceContent>
+          </div> : children}
+        </main>
       </div>
 
       {/* Universal ⌘K Command Palette */}
@@ -157,5 +170,6 @@ export function AppLayout({
         onSetAutonomy={handleSetAutonomy}
       />
     </div>
+    </WorkspaceDesign.Provider>
   );
 }

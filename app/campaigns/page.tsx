@@ -308,7 +308,7 @@ export default function CampaignsPage() {
       title="Broadcast Campaigns"
       subtitle="Template-based WhatsApp outreach to segmented customer audiences"
     >
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="workspace-campaigns space-y-6">
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
