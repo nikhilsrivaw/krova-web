@@ -246,6 +246,30 @@ export type EscalationRow = {
   escalated_further_at: string | null;
 };
 
+export type JustdialSettings = {
+  configured: boolean;
+  /** Only returned right after generating - the server keeps just a hash. */
+  webhook_url: string | null;
+  last_lead_at: string | null;
+};
+
+export type InboundLeadRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  query: string | null;
+  status: "received" | "duplicate" | "no_phone";
+  customer_id: string | null;
+  received_at: string;
+};
+
+export const justdial = {
+  settings: () => api.get<JustdialSettings>("/justdial/settings"),
+  generateToken: () => api.post<JustdialSettings>("/justdial/token"),
+  leads: (limit = 20) => api.get<InboundLeadRow[]>(`/justdial/leads?limit=${limit}`),
+};
+
 export type EscalationSettings = {
   escalation_sla_hours: number | null;
   outbound_number_series: "080" | "022" | "140" | null;

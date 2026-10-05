@@ -37,6 +37,9 @@ import {
   approvals,
   channels,
   escalations,
+  justdial,
+  type JustdialSettings,
+  type InboundLeadRow,
   waAccount,
   integrations,
   dataExport,
@@ -383,6 +386,56 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
   }, []);
+
+  // Justdial lead intake. The owner generates a URL once and gives it to
+  // Justdial's account manager; recent leads show here so the flow can be
+  // checked without waiting for a sales call.
+  const [justdialSettings, setJustdialSettings] = useState<JustdialSettings | null>(null);
+  const [justdialLeads, setJustdialLeads] = useState<InboundLeadRow[]>([]);
+  const [isGeneratingJustdial, setIsGeneratingJustdial] = useState(false);
+  const [justdialError, setJustdialError] = useState<string | null>(null);
+  const [justdialCopied, setJustdialCopied] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([justdial.settings(), justdial.leads(10)]).then(([s, l]) => {
+      if (!mounted) return;
+      if (s.status === "fulfilled") setJustdialSettings(s.value);
+      if (l.status === "fulfilled") setJustdialLeads(l.value);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleGenerateJustdial = async () => {
+    if (justdialSettings?.configured) {
+      const ok = window.confirm(
+        "A URL already exists. Generating a new one stops the old URL from working. Continue?",
+      );
+      if (!ok) return;
+    }
+    setIsGeneratingJustdial(true);
+    setJustdialError(null);
+    setJustdialCopied(false);
+    try {
+      const fresh = await justdial.generateToken();
+      setJustdialSettings(fresh);
+    } catch (err) {
+      setJustdialError(err instanceof Error ? err.message : "Could not generate the Justdial URL.");
+    } finally {
+      setIsGeneratingJustdial(false);
+    }
+  };
+
+  const handleCopyJustdial = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setJustdialCopied(true);
+    } catch {
+      setJustdialError("Could not copy automatically - select the URL and copy it.");
+    }
+  };
 
   // Escalation due-time window and the outbound number series. Both live in
   // Business.settings on the backend; the blank SLA field means "no due time".
@@ -1121,6 +1174,83 @@ export default function SettingsPage() {
                 {isSavingEscalation ? "Saving..." : "Save"}
               </button>
               {escalationSaved && <span className="text-xs text-os-accent">Saved</span>}
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* SECTION 2x: JUSTDIAL LEADS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Justdial leads</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Leads from your Justdial listing come into KROVA through a URL. Generate it here, then send it to your Justdial account manager to connect it to your listing.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleGenerateJustdial}
+              disabled={isGeneratingJustdial}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isGeneratingJustdial
+                ? "Generating..."
+                : justdialSettings?.configured
+                  ? "Generate a new URL"
+                  : "Generate Justdial URL"}
+            </button>
+
+            {justdialSettings?.webhook_url && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-os-text-dim font-mono">
+                  Copy this now - it is shown only once. Send it to your Justdial account manager.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                    {justdialSettings.webhook_url}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyJustdial(justdialSettings.webhook_url as string)}
+                    className="px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                  >
+                    {justdialCopied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {justdialError && <p className="text-xs text-red-400">{justdialError}</p>}
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-white">Recent leads</p>
+              {justdialLeads.length === 0 ? (
+                <p className="text-[11px] text-os-text-dim font-mono">
+                  No leads yet{justdialSettings?.last_lead_at ? "" : " - none received from Justdial"}.
+                </p>
+              ) : (
+                justdialLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">{lead.name || "No name"}</span>
+                      <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
+                        {lead.status === "received"
+                          ? "Saved"
+                          : lead.status === "duplicate"
+                            ? "Duplicate"
+                            : "No phone"}
+                      </Badge>
+                    </div>
+                    <p>{lead.phone || "No phone number in the lead"}</p>
+                    {lead.query && <p>{lead.query}</p>}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </GlassCard>
