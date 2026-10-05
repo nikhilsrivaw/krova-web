@@ -333,7 +333,9 @@ export default function EscalationsPage() {
                 </div>
                 {selected.channel === "instagram" && selected.contact_handle && (
                   <div className="text-[11px] font-mono text-os-text-dim mt-1">
-                    Instagram ID: {selected.contact_handle}
+                    {selected.contact_handle.startsWith("@")
+                      ? `Instagram: ${selected.contact_handle}`
+                      : `Instagram ID: ${selected.contact_handle}`}
                   </div>
                 )}
               </div>
