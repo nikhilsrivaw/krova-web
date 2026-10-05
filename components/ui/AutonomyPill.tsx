@@ -5,6 +5,7 @@ import { Shield, Eye, FileText, Zap, ChevronDown } from "lucide-react";
 import { type AutonomyLevel } from "@/lib/api";
 
 interface AutonomyPillProps {
+  appearance?: "default" | "refined";
   level: AutonomyLevel;
   onClick?: () => void;
   size?: "sm" | "md";
@@ -39,6 +40,7 @@ const CONFIG = {
 };
 
 export function AutonomyPill({
+  appearance = "default",
   level,
   onClick,
   size = "md",
@@ -53,8 +55,8 @@ export function AutonomyPill({
       onClick={onClick}
       disabled={!interactive}
       title={conf.desc}
-      className={`inline-flex items-center gap-1.5 rounded-full border font-mono font-medium transition-all ${
-        conf.color
+      className={`inline-flex items-center gap-1.5 rounded-full border font-medium transition-all ${appearance === "refined" ? "font-sans" : "font-mono"} ${
+        appearance === "refined" ? "min-h-11 border-white/10 bg-white/[0.02] text-os-ink" : conf.color
       } ${
         size === "sm"
           ? "px-2 py-0.5 text-[11px]"
@@ -65,8 +67,8 @@ export function AutonomyPill({
           : "cursor-default"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${conf.dot}`} />
-      <Icon className="h-3 w-3" />
+      <span className={`h-1.5 w-1.5 rounded-full ${appearance === "refined" ? "hidden bg-teal-bright sm:block" : conf.dot}`} />
+      <Icon className={`h-3 w-3 ${appearance === "refined" ? "hidden sm:block" : ""}`} />
       <span>{conf.short}</span>
       {interactive && <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />}
     </button>

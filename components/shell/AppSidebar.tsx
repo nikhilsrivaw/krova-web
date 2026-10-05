@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -32,14 +33,18 @@ import {
   FileCheck2,
   Siren,
   Smartphone,
+  X,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { AutonomyPill } from "../ui/AutonomyPill";
 import { GetAppModal } from "./GetAppModal";
+import { WorkspaceNav } from "./WorkspaceNav";
 
 interface SidebarProps {
   appearance?: "default" | "refined";
+  navigationOpen?: boolean;
+  onCloseNavigation?: () => void;
   businessName?: string;
   vertical?: string;
   capabilities?: Capability[];
@@ -49,6 +54,8 @@ interface SidebarProps {
 
 export function AppSidebar({
   appearance = "default",
+  navigationOpen = false,
+  onCloseNavigation,
   businessName = "KROVA Business",
   vertical = "General",
   capabilities = [],
@@ -294,15 +301,14 @@ export function AppSidebar({
   });
 
   return (
-    <aside className={appearance === "refined" ? "sticky top-0 z-30 flex h-dvh w-16 shrink-0 select-none flex-col justify-between border-r border-white/[0.07] bg-[#10100F] lg:w-60" : "w-64 shrink-0 h-screen bg-os-bg border-r border-os-border flex flex-col justify-between select-none z-30 sticky top-0"}>
+    <>
+    <aside id={appearance === "refined" ? "workspace-navigation" : undefined} role={appearance === "refined" && navigationOpen ? "dialog" : undefined} aria-modal={appearance === "refined" && navigationOpen ? true : undefined} aria-label={appearance === "refined" ? "Workspace navigation" : undefined} className={appearance === "refined" ? `fixed inset-y-0 left-0 z-[60] flex h-dvh w-[280px] max-w-[calc(100vw-32px)] shrink-0 select-none flex-col justify-between border-r border-white/[0.08] bg-[#0E0E0E] transition-[transform,visibility] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:z-30 lg:w-60 lg:translate-x-0 lg:visible ${navigationOpen ? "visible translate-x-0" : "invisible -translate-x-full"}` : "w-64 shrink-0 h-screen bg-os-bg border-r border-os-border flex flex-col justify-between select-none z-30 sticky top-0"}>
       {/* Top Brand & Workspace Header */}
       <div className={appearance === "refined" ? "flex min-h-0 flex-1 flex-col" : ""}>
-        <div className={appearance === "refined" ? "flex min-h-20 shrink-0 items-center border-b border-white/[0.07] px-3 lg:px-5" : "p-4 border-b border-os-border flex items-center justify-between"}>
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className={appearance === "refined" ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brass/25 bg-brass/10" : "w-8 h-8 rounded-lg bg-gradient-to-br from-brass-bright via-brass to-brass-dim flex items-center justify-center shadow-lg shadow-brass/20 border border-white/10 transition-transform group-hover:scale-105"}>
-              <Sparkles className={`w-4 h-4 ${appearance === "refined" ? "text-brass-bright" : "text-[#14151F]"}`} />
-            </div>
-            <div className={appearance === "refined" ? "hidden lg:block" : ""}>
+        <div className={appearance === "refined" ? "flex min-h-[72px] shrink-0 items-center justify-between border-b border-white/[0.07] px-5" : "p-4 border-b border-os-border flex items-center justify-between"}>
+          <Link href="/dashboard" onClick={appearance === "refined" ? onCloseNavigation : undefined} className="flex items-center gap-2.5 group">
+            {appearance === "refined" ? <Image src="/logo-mark.svg" alt="KROVA" width={34} height={34} /> : <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brass-bright via-brass to-brass-dim flex items-center justify-center shadow-lg shadow-brass/20 border border-white/10 transition-transform group-hover:scale-105"><Sparkles className="w-4 h-4 text-[#14151F]" /></div>}
+            <div>
               <div className="flex items-center gap-1.5">
                 <span className={appearance === "refined" ? "font-serif text-lg font-semibold tracking-tight text-os-ink" : "font-serif font-semibold text-sm text-os-ink tracking-tight"}>
                   KROVA
@@ -311,19 +317,19 @@ export function AppSidebar({
                   OS
                 </span>
               </div>
-              <p className="text-[11px] text-os-text-dim truncate max-w-[130px]">
-                {businessName}
-              </p>
+              <p className="text-[11px] text-os-text-dim truncate max-w-[130px]">{appearance === "refined" ? "Business workspace" : businessName}</p>
             </div>
           </Link>
+          {appearance === "refined" && <button type="button" data-navigation-close aria-label="Close navigation" onClick={onCloseNavigation} className="flex h-11 w-11 items-center justify-center rounded-xl text-os-text-dim hover:bg-white/5 hover:text-white lg:hidden"><X className="h-5 w-5" /></button>}
         </div>
 
         {/* Autonomy Status Bar */}
-        <div className={appearance === "refined" ? "hidden shrink-0 items-center justify-between px-5 py-4 lg:flex" : "px-4 py-2.5 bg-black/20 border-b border-os-border/60 flex items-center justify-between"}>
+        <div className={appearance === "refined" ? "flex shrink-0 items-center justify-between px-5 py-4" : "px-4 py-2.5 bg-black/20 border-b border-os-border/60 flex items-center justify-between"}>
           <span className="text-[10px] uppercase font-mono text-os-text-dim tracking-wider">
             Agent Mode
           </span>
           <AutonomyPill
+            appearance={appearance}
             level={autonomy}
             onClick={onAutonomyClick}
             interactive={true}
@@ -332,8 +338,8 @@ export function AppSidebar({
         </div>
 
         {/* Navigation List */}
-        <nav aria-label="Main navigation" className={appearance === "refined" ? "min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-3 lg:px-3 lg:pt-0" : "p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]"}>
-          {NAV_ITEMS.map((item) => {
+        <nav aria-label="Main navigation" className={appearance === "refined" ? "workspace-navigation min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-1" : "p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]"}>
+          {appearance === "refined" ? <WorkspaceNav items={NAV_ITEMS} pathname={pathname} onNavigate={onCloseNavigation} /> : NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -343,10 +349,9 @@ export function AppSidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                title={appearance === "refined" ? item.label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
-                className={appearance === "refined" ? `group flex min-h-10 items-center justify-center rounded-lg border border-transparent px-2 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brass lg:justify-between lg:px-3 ${isActive ? "border-brass/15 bg-brass/[0.09] text-os-ink" : "text-os-text-dim hover:bg-white/[0.035] hover:text-os-ink"}` : `group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border-l-2 ${
+                className={`group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border-l-2 ${
                   isActive
                     ? "bg-white/[0.06] text-os-ink font-semibold border-l-brass"
                     : "text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] border-l-transparent"
@@ -356,14 +361,14 @@ export function AppSidebar({
                   <Icon
                     className={`w-4 h-4 transition-colors ${
                       isActive
-                        ? appearance === "refined" ? "text-brass-bright" : "text-white"
-                        : appearance === "refined" ? "text-os-text-dim group-hover:text-os-ink" : item.accent || "text-os-text-dim group-hover:text-white"
+                         ? "text-white"
+                         : item.accent || "text-os-text-dim group-hover:text-white"
                     }`}
                   />
-                  <span className={appearance === "refined" ? "hidden lg:inline" : ""}>{item.label}</span>
+                  <span>{item.label}</span>
                 </div>
 
-                <div className={appearance === "refined" ? "hidden items-center gap-1.5 lg:flex" : "flex items-center gap-1.5"}>
+                <div className="flex items-center gap-1.5">
                   {item.badge !== undefined && (
                     <span
                       className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px] text-center ${
@@ -384,21 +389,21 @@ export function AppSidebar({
       </div>
 
       {/* Bottom Footer User/SignOut */}
-      <div className={appearance === "refined" ? "shrink-0 space-y-2 border-t border-white/[0.07] p-2 lg:p-3" : "p-3 border-t border-white/[0.06] bg-[#0A0E17]/60 space-y-2"}>
+      <div className={appearance === "refined" ? "shrink-0 space-y-2 border-t border-white/[0.07] p-3" : "p-3 border-t border-white/[0.06] bg-[#0A0E17]/60 space-y-2"}>
         <button
           type="button"
-          onClick={() => setIsGetAppOpen(true)}
+          onClick={() => { if (appearance === "refined") onCloseNavigation?.(); setIsGetAppOpen(true); }}
           aria-label="Get the App"
           title="Get the App"
-          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] transition-colors ${appearance === "refined" ? "justify-center focus-visible:outline-2 focus-visible:outline-brass lg:justify-start" : ""}`}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] transition-colors ${appearance === "refined" ? "min-h-11" : ""}`}
         >
           <Smartphone className="w-4 h-4" />
-          <span className={appearance === "refined" ? "hidden lg:inline" : ""}>Get the App</span>
+          <span>Get the App</span>
         </button>
 
-        <div className={appearance === "refined" ? "flex items-center justify-center rounded-lg px-2 py-2 lg:justify-between" : "flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"}>
-          <div className={appearance === "refined" ? "hidden items-center gap-2 overflow-hidden lg:flex" : "flex items-center gap-2 overflow-hidden"}>
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-mono font-bold text-white/80 shrink-0">
+        <div className={appearance === "refined" ? "flex items-center justify-between rounded-lg px-2 py-2" : "flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"}>
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className={appearance === "refined" ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xs font-medium text-white" : "w-7 h-7 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-mono font-bold text-white/80 shrink-0"}>
               {businessName.charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
@@ -418,14 +423,16 @@ export function AppSidebar({
               window.location.href = "/login";
             }}
             title="Sign Out"
-            className="p-1.5 rounded-md text-os-text-dim hover:text-thread-bright hover:bg-thread/10 transition-colors"
+            aria-label="Sign Out"
+            className={appearance === "refined" ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-os-text-dim transition-colors hover:bg-rose-400/10 hover:text-rose-300" : "p-1.5 rounded-md text-os-text-dim hover:text-thread-bright hover:bg-thread/10 transition-colors"}
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <GetAppModal isOpen={isGetAppOpen} onClose={() => setIsGetAppOpen(false)} />
     </aside>
+    <GetAppModal appearance={appearance} isOpen={isGetAppOpen} onClose={() => setIsGetAppOpen(false)} />
+    </>
   );
 }

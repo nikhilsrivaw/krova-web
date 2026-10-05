@@ -11,6 +11,7 @@ import {
   Eye,
   FileText,
   Zap,
+  Menu,
 } from "lucide-react";
 import { type AutonomyLevel } from "@/lib/api";
 import { AutonomyPill } from "../ui/AutonomyPill";
@@ -18,6 +19,8 @@ import { Modal } from "../ui/Modal";
 
 interface AppHeaderProps {
   appearance?: "default" | "refined";
+  navigationOpen?: boolean;
+  onOpenNavigation?: () => void;
   title?: string;
   subtitle?: string;
   autonomy: AutonomyLevel;
@@ -28,6 +31,8 @@ interface AppHeaderProps {
 
 export function AppHeader({
   appearance = "default",
+  navigationOpen = false,
+  onOpenNavigation,
   title,
   subtitle,
   autonomy,
@@ -72,12 +77,13 @@ export function AppHeader({
   ];
 
   return (
-    <header className={appearance === "refined" ? "sticky top-0 z-40 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] bg-[#0D0D0C]/95 px-4 py-4 sm:px-8 xl:px-10" : "h-16 px-6 bg-[#080B12]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between sticky top-0 z-20"}>
+    <header className={appearance === "refined" ? "sticky top-0 z-40 flex min-h-[72px] items-center justify-between gap-2 border-b border-white/[0.08] bg-[#090909]/95 px-3 py-3 sm:px-7 xl:px-9" : "h-16 px-6 bg-[#080B12]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between sticky top-0 z-20"}>
       {/* Left: Page Title / Breadcrumbs */}
-      <div>
+      <div className={appearance === "refined" ? "flex min-w-0 items-center gap-2 sm:gap-3" : ""}>
+        {appearance === "refined" && <button type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded={navigationOpen} onClick={onOpenNavigation} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] text-os-ink hover:bg-white/5 lg:hidden"><Menu className="h-4 w-4" aria-hidden="true" /></button>}
         {title ? (
-          <div className={appearance === "refined" ? "space-y-1" : "flex items-baseline gap-2"}>
-            <h1 className={appearance === "refined" ? "text-sm font-semibold tracking-tight text-os-ink" : "text-base font-bold text-white tracking-tight"}>
+          <div className={appearance === "refined" ? "min-w-0 space-y-1" : "flex items-baseline gap-2"}>
+            <h1 className={appearance === "refined" ? "truncate text-[13px] font-medium tracking-tight text-os-ink sm:text-sm" : "text-base font-bold text-white tracking-tight"}>
               {title}
             </h1>
             {subtitle && (
@@ -94,17 +100,17 @@ export function AppHeader({
       </div>
 
       {/* Right: Quick Search + Autonomy Switcher + Custom Actions */}
-      <div className="flex items-center gap-3">
+      <div className={appearance === "refined" ? "flex shrink-0 items-center gap-2 sm:gap-3" : "flex items-center gap-3"}>
         {/* Search / Command trigger button */}
         <button
           type="button"
           onClick={onOpenCommand}
           aria-label="Search views and commands"
-          className={appearance === "refined" ? "hidden items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-xs text-os-text-dim transition-colors hover:bg-white/[0.05] hover:text-os-ink focus-visible:outline-2 focus-visible:outline-brass md:flex" : "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-os-text-dim hover:text-white hover:bg-white/[0.07] transition-all cursor-pointer"}
+          className={appearance === "refined" ? "flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 text-xs text-os-text-dim transition-colors hover:bg-white/[0.05] hover:text-os-ink" : "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-os-text-dim hover:text-white hover:bg-white/[0.07] transition-all cursor-pointer"}
         >
           <Search className="w-3.5 h-3.5" />
-          <span className="pr-4">Search or command...</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-white/[0.08] border border-white/[0.08] text-[10px] font-mono text-os-text-dim">
+          <span className={appearance === "refined" ? "hidden pr-3 md:inline" : "pr-4"}>Search or command...</span>
+          <kbd className={`px-1.5 py-0.5 rounded bg-white/[0.08] border border-white/[0.08] text-[10px] font-mono text-os-text-dim ${appearance === "refined" ? "hidden xl:inline" : ""}`}>
             ⌘K
           </kbd>
         </button>
@@ -112,6 +118,7 @@ export function AppHeader({
         {/* Top-level Autonomy Indicator & Switcher */}
         <div className="flex items-center">
           <AutonomyPill
+            appearance={appearance}
             level={autonomy}
             onClick={() => setShowAutonomyModal(true)}
             interactive={true}
@@ -125,6 +132,7 @@ export function AppHeader({
 
       {/* Autonomy Setting Modal */}
       <Modal
+        appearance={appearance}
         isOpen={showAutonomyModal}
         onClose={() => setShowAutonomyModal(false)}
         title="Agent Autonomy Level"
@@ -137,13 +145,15 @@ export function AppHeader({
             const Icon = item.icon;
 
             return (
-              <div
+              <button
+                type="button"
                 key={item.level}
+                aria-pressed={isSelected}
                 onClick={() => {
                   onSetAutonomy(item.level);
                   setShowAutonomyModal(false);
                 }}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`w-full p-4 rounded-xl border cursor-pointer text-left transition-all ${
                   isSelected
                     ? "border-brass/50 bg-brass/10 shadow-lg shadow-brass/10"
                     : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]"
@@ -161,7 +171,7 @@ export function AppHeader({
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h4 className="text-sm font-semibold text-white">
                           {item.title}
                         </h4>
@@ -195,7 +205,7 @@ export function AppHeader({
                     </div>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

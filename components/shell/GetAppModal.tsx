@@ -12,7 +12,7 @@ import { installUrl } from "@/lib/app-nav";
  * install steps as /mobile, condensed for a modal instead of a full
  * scrolling section.
  */
-export function GetAppModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function GetAppModal({ isOpen, onClose, appearance = "default" }: { isOpen: boolean; onClose: () => void; appearance?: "default" | "refined" }) {
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -28,7 +28,7 @@ export function GetAppModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Get the KROVA app" subtitle="Installs straight from the browser - no app store.">
+    <Modal appearance={appearance} isOpen={isOpen} onClose={onClose} title="Get the KROVA app" subtitle="Installs straight from the browser - no app store.">
       <div className="space-y-5">
         {url && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-black/30 border border-os-border">

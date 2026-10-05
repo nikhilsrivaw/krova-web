@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useOverlayFocus } from "./useOverlayFocus";
 
 interface ModalProps {
+  appearance?: "default" | "refined";
   isOpen: boolean;
   onClose: () => void;
   title: string;
@@ -21,6 +23,7 @@ const MAX_WIDTHS = {
 };
 
 export function Modal({
+  appearance = "default",
   isOpen,
   onClose,
   title,
@@ -28,6 +31,8 @@ export function Modal({
   children,
   maxWidth = "md",
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(isOpen && appearance === "refined", panelRef);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -62,14 +67,18 @@ export function Modal({
               child does not handle on its own. The header and close button
               stay put; only the content area scrolls. */}
           <motion.div
+            role="dialog"
+            ref={panelRef}
+            aria-modal="true"
+            aria-label={title}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className={`relative w-full ${MAX_WIDTHS[maxWidth]} max-h-[90vh] flex flex-col rounded-2xl bg-[#0D121F] border border-white/[0.1] shadow-2xl overflow-hidden z-10`}
+            className={`relative w-full ${MAX_WIDTHS[maxWidth]} max-h-[90dvh] flex flex-col rounded-2xl border border-white/[0.1] shadow-2xl overflow-hidden z-10 ${appearance === "refined" ? "bg-[#131313]" : "bg-[#0D121F]"}`}
           >
             {/* Header */}
-            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#111728]/60">
+            <div className={`shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-white/[0.08] ${appearance === "refined" ? "bg-white/[0.02]" : "bg-[#111728]/60"}`}>
               <div>
                 <h3 className="text-base font-semibold text-white tracking-tight">
                   {title}
@@ -81,14 +90,15 @@ export function Modal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-os-text-dim hover:text-white hover:bg-white/[0.06] transition-colors"
+                aria-label="Close dialog"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-os-text-dim hover:text-white hover:bg-white/[0.06] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="p-6 overflow-y-auto">{children}</div>
+            <div className="min-h-0 p-5 sm:p-6 overflow-y-auto">{children}</div>
           </motion.div>
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -22,10 +22,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { type AutonomyLevel } from "@/lib/api";
+import { useOverlayFocus } from "../ui/useOverlayFocus";
 
 interface CommandPaletteProps {
+  appearance?: "default" | "refined";
   isOpen: boolean;
   onClose: () => void;
+  onOpen?: () => void;
   onSetAutonomy?: (level: AutonomyLevel) => void;
 }
 
@@ -148,10 +151,14 @@ const COMMANDS = [
 ];
 
 export function CommandPalette({
+  appearance = "default",
   isOpen,
   onClose,
+  onOpen,
   onSetAutonomy,
 }: CommandPaletteProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(isOpen && appearance === "refined", panelRef);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -174,9 +181,7 @@ export function CommandPalette({
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         if (isOpen) onClose();
-        else {
-          /* open */
-        }
+        else onOpen?.();
       }
       if (!isOpen) return;
 
@@ -198,7 +203,7 @@ export function CommandPalette({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, allItems, selectedIndex, onClose]);
+  }, [isOpen, allItems, selectedIndex, onClose, onOpen]);
 
   const executeItem = (item: (typeof allItems)[0]) => {
     onClose();
@@ -225,13 +230,17 @@ export function CommandPalette({
 
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: -10 }}
+            role="dialog"
+            ref={panelRef}
+            aria-modal="true"
+            aria-label="Search views and commands"
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="relative w-full max-w-xl rounded-2xl bg-[#0D121F] border border-white/[0.12] shadow-2xl overflow-hidden z-10"
+            className={`relative w-full max-w-xl rounded-2xl border border-white/[0.12] shadow-2xl overflow-hidden z-10 ${appearance === "refined" ? "bg-[#131313]" : "bg-[#0D121F]"}`}
           >
             {/* Search Input Box */}
-            <div className="flex items-center px-4 py-3.5 border-b border-white/[0.08] bg-[#111728]/70">
+            <div className={`flex items-center px-4 py-3.5 border-b border-white/[0.08] ${appearance === "refined" ? "bg-white/[0.02]" : "bg-[#111728]/70"}`}>
               <Search className="w-4 h-4 text-os-text-dim mr-3 shrink-0" />
               <input
                 type="text"

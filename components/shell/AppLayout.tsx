@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { CommandPalette } from "./CommandPalette";
+import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import {
   account,
   approvals,
@@ -31,6 +32,7 @@ export function AppLayout({
   children,
 }: AppLayoutProps) {
   const router = useRouter();
+  const navigation = useWorkspaceNavigation(appearance === "refined");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -81,7 +83,7 @@ export function AppLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${appearance === "refined" ? "workspace-refined" : "bg-[#030712]"}`}>
         <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
       </div>
     );
@@ -89,7 +91,7 @@ export function AppLayout({
 
   if (loadError || !profile) {
     return (
-      <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center p-6">
+      <div className={`min-h-screen text-white flex items-center justify-center p-6 ${appearance === "refined" ? "workspace-refined" : "bg-[#030712]"}`}>
         <div className="flex flex-col items-center text-center max-w-sm">
           <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
             <AlertTriangle className="w-8 h-8" />
@@ -113,21 +115,28 @@ export function AppLayout({
   }
 
   return (
-    <div className={`min-h-screen text-white flex ${appearance === "refined" ? "bg-[#0D0D0C]" : "bg-[#030712]"}`}>
+    <div className={`min-h-screen text-white flex ${appearance === "refined" ? "workspace-refined" : "bg-[#030712]"}`}>
+      {appearance === "refined" && navigation.isOpen && (
+        <button type="button" tabIndex={-1} aria-label="Close navigation backdrop" onClick={navigation.close} className="fixed inset-0 z-50 bg-black/75 lg:hidden" />
+      )}
       {/* Persistent App Sidebar */}
       <AppSidebar
         appearance={appearance}
+        navigationOpen={navigation.isOpen}
+        onCloseNavigation={navigation.close}
         businessName={profile?.business_name || "KROVA Business"}
         vertical={profile?.vertical || "General"}
         capabilities={profile?.capabilities || []}
         autonomy={autonomy}
-        onAutonomyClick={() => setIsCommandOpen(true)}
+        onAutonomyClick={() => { navigation.close(); setIsCommandOpen(true); }}
       />
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <AppHeader
           appearance={appearance}
+          navigationOpen={navigation.isOpen}
+          onOpenNavigation={navigation.open}
           title={title}
           subtitle={subtitle}
           autonomy={autonomy}
@@ -136,13 +145,15 @@ export function AppLayout({
           actions={actions}
         />
 
-        <main className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:p-8 xl:px-10 xl:py-9" : "flex-1 p-6 overflow-y-auto"}>{children}</main>
+        <main id={appearance === "refined" ? "workspace-content" : undefined} className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:px-7 sm:py-8 xl:px-9" : "flex-1 p-6 overflow-y-auto"}>{children}</main>
       </div>
 
       {/* Universal ⌘K Command Palette */}
       <CommandPalette
+        appearance={appearance}
         isOpen={isCommandOpen}
         onClose={() => setIsCommandOpen(false)}
+        onOpen={appearance === "refined" ? () => setIsCommandOpen(true) : undefined}
         onSetAutonomy={handleSetAutonomy}
       />
     </div>
