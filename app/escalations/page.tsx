@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
 
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  in_progress: "In progress",
+  resolved: "Resolved",
+  dismissed: "Dismissed",
+};
+
 const CATEGORY_LABEL: Record<string, string> = {
   billing: "Billing",
   booking: "Booking",
@@ -87,6 +94,28 @@ export default function EscalationsPage() {
   useEffect(() => {
     load(viewMode);
   }, [viewMode]);
+
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+
+  const handleStatus = async (
+    id: string,
+    status: "in_progress" | "resolved" | "dismissed",
+    note?: string,
+  ) => {
+    setStatusBusyId(id);
+    try {
+      const updated = await escalations.setStatus(id, status, note);
+      setRows((prev) =>
+        status === "resolved" || status === "dismissed"
+          ? prev.filter((e) => e.id !== id)
+          : prev.map((e) => (e.id === id ? updated : e)),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not update status.");
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
 
   const handleAcknowledge = async (id: string) => {
     setAcknowledgingId(id);
@@ -200,17 +229,57 @@ export default function EscalationsPage() {
                   )}
                 </div>
                 <p className="text-sm text-white">{e.reason}</p>
+                {e.request_summary && (
+                  <p className="text-xs text-os-text-dim italic">
+                    Customer said: &ldquo;{e.request_summary}&rdquo;
+                  </p>
+                )}
+                <div className="flex items-center gap-3 flex-wrap text-[11px] font-mono text-os-text-dim">
+                  <span>Status: {STATUS_LABEL[e.status] || e.status}</span>
+                  {e.caller_phone && (
+                    <a href={`tel:${e.caller_phone}`} className="text-brass-bright hover:underline">
+                      Call {e.caller_phone}
+                    </a>
+                  )}
+                  {e.due_at && <span>Due {new Date(e.due_at).toLocaleString()}</span>}
+                  {e.resolution_note && <span>Note: {e.resolution_note}</span>}
+                </div>
               </div>
-              {viewMode === "open" && (
-                <button
-                  type="button"
-                  onClick={() => handleAcknowledge(e.id)}
-                  disabled={acknowledgingId === e.id}
-                  className="flex-shrink-0 px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                >
-                  {acknowledgingId === e.id ? "…" : "Acknowledge"}
-                </button>
-              )}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                {e.status !== "resolved" && e.status !== "dismissed" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleStatus(e.id, "in_progress")}
+                      disabled={statusBusyId === e.id || e.status === "in_progress"}
+                      className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                    >
+                      In progress
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const note = window.prompt("What was done? (optional)") ?? "";
+                        handleStatus(e.id, "resolved", note);
+                      }}
+                      disabled={statusBusyId === e.id}
+                      className="px-3.5 py-1.5 rounded-lg bg-seal hover:bg-seal-dim disabled:opacity-40 text-white text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Resolve
+                    </button>
+                  </>
+                )}
+                {viewMode === "open" && (
+                  <button
+                    type="button"
+                    onClick={() => handleAcknowledge(e.id)}
+                    disabled={acknowledgingId === e.id}
+                    className="px-3.5 py-1.5 rounded-lg text-os-text-dim hover:text-white text-[11px] transition-all cursor-pointer"
+                  >
+                    {acknowledgingId === e.id ? "…" : "Seen"}
+                  </button>
+                )}
+              </div>
             </GlassCard>
             );
           })}

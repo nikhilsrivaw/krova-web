@@ -234,6 +234,12 @@ export type EscalationRow = {
   // field for escalation.raised (see CONDITION_FIELDS below), since it's
   // never actually present in scope at the moment that trigger dispatches.
   category: string | null;
+  request_summary: string | null;
+  caller_phone: string | null;
+  status: "open" | "in_progress" | "resolved" | "dismissed";
+  due_at: string | null;
+  resolved_at: string | null;
+  resolution_note: string | null;
   created_at: string;
   acknowledged_at: string | null;
   escalated_further_at: string | null;
@@ -243,6 +249,11 @@ export const escalations = {
   list: (acknowledged = false) =>
     api.get<EscalationRow[]>(`/escalations?acknowledged=${acknowledged}`),
   acknowledge: (id: string) => api.post<EscalationRow>(`/escalations/${id}/acknowledge`),
+  setStatus: (id: string, status: "in_progress" | "resolved" | "dismissed", resolutionNote?: string) =>
+    api.patch<EscalationRow>(`/escalations/${id}/status`, {
+      status,
+      resolution_note: resolutionNote ?? null,
+    }),
   count: () => api.get<{ open: number }>("/escalations/count"),
 };
 
