@@ -315,14 +315,20 @@ export default function EscalationsPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Callback number</div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">
+                  {selected.channel === "voice" ? "Call back on" : "Contact"}
+                </div>
                 <div className="text-white">
                   {selected.caller_phone ? (
                     <a href={`tel:${selected.caller_phone}`} className="text-brass-bright hover:underline">
                       {selected.caller_phone}
                     </a>
+                  ) : selected.channel === "voice" ? (
+                    "Caller number was not recorded"
+                  ) : selected.channel === "whatsapp" ? (
+                    "Reply in the WhatsApp chat"
                   ) : (
-                    "Not available on this channel - reply in the chat"
+                    "Reply in the Instagram DM (number not shared yet)"
                   )}
                 </div>
               </div>
