@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 import Link from "next/link";
 import { Siren, Check, Clock, Zap, TrendingDown, MessageSquareWarning } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -96,6 +97,8 @@ export default function EscalationsPage() {
   }, [viewMode]);
 
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<EscalationRow | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
 
   const handleStatus = async (
     id: string,
@@ -110,6 +113,12 @@ export default function EscalationsPage() {
           ? prev.filter((e) => e.id !== id)
           : prev.map((e) => (e.id === id ? updated : e)),
       );
+      if (status === "resolved" || status === "dismissed") {
+        setSelected(null);
+        setResolveNote("");
+      } else {
+        setSelected(updated);
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not update status.");
     } finally {
@@ -199,7 +208,11 @@ export default function EscalationsPage() {
             const flagKind = customerFlag(e.customer_id);
             const Flag = flagKind ? FLAGGED_SIGNAL_KINDS[flagKind].icon : null;
             return (
-            <GlassCard key={e.id} className="p-4 flex items-start justify-between gap-4">
+            <GlassCard
+              key={e.id}
+              onClick={() => setSelected(e)}
+              className="p-4 flex items-start justify-between gap-4 cursor-pointer hover:bg-white/[0.03] transition-all"
+            >
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="rose" dot>
@@ -246,33 +259,26 @@ export default function EscalationsPage() {
                 </div>
               </div>
               <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
-                {e.status !== "resolved" && e.status !== "dismissed" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleStatus(e.id, "in_progress")}
-                      disabled={statusBusyId === e.id || e.status === "in_progress"}
-                      className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
-                    >
-                      In progress
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const note = window.prompt("What was done? (optional)") ?? "";
-                        handleStatus(e.id, "resolved", note);
-                      }}
-                      disabled={statusBusyId === e.id}
-                      className="px-3.5 py-1.5 rounded-lg bg-seal hover:bg-seal-dim disabled:opacity-40 text-white text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      Resolve
-                    </button>
-                  </>
+                {e.status === "open" && (
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      handleStatus(e.id, "in_progress");
+                    }}
+                    disabled={statusBusyId === e.id}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+                  >
+                    In progress
+                  </button>
                 )}
                 {viewMode === "open" && (
                   <button
                     type="button"
-                    onClick={() => handleAcknowledge(e.id)}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      handleAcknowledge(e.id);
+                    }}
                     disabled={acknowledgingId === e.id}
                     className="px-3.5 py-1.5 rounded-lg text-os-text-dim hover:text-white text-[11px] transition-all cursor-pointer"
                   >
@@ -285,6 +291,111 @@ export default function EscalationsPage() {
           })}
         </div>
       </div>
+      <Modal
+        isOpen={!!selected}
+        onClose={() => {
+          setSelected(null);
+          setResolveNote("");
+        }}
+        title={selected ? `Escalation - ${customerName(selected.customer_id)}` : "Escalation"}
+        subtitle={selected ? `${selected.channel} · ${timeAgo(selected.created_at)}` : undefined}
+        maxWidth="lg"
+      >
+        {selected && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Status</div>
+                <div className="text-white">{STATUS_LABEL[selected.status] || selected.status}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Due</div>
+                <div className="text-white">
+                  {selected.due_at ? new Date(selected.due_at).toLocaleString() : "No deadline set"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Callback number</div>
+                <div className="text-white">
+                  {selected.caller_phone ? (
+                    <a href={`tel:${selected.caller_phone}`} className="text-brass-bright hover:underline">
+                      {selected.caller_phone}
+                    </a>
+                  ) : (
+                    "Not available on this channel - reply in the chat"
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Category</div>
+                <div className="text-white">
+                  {selected.category ? CATEGORY_LABEL[selected.category] || selected.category : "Not yet classified"}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">What the customer asked</div>
+              <p className="text-white italic">
+                {selected.request_summary ? `"${selected.request_summary}"` : "No message text was recorded."}
+              </p>
+            </div>
+
+            <div>
+              <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Why the AI escalated</div>
+              <p className="text-white">{selected.reason}</p>
+            </div>
+
+            {selected.resolution_note && (
+              <div>
+                <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Resolution note</div>
+                <p className="text-white">{selected.resolution_note}</p>
+              </div>
+            )}
+
+            {selected.status !== "resolved" && selected.status !== "dismissed" && (
+              <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+                <div className="text-[10px] uppercase font-mono text-os-text-dim">Resolve</div>
+                <textarea
+                  value={resolveNote}
+                  onChange={(ev) => setResolveNote(ev.target.value)}
+                  rows={3}
+                  placeholder="What was done? For example: called the customer, confirmed the appointment. Only you see this note; the customer does not."
+                  className="w-full rounded-lg bg-white/[0.04] border border-white/[0.1] p-3 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-brass/40"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  {selected.status === "open" && (
+                    <button
+                      type="button"
+                      onClick={() => handleStatus(selected.id, "in_progress")}
+                      disabled={statusBusyId === selected.id}
+                      className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] cursor-pointer"
+                    >
+                      Mark in progress
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleStatus(selected.id, "dismissed", resolveNote.trim() || undefined)}
+                    disabled={statusBusyId === selected.id}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStatus(selected.id, "resolved", resolveNote.trim() || undefined)}
+                    disabled={statusBusyId === selected.id}
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-seal hover:bg-seal-dim disabled:opacity-40 cursor-pointer"
+                  >
+                    {statusBusyId === selected.id ? "Saving..." : "Mark resolved"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </AppLayout>
   );
 }
