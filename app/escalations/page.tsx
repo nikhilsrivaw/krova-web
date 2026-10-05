@@ -331,6 +331,11 @@ export default function EscalationsPage() {
                     "Reply in the Instagram DM (number not shared yet)"
                   )}
                 </div>
+                {selected.channel === "instagram" && selected.contact_handle && (
+                  <div className="text-[11px] font-mono text-os-text-dim mt-1">
+                    Instagram ID: {selected.contact_handle}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="text-[10px] uppercase font-mono text-os-text-dim mb-1">Category</div>

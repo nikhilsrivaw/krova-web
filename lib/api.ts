@@ -236,6 +236,7 @@ export type EscalationRow = {
   category: string | null;
   request_summary: string | null;
   caller_phone: string | null;
+  contact_handle: string | null;
   status: "open" | "in_progress" | "resolved" | "dismissed";
   due_at: string | null;
   resolved_at: string | null;
