@@ -17,6 +17,7 @@ import { AutonomyPill } from "../ui/AutonomyPill";
 import { Modal } from "../ui/Modal";
 
 interface AppHeaderProps {
+  appearance?: "default" | "refined";
   title?: string;
   subtitle?: string;
   autonomy: AutonomyLevel;
@@ -26,6 +27,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({
+  appearance = "default",
   title,
   subtitle,
   autonomy,
@@ -70,17 +72,17 @@ export function AppHeader({
   ];
 
   return (
-    <header className="h-16 px-6 bg-[#080B12]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between sticky top-0 z-20">
+    <header className={appearance === "refined" ? "sticky top-0 z-40 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] bg-[#0D0D0C]/95 px-4 py-4 sm:px-8 xl:px-10" : "h-16 px-6 bg-[#080B12]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between sticky top-0 z-20"}>
       {/* Left: Page Title / Breadcrumbs */}
       <div>
         {title ? (
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-base font-bold text-white tracking-tight">
+          <div className={appearance === "refined" ? "space-y-1" : "flex items-baseline gap-2"}>
+            <h1 className={appearance === "refined" ? "text-sm font-semibold tracking-tight text-os-ink" : "text-base font-bold text-white tracking-tight"}>
               {title}
             </h1>
             {subtitle && (
-              <span className="text-xs text-os-text-dim font-normal hidden sm:inline">
-                • {subtitle}
+              <span className={appearance === "refined" ? "hidden text-xs text-os-text-dim sm:block" : "text-xs text-os-text-dim font-normal hidden sm:inline"}>
+                {appearance === "default" && "• "}{subtitle}
               </span>
             )}
           </div>
@@ -97,7 +99,8 @@ export function AppHeader({
         <button
           type="button"
           onClick={onOpenCommand}
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-os-text-dim hover:text-white hover:bg-white/[0.07] transition-all cursor-pointer"
+          aria-label="Search views and commands"
+          className={appearance === "refined" ? "hidden items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-xs text-os-text-dim transition-colors hover:bg-white/[0.05] hover:text-os-ink focus-visible:outline-2 focus-visible:outline-brass md:flex" : "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-os-text-dim hover:text-white hover:bg-white/[0.07] transition-all cursor-pointer"}
         >
           <Search className="w-3.5 h-3.5" />
           <span className="pr-4">Search or command...</span>

@@ -16,6 +16,7 @@ import {
 import { isSignedIn, clearSession } from "@/lib/auth";
 
 interface AppLayoutProps {
+  appearance?: "default" | "refined";
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
@@ -23,6 +24,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({
+  appearance = "default",
   title,
   subtitle,
   actions,
@@ -111,9 +113,10 @@ export function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white flex">
+    <div className={`min-h-screen text-white flex ${appearance === "refined" ? "bg-[#0D0D0C]" : "bg-[#030712]"}`}>
       {/* Persistent App Sidebar */}
       <AppSidebar
+        appearance={appearance}
         businessName={profile?.business_name || "KROVA Business"}
         vertical={profile?.vertical || "General"}
         capabilities={profile?.capabilities || []}
@@ -124,6 +127,7 @@ export function AppLayout({
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <AppHeader
+          appearance={appearance}
           title={title}
           subtitle={subtitle}
           autonomy={autonomy}
@@ -132,7 +136,7 @@ export function AppLayout({
           actions={actions}
         />
 
-        <main className="flex-1 p-6 overflow-y-auto">{children}</main>
+        <main className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:p-8 xl:px-10 xl:py-9" : "flex-1 p-6 overflow-y-auto"}>{children}</main>
       </div>
 
       {/* Universal ⌘K Command Palette */}

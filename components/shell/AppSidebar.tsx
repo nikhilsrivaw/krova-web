@@ -39,6 +39,7 @@ import { AutonomyPill } from "../ui/AutonomyPill";
 import { GetAppModal } from "./GetAppModal";
 
 interface SidebarProps {
+  appearance?: "default" | "refined";
   businessName?: string;
   vertical?: string;
   capabilities?: Capability[];
@@ -47,6 +48,7 @@ interface SidebarProps {
 }
 
 export function AppSidebar({
+  appearance = "default",
   businessName = "KROVA Business",
   vertical = "General",
   capabilities = [],
@@ -292,20 +294,20 @@ export function AppSidebar({
   });
 
   return (
-    <aside className="w-64 shrink-0 h-screen bg-os-bg border-r border-os-border flex flex-col justify-between select-none z-30 sticky top-0">
+    <aside className={appearance === "refined" ? "sticky top-0 z-30 flex h-dvh w-16 shrink-0 select-none flex-col justify-between border-r border-white/[0.07] bg-[#10100F] lg:w-60" : "w-64 shrink-0 h-screen bg-os-bg border-r border-os-border flex flex-col justify-between select-none z-30 sticky top-0"}>
       {/* Top Brand & Workspace Header */}
-      <div>
-        <div className="p-4 border-b border-os-border flex items-center justify-between">
+      <div className={appearance === "refined" ? "flex min-h-0 flex-1 flex-col" : ""}>
+        <div className={appearance === "refined" ? "flex min-h-20 shrink-0 items-center border-b border-white/[0.07] px-3 lg:px-5" : "p-4 border-b border-os-border flex items-center justify-between"}>
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brass-bright via-brass to-brass-dim flex items-center justify-center shadow-lg shadow-brass/20 border border-white/10 transition-transform group-hover:scale-105">
-              <Sparkles className="w-4 h-4 text-[#14151F]" />
+            <div className={appearance === "refined" ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brass/25 bg-brass/10" : "w-8 h-8 rounded-lg bg-gradient-to-br from-brass-bright via-brass to-brass-dim flex items-center justify-center shadow-lg shadow-brass/20 border border-white/10 transition-transform group-hover:scale-105"}>
+              <Sparkles className={`w-4 h-4 ${appearance === "refined" ? "text-brass-bright" : "text-[#14151F]"}`} />
             </div>
-            <div>
+            <div className={appearance === "refined" ? "hidden lg:block" : ""}>
               <div className="flex items-center gap-1.5">
-                <span className="font-serif font-semibold text-sm text-os-ink tracking-tight">
+                <span className={appearance === "refined" ? "font-serif text-lg font-semibold tracking-tight text-os-ink" : "font-serif font-semibold text-sm text-os-ink tracking-tight"}>
                   KROVA
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/[0.08] text-os-text-dim border border-os-border">
+                <span className={appearance === "refined" ? "text-[9px] tracking-widest text-os-text-dim" : "text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/[0.08] text-os-text-dim border border-os-border"}>
                   OS
                 </span>
               </div>
@@ -317,7 +319,7 @@ export function AppSidebar({
         </div>
 
         {/* Autonomy Status Bar */}
-        <div className="px-4 py-2.5 bg-black/20 border-b border-os-border/60 flex items-center justify-between">
+        <div className={appearance === "refined" ? "hidden shrink-0 items-center justify-between px-5 py-4 lg:flex" : "px-4 py-2.5 bg-black/20 border-b border-os-border/60 flex items-center justify-between"}>
           <span className="text-[10px] uppercase font-mono text-os-text-dim tracking-wider">
             Agent Mode
           </span>
@@ -330,7 +332,7 @@ export function AppSidebar({
         </div>
 
         {/* Navigation List */}
-        <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]">
+        <nav aria-label="Main navigation" className={appearance === "refined" ? "min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-3 lg:px-3 lg:pt-0" : "p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]"}>
           {NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -341,7 +343,10 @@ export function AppSidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border-l-2 ${
+                title={appearance === "refined" ? item.label : undefined}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label}
+                className={appearance === "refined" ? `group flex min-h-10 items-center justify-center rounded-lg border border-transparent px-2 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brass lg:justify-between lg:px-3 ${isActive ? "border-brass/15 bg-brass/[0.09] text-os-ink" : "text-os-text-dim hover:bg-white/[0.035] hover:text-os-ink"}` : `group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border-l-2 ${
                   isActive
                     ? "bg-white/[0.06] text-os-ink font-semibold border-l-brass"
                     : "text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] border-l-transparent"
@@ -351,14 +356,14 @@ export function AppSidebar({
                   <Icon
                     className={`w-4 h-4 transition-colors ${
                       isActive
-                        ? "text-white"
-                        : item.accent || "text-os-text-dim group-hover:text-white"
+                        ? appearance === "refined" ? "text-brass-bright" : "text-white"
+                        : appearance === "refined" ? "text-os-text-dim group-hover:text-os-ink" : item.accent || "text-os-text-dim group-hover:text-white"
                     }`}
                   />
-                  <span>{item.label}</span>
+                  <span className={appearance === "refined" ? "hidden lg:inline" : ""}>{item.label}</span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className={appearance === "refined" ? "hidden items-center gap-1.5 lg:flex" : "flex items-center gap-1.5"}>
                   {item.badge !== undefined && (
                     <span
                       className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px] text-center ${
@@ -379,18 +384,20 @@ export function AppSidebar({
       </div>
 
       {/* Bottom Footer User/SignOut */}
-      <div className="p-3 border-t border-white/[0.06] bg-[#0A0E17]/60 space-y-2">
+      <div className={appearance === "refined" ? "shrink-0 space-y-2 border-t border-white/[0.07] p-2 lg:p-3" : "p-3 border-t border-white/[0.06] bg-[#0A0E17]/60 space-y-2"}>
         <button
           type="button"
           onClick={() => setIsGetAppOpen(true)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] transition-colors"
+          aria-label="Get the App"
+          title="Get the App"
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-os-text-dim hover:text-os-ink hover:bg-white/[0.03] transition-colors ${appearance === "refined" ? "justify-center focus-visible:outline-2 focus-visible:outline-brass lg:justify-start" : ""}`}
         >
           <Smartphone className="w-4 h-4" />
-          <span>Get the App</span>
+          <span className={appearance === "refined" ? "hidden lg:inline" : ""}>Get the App</span>
         </button>
 
-        <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-          <div className="flex items-center gap-2 overflow-hidden">
+        <div className={appearance === "refined" ? "flex items-center justify-center rounded-lg px-2 py-2 lg:justify-between" : "flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"}>
+          <div className={appearance === "refined" ? "hidden items-center gap-2 overflow-hidden lg:flex" : "flex items-center gap-2 overflow-hidden"}>
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-mono font-bold text-white/80 shrink-0">
               {businessName.charAt(0).toUpperCase()}
             </div>
