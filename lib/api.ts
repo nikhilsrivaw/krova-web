@@ -314,6 +314,27 @@ export type LeadSourceLead = {
   received_at: string;
 };
 
+export type LeadSourceKey = "magicbricks" | "99acres" | "housing" | "justdial" | "other";
+
+export type LeadImportResult = {
+  source: string;
+  rows: number;
+  received: number;
+  duplicate: number;
+  no_phone: number;
+};
+
+export const leadImports = {
+  upload: (file: File, source: LeadSourceKey) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("source", source);
+    return api.post<LeadImportResult>("/leads/import", formData, true);
+  },
+  manual: (body: { name?: string; phone?: string; email?: string; query?: string; source: LeadSourceKey }) =>
+    api.post<{ status: string; id: string }>("/leads/manual", body),
+};
+
 export const leadSources = {
   list: () => api.get<LeadSource[]>("/lead-sources"),
   generateToken: (key: string) => api.post<{ key: string; webhook_url: string }>(`/lead-sources/${key}/token`),

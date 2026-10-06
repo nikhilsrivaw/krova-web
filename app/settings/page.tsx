@@ -42,6 +42,8 @@ import {
   receivables,
   indiamart,
   leadSources,
+  leadImports,
+  type LeadSourceKey,
   type LeadSource,
   type LeadSourceLead,
   type IndiamartSettings,
@@ -438,6 +440,56 @@ export default function SettingsPage() {
       setImportError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  // Leads added by hand: a portal export (CSV/Excel) or a single lead typed in.
+  const [addSource, setAddSource] = useState<LeadSourceKey>("magicbricks");
+  const [addFile, setAddFile] = useState<File | null>(null);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addMessage, setAddMessage] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualQuery, setManualQuery] = useState("");
+
+  const handleUploadLeads = async () => {
+    if (!addFile) return;
+    setAddBusy(true);
+    setAddError(null);
+    setAddMessage(null);
+    try {
+      const r = await leadImports.upload(addFile, addSource);
+      setAddMessage(`Imported ${r.rows} rows: ${r.received} new, ${r.duplicate} duplicate, ${r.no_phone} without a phone number.`);
+      leadSources.leads(10).then(setLeadSourceLeads).catch(() => {});
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Could not import this file.");
+    } finally {
+      setAddBusy(false);
+    }
+  };
+
+  const handleManualLead = async () => {
+    if (!manualName.trim() && !manualPhone.trim()) return;
+    setAddBusy(true);
+    setAddError(null);
+    setAddMessage(null);
+    try {
+      await leadImports.manual({
+        name: manualName.trim() || undefined,
+        phone: manualPhone.trim() || undefined,
+        query: manualQuery.trim() || undefined,
+        source: addSource,
+      });
+      setManualName("");
+      setManualPhone("");
+      setManualQuery("");
+      setAddMessage("Lead added.");
+      leadSources.leads(10).then(setLeadSourceLeads).catch(() => {});
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Could not add this lead.");
+    } finally {
+      setAddBusy(false);
     }
   };
 
@@ -1379,6 +1431,65 @@ export default function SettingsPage() {
             </div>
           )}
           {importError && <p className="text-xs text-red-400">{importError}</p>}
+        </GlassCard>
+
+        {/* SECTION 2z00: ADD LEADS BY HAND */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Add leads by hand</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Export leads from a portal dashboard as CSV or Excel and upload them here, or type one lead in. Pick the source so the ledger shows where each lead came from.
+          </p>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-white" htmlFor="lead-source">Source</label>
+            <select
+              id="lead-source"
+              value={addSource}
+              onChange={(e) => setAddSource(e.target.value as LeadSourceKey)}
+              className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm"
+            >
+              <option value="magicbricks">Magicbricks</option>
+              <option value="99acres">99Acres</option>
+              <option value="housing">Housing.com</option>
+              <option value="justdial">Justdial</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-white">Upload a file</p>
+            <p className="text-[11px] text-os-text-dim font-mono">Columns: name, mobile, email, query (common names work too).</p>
+            <input type="file" accept=".csv,.xlsx" onChange={(e) => setAddFile(e.target.files?.[0] ?? null)} className="text-xs text-os-text-dim" />
+            <button
+              type="button"
+              onClick={handleUploadLeads}
+              disabled={!addFile || addBusy}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {addBusy ? "Working..." : "Upload leads"}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-white">Or add one lead</p>
+            <input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="Name" className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm" />
+            <input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} placeholder="Phone number" className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm" />
+            <input value={manualQuery} onChange={(e) => setManualQuery(e.target.value)} placeholder="What they asked for" className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm" />
+            <button
+              type="button"
+              onClick={handleManualLead}
+              disabled={addBusy || (!manualName.trim() && !manualPhone.trim())}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              Add lead
+            </button>
+          </div>
+
+          {addMessage && <p className="text-xs text-os-accent">{addMessage}</p>}
+          {addError && <p className="text-xs text-red-400">{addError}</p>}
         </GlassCard>
 
         {/* SECTION 2z0: LEAD SOURCES */}
