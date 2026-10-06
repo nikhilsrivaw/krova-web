@@ -41,6 +41,9 @@ import {
   justdial,
   receivables,
   indiamart,
+  leadSources,
+  type LeadSource,
+  type LeadSourceLead,
   type IndiamartSettings,
   type IndiamartLeadRow,
   type ReceivablesImportResult,
@@ -435,6 +438,39 @@ export default function SettingsPage() {
       setImportError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  // Lead sources that need only a URL: Magicbricks, 99Acres, Housing.com, and any tool.
+  const [leadSourceList, setLeadSourceList] = useState<LeadSource[]>([]);
+  const [leadSourceUrls, setLeadSourceUrls] = useState<Record<string, string>>({});
+  const [leadSourceLeads, setLeadSourceLeads] = useState<LeadSourceLead[]>([]);
+  const [leadSourceBusy, setLeadSourceBusy] = useState<string | null>(null);
+  const [leadSourceError, setLeadSourceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([leadSources.list(), leadSources.leads(10)]).then(([s, l]) => {
+      if (!mounted) return;
+      if (s.status === "fulfilled") setLeadSourceList(s.value);
+      if (l.status === "fulfilled") setLeadSourceLeads(l.value);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleGenerateLeadSource = async (key: string) => {
+    setLeadSourceBusy(key);
+    setLeadSourceError(null);
+    try {
+      const { webhook_url } = await leadSources.generateToken(key);
+      setLeadSourceUrls((prev) => ({ ...prev, [key]: webhook_url }));
+      setLeadSourceList((prev) => prev.map((s) => (s.key === key ? { ...s, configured: true } : s)));
+    } catch (err) {
+      setLeadSourceError(err instanceof Error ? err.message : "Could not generate the URL.");
+    } finally {
+      setLeadSourceBusy(null);
     }
   };
 
@@ -1343,6 +1379,71 @@ export default function SettingsPage() {
             </div>
           )}
           {importError && <p className="text-xs text-red-400">{importError}</p>}
+        </GlassCard>
+
+        {/* SECTION 2z0: LEAD SOURCES */}
+        <GlassCard className="p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Lead sources</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Connect a listing platform or any tool that sends leads. Each one gets its own URL and setup steps below.
+          </p>
+
+          {leadSourceList.map((source) => (
+            <div key={source.key} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">{source.label}</span>
+                <Badge variant={source.configured ? "emerald" : "amber"} dot>
+                  {source.configured ? "URL created" : "Not set up"}
+                </Badge>
+              </div>
+              <ol className="list-decimal pl-5 space-y-1 text-[11px] text-os-text-dim font-mono">
+                {source.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={() => handleGenerateLeadSource(source.key)}
+                disabled={leadSourceBusy !== null}
+                className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {leadSourceBusy === source.key ? "Generating..." : source.configured ? "Generate a new URL" : "Generate URL"}
+              </button>
+              {leadSourceUrls[source.key] && (
+                <div className="space-y-1">
+                  <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                  <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                    {leadSourceUrls[source.key]}
+                  </code>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {leadSourceError && <p className="text-xs text-red-400">{leadSourceError}</p>}
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-white">Recent leads from these sources</p>
+            {leadSourceLeads.length === 0 ? (
+              <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
+            ) : (
+              leadSourceLeads.map((lead) => (
+                <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white">{lead.name || "No name"} - {lead.source}</span>
+                    <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
+                      {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
+                    </Badge>
+                  </div>
+                  <p>{lead.phone || "No phone number in the lead"}</p>
+                  {lead.query && <p>{lead.query}</p>}
+                </div>
+              ))
+            )}
+          </div>
         </GlassCard>
 
         {/* SECTION 2y: INDIAMART LEADS */}

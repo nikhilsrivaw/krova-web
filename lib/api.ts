@@ -294,6 +294,32 @@ export const zoho = {
   disconnect: () => api.delete<void>("/zoho/connection"),
 };
 
+export type LeadSource = {
+  key: string;
+  label: string;
+  setup: "account_manager" | "self_serve";
+  steps: string[];
+  configured: boolean;
+  last_lead_at: string | null;
+};
+
+export type LeadSourceLead = {
+  id: string;
+  source: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  query: string | null;
+  status: "received" | "duplicate" | "no_phone";
+  received_at: string;
+};
+
+export const leadSources = {
+  list: () => api.get<LeadSource[]>("/lead-sources"),
+  generateToken: (key: string) => api.post<{ key: string; webhook_url: string }>(`/lead-sources/${key}/token`),
+  leads: (limit = 10) => api.get<LeadSourceLead[]>(`/lead-sources/leads?limit=${limit}`),
+};
+
 export type IndiamartSettings = {
   configured: boolean;
   webhook_url: string | null;
