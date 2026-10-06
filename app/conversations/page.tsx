@@ -546,7 +546,7 @@ export default function ConversationsPage() {
           <div className="absolute bottom-0 left-[6%] w-[380px] h-[380px] rounded-full bg-seal/[0.05] blur-[130px]" />
         </div>
 
-      <div className="workspace-inbox flex h-[calc(100dvh-250px)] min-h-[520px] overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111111]">
+      <div className="workspace-inbox flex h-[calc(100dvh-170px)] min-h-[520px] overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111111]">
         {/* Left Pane: High-Density Thread List */}
         <div className={`workspace-inbox-list w-full shrink-0 flex-col border-r border-white/[0.07] bg-[#111111] md:w-72 xl:w-80 ${mobilePane === "thread" ? "hidden md:flex" : "flex"}`}>
           {/* Search & Channel Filter Header */}
@@ -683,7 +683,7 @@ export default function ConversationsPage() {
                       <div className={`p-1 rounded border text-[10px] ${channelStyle}`}>
                         <ChannelIcon className="w-2.5 h-2.5" />
                       </div>
-                      <p className="text-[11px] text-os-text-dim truncate">
+                      <p className="min-w-0 flex-1 text-[11px] text-os-text-dim truncate">
                         {thread.last_message || "No messages yet"}
                       </p>
                     </div>
@@ -695,7 +695,7 @@ export default function ConversationsPage() {
                         (() => {
                           const urgency = slaUrgency(thread.window_closes_at);
                           return urgency ? (
-                            <span className={`px-1.5 py-0.2 rounded border flex items-center gap-1 ${urgency.className}`}>
+                            <span className={`px-1.5 py-0.5 rounded border flex items-center gap-1 ${urgency.className}`}>
                               <Clock className="w-2.5 h-2.5" />
                               {urgency.label}
                             </span>
@@ -703,7 +703,7 @@ export default function ConversationsPage() {
                         })()
                       )}
                       {thread.open_commitments > 0 && (
-                        <span className="px-1.5 py-0.2 rounded bg-brass/20 text-brass-bright border border-brass/30">
+                        <span className="px-1.5 py-0.5 rounded bg-brass/20 text-brass-bright border border-brass/30">
                           {thread.open_commitments} open commitment{thread.open_commitments === 1 ? "" : "s"}
                         </span>
                       )}
