@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Menu } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
-import { AppHeader } from "./AppHeader";
 import { CommandPalette } from "./CommandPalette";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { WorkspaceDesign } from "../ui/WorkspaceDesign";
@@ -25,8 +24,6 @@ interface AppLayoutProps {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
-  /** Skips the top bar (title, search, autonomy pill) for pages that do not want it. */
-  hideHeader?: boolean;
   children: React.ReactNode;
 }
 
@@ -36,7 +33,6 @@ export function AppLayout({
   title,
   subtitle,
   actions,
-  hideHeader = false,
   children,
 }: AppLayoutProps) {
   const router = useRouter();
@@ -143,18 +139,11 @@ export function AppLayout({
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!hideHeader && (
-          <AppHeader
-            appearance={appearance}
-            navigationOpen={navigation.isOpen}
-            onOpenNavigation={navigation.open}
-            title={title}
-            subtitle={subtitle}
-            autonomy={autonomy}
-            onSetAutonomy={handleSetAutonomy}
-            onOpenCommand={() => setIsCommandOpen(true)}
-            actions={appearance === "default" ? actions : undefined}
-          />
+        {/* The top bar (title, search, autonomy pill) is gone on every page.
+            Refined mode still needs a way to open navigation on phones, so
+            that one button floats on its own. */}
+        {appearance === "refined" && (
+          <button type="button" aria-label="Open navigation" aria-controls="workspace-navigation" aria-expanded={navigation.isOpen} onClick={navigation.open} className="fixed left-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-[#030712]/80 text-os-ink backdrop-blur hover:bg-white/5 lg:hidden"><Menu className="h-4 w-4" aria-hidden="true" /></button>
         )}
 
         <main id={appearance === "refined" ? "workspace-content" : undefined} className={appearance === "refined" ? "flex-1 min-w-0 px-4 py-6 sm:px-7 sm:py-8 xl:px-9" : "flex-1 p-6 overflow-y-auto"}>
@@ -162,7 +151,7 @@ export function AppLayout({
             {showPageIntro && title && <WorkspacePageIntro title={title} subtitle={subtitle} actions={actions} />}
             {!showPageIntro && actions && <div className="workspace-page-actions mb-5 flex flex-wrap gap-2">{actions}</div>}
             <WorkspaceContent route={pathname}>{children}</WorkspaceContent>
-          </div> : children}
+          </div> : <>{actions && <div className="mb-5 flex flex-wrap gap-2">{actions}</div>}{children}</>}
         </main>
       </div>
 

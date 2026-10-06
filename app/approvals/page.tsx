@@ -178,7 +178,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <AppLayout hideHeader>
+    <AppLayout>
       {/* Same restrained glow-behind-glass treatment as Dashboard/Conversations,
           for consistency across the app rather than a flat page background. */}
       <div className="relative">
