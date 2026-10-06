@@ -246,6 +246,21 @@ export type EscalationRow = {
   escalated_further_at: string | null;
 };
 
+export type ZohoStatus = {
+  configured: boolean;
+  connected: boolean;
+  organization_id: string | null;
+  last_synced_at: string | null;
+  last_sync_summary: Record<string, number> | null;
+};
+
+export const zoho = {
+  status: () => api.get<ZohoStatus>("/zoho/status"),
+  connectUrl: () => api.get<{ url: string }>("/zoho/connect"),
+  sync: () => api.post<Record<string, number>>("/zoho/sync"),
+  disconnect: () => api.delete<void>("/zoho/connection"),
+};
+
 export type JustdialSettings = {
   configured: boolean;
   /** Only returned right after generating - the server keeps just a hash. */

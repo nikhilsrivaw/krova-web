@@ -39,6 +39,8 @@ import {
   channels,
   escalations,
   justdial,
+  zoho,
+  type ZohoStatus,
   type JustdialSettings,
   type InboundLeadRow,
   waAccount,
@@ -387,6 +389,72 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
   }, []);
+
+  // Zoho Books: connect once, then sync pulls open invoices into the ledger.
+  const [zohoStatus, setZohoStatus] = useState<ZohoStatus | null>(null);
+  const [zohoBusy, setZohoBusy] = useState<"connect" | "sync" | "disconnect" | null>(null);
+  const [zohoMessage, setZohoMessage] = useState<string | null>(null);
+  const [zohoError, setZohoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    zoho.status().then((s) => {
+      if (mounted) setZohoStatus(s);
+    }).catch(() => {});
+    // Set by the backend's redirect after the Zoho login.
+    const result = new URLSearchParams(window.location.search).get("zoho");
+    const messages: Record<string, string> = {
+      connected: "Zoho Books connected. Run a sync to pull in your open invoices.",
+      denied: "Zoho login was cancelled.",
+      no_organization: "No Zoho Books organization was found on that account.",
+      error: "Could not connect Zoho Books. Please try again.",
+    };
+    if (result && messages[result]) setZohoMessage(messages[result]);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleConnectZoho = async () => {
+    setZohoBusy("connect");
+    setZohoError(null);
+    try {
+      const { url } = await zoho.connectUrl();
+      window.location.href = url;
+    } catch (err) {
+      setZohoError(err instanceof Error ? err.message : "Could not start the Zoho connection.");
+      setZohoBusy(null);
+    }
+  };
+
+  const handleSyncZoho = async () => {
+    setZohoBusy("sync");
+    setZohoError(null);
+    setZohoMessage(null);
+    try {
+      const summary = await zoho.sync();
+      setZohoStatus((prev) => (prev ? { ...prev, last_synced_at: new Date().toISOString(), last_sync_summary: summary } : prev));
+      setZohoMessage(`Synced: ${summary.created} new, ${summary.updated} updated, ${summary.resolved} marked paid.`);
+    } catch (err) {
+      setZohoError(err instanceof Error ? err.message : "Sync failed.");
+    } finally {
+      setZohoBusy(null);
+    }
+  };
+
+  const handleDisconnectZoho = async () => {
+    setZohoBusy("disconnect");
+    setZohoError(null);
+    try {
+      await zoho.disconnect();
+      setZohoStatus((prev) => (prev ? { ...prev, connected: false, organization_id: null, last_synced_at: null, last_sync_summary: null } : prev));
+      setZohoMessage("Zoho Books disconnected. Ledger entries already imported are kept.");
+    } catch (err) {
+      setZohoError(err instanceof Error ? err.message : "Could not disconnect.");
+    } finally {
+      setZohoBusy(null);
+    }
+  };
 
   // Justdial lead intake. The owner generates a URL once and gives it to
   // Justdial's account manager; recent leads show here so the flow can be
@@ -1178,6 +1246,59 @@ export default function SettingsPage() {
               {escalationSaved && <span className="text-xs text-os-accent">Saved</span>}
             </div>
           </div>
+        </GlassCard>
+
+        {/* SECTION 2w: ZOHO BOOKS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Zoho Books</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Pull your open invoices from Zoho Books, so unpaid ones show up in the ledger and can be followed up. Read-only: KROVA never changes anything in Zoho.
+          </p>
+
+          {!zohoStatus?.configured ? (
+            <p className="text-[11px] text-os-text-dim font-mono">Zoho Books is not set up on the server yet.</p>
+          ) : !zohoStatus.connected ? (
+            <button
+              type="button"
+              onClick={handleConnectZoho}
+              disabled={zohoBusy !== null}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {zohoBusy === "connect" ? "Opening Zoho..." : "Connect Zoho Books"}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[11px] font-mono text-os-text-dim">
+                {zohoStatus.last_synced_at
+                  ? `Last synced ${new Date(zohoStatus.last_synced_at).toLocaleString()}`
+                  : "Not synced yet"}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSyncZoho}
+                  disabled={zohoBusy !== null}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {zohoBusy === "sync" ? "Syncing..." : "Sync now"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisconnectZoho}
+                  disabled={zohoBusy !== null}
+                  className="text-xs text-os-text-dim hover:text-thread-bright transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          )}
+
+          {zohoMessage && <p className="text-xs text-os-accent">{zohoMessage}</p>}
+          {zohoError && <p className="text-xs text-red-400">{zohoError}</p>}
         </GlassCard>
 
         {/* SECTION 2x: JUSTDIAL LEADS */}
