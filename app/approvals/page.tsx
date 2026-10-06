@@ -178,10 +178,7 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <AppLayout
-      title="Approvals Queue"
-      subtitle="Human-in-the-loop: Review AI-drafted responses before sending"
-    >
+    <AppLayout hideHeader>
       {/* Same restrained glow-behind-glass treatment as Dashboard/Conversations,
           for consistency across the app rather than a flat page background. */}
       <div className="relative">
