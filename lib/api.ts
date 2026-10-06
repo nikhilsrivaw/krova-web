@@ -294,6 +294,29 @@ export const zoho = {
   disconnect: () => api.delete<void>("/zoho/connection"),
 };
 
+export type IndiamartSettings = {
+  configured: boolean;
+  webhook_url: string | null;
+  last_lead_at: string | null;
+};
+
+export type IndiamartLeadRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  query: string | null;
+  status: "received" | "duplicate" | "no_phone";
+  customer_id: string | null;
+  received_at: string;
+};
+
+export const indiamart = {
+  settings: () => api.get<IndiamartSettings>("/indiamart/settings"),
+  generateToken: () => api.post<IndiamartSettings>("/indiamart/token"),
+  leads: (limit = 10) => api.get<IndiamartLeadRow[]>(`/indiamart/leads?limit=${limit}`),
+};
+
 export type JustdialSettings = {
   configured: boolean;
   /** Only returned right after generating - the server keeps just a hash. */

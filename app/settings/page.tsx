@@ -40,6 +40,9 @@ import {
   escalations,
   justdial,
   receivables,
+  indiamart,
+  type IndiamartSettings,
+  type IndiamartLeadRow,
   type ReceivablesImportResult,
   type ReceivablesImportRun,
   type JustdialSettings,
@@ -432,6 +435,40 @@ export default function SettingsPage() {
       setImportError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  // IndiaMART push: the owner pastes this URL into IndiaMART's Push API settings.
+  const [indiamartSettings, setIndiamartSettings] = useState<IndiamartSettings | null>(null);
+  const [indiamartLeads, setIndiamartLeads] = useState<IndiamartLeadRow[]>([]);
+  const [isGeneratingIndiamart, setIsGeneratingIndiamart] = useState(false);
+  const [indiamartError, setIndiamartError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([indiamart.settings(), indiamart.leads(10)]).then(([s, l]) => {
+      if (!mounted) return;
+      if (s.status === "fulfilled") setIndiamartSettings(s.value);
+      if (l.status === "fulfilled") setIndiamartLeads(l.value);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleGenerateIndiamart = async () => {
+    if (indiamartSettings?.configured) {
+      const ok = window.confirm("A URL already exists. Generating a new one stops the old URL from working. Continue?");
+      if (!ok) return;
+    }
+    setIsGeneratingIndiamart(true);
+    setIndiamartError(null);
+    try {
+      setIndiamartSettings(await indiamart.generateToken());
+    } catch (err) {
+      setIndiamartError(err instanceof Error ? err.message : "Could not generate the IndiaMART URL.");
+    } finally {
+      setIsGeneratingIndiamart(false);
     }
   };
 
@@ -1306,6 +1343,59 @@ export default function SettingsPage() {
             </div>
           )}
           {importError && <p className="text-xs text-red-400">{importError}</p>}
+        </GlassCard>
+
+        {/* SECTION 2y: INDIAMART LEADS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">IndiaMART leads</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Generate a URL here, then paste it in IndiaMART under Lead Manager, Import/Export Leads, Push API, as the Listener URL. Needs an active IndiaMART paid plan.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleGenerateIndiamart}
+              disabled={isGeneratingIndiamart}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isGeneratingIndiamart ? "Generating..." : indiamartSettings?.configured ? "Generate a new URL" : "Generate IndiaMART URL"}
+            </button>
+
+            {indiamartSettings?.webhook_url && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                  {indiamartSettings.webhook_url}
+                </code>
+              </div>
+            )}
+
+            {indiamartError && <p className="text-xs text-red-400">{indiamartError}</p>}
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-white">Recent leads</p>
+              {indiamartLeads.length === 0 ? (
+                <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
+              ) : (
+                indiamartLeads.map((lead) => (
+                  <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">{lead.name || "No name"}</span>
+                      <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
+                        {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
+                      </Badge>
+                    </div>
+                    <p>{lead.phone || "No phone number in the lead"}</p>
+                    {lead.query && <p>{lead.query}</p>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </GlassCard>
 
         {/* SECTION 2x: JUSTDIAL LEADS */}
