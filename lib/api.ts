@@ -254,6 +254,25 @@ export type ZohoStatus = {
   last_sync_summary: Record<string, number> | null;
 };
 
+export type ReceivablesImportResult = {
+  created: number;
+  updated: number;
+  reopened: number;
+  resolved: number;
+  rows: number;
+  skipped: number;
+  errors: { line: number; reason: string }[];
+};
+
+export const receivables = {
+  import: (file: File, markMissingPaid: boolean) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mark_missing_paid", String(markMissingPaid));
+    return api.post<ReceivablesImportResult>("/receivables/import", formData, true);
+  },
+};
+
 export const zoho = {
   status: () => api.get<ZohoStatus>("/zoho/status"),
   connectUrl: () => api.get<{ url: string }>("/zoho/connect"),
