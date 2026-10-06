@@ -264,7 +264,21 @@ export type ReceivablesImportResult = {
   errors: { line: number; reason: string }[];
 };
 
+export type ReceivablesImportRun = {
+  id: string;
+  source: string;
+  filename: string | null;
+  mark_missing_paid: boolean;
+  rows: number;
+  created: number;
+  updated: number;
+  resolved: number;
+  skipped: number;
+  at: string | null;
+};
+
 export const receivables = {
+  history: () => api.get<ReceivablesImportRun[]>("/receivables/history"),
   import: (file: File, markMissingPaid: boolean) => {
     const formData = new FormData();
     formData.append("file", file);

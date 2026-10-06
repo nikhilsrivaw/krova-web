@@ -41,6 +41,7 @@ import {
   justdial,
   receivables,
   type ReceivablesImportResult,
+  type ReceivablesImportRun,
   type JustdialSettings,
   type InboundLeadRow,
   waAccount,
@@ -397,6 +398,17 @@ export default function SettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ReceivablesImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importHistory, setImportHistory] = useState<ReceivablesImportRun[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    receivables.history().then((h) => {
+      if (mounted) setImportHistory(h);
+    }).catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const downloadImportTemplate = () => {
     const csv = "customer,invoice_number,due_date,amount\nSharma Traders,INV-001,2026-10-20,1500\n";
@@ -415,6 +427,7 @@ export default function SettingsPage() {
     setImportResult(null);
     try {
       setImportResult(await receivables.import(importFile, markMissingPaid));
+      receivables.history().then(setImportHistory).catch(() => {});
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
@@ -1278,6 +1291,16 @@ export default function SettingsPage() {
               {importResult.errors.slice(0, 5).map((err) => (
                 <p key={err.line} className="text-[11px] text-red-400 font-mono">
                   Line {err.line}: {err.reason}
+                </p>
+              ))}
+            </div>
+          )}
+          {importHistory.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-white">Recent imports</p>
+              {importHistory.slice(0, 5).map((run) => (
+                <p key={run.id} className="text-[11px] text-os-text-dim font-mono">
+                  {run.at ? new Date(run.at).toLocaleString() : ""} - {run.filename || run.source}: {run.created} new, {run.updated} updated, {run.resolved} marked paid, {run.skipped} skipped
                 </p>
               ))}
             </div>
