@@ -1221,7 +1221,7 @@ export default function SettingsPage() {
             <h3 className="text-sm font-bold text-white">Unpaid invoices (import)</h3>
           </div>
           <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Export your unpaid invoices from any accounting software as CSV, then upload it here. Each row becomes a payment in the ledger that can be followed up.
+            Export your unpaid invoices from any accounting software as CSV or Excel (.xlsx), then upload it here. Each row becomes a payment in the ledger that can be followed up.
           </p>
 
           <div className="space-y-3">
@@ -1239,7 +1239,7 @@ export default function SettingsPage() {
 
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx"
               onChange={(e) => {
                 setImportFile(e.target.files?.[0] ?? null);
                 setImportResult(null);
