@@ -168,6 +168,19 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   instagram_comment_reply: "Reply privately to a comment",
 };
 
+// Offered when building a NEW rule. send_sms and send_email stay out of this
+// list - not deleted from ACTION_LABEL/ACTION_ICON above, since an existing
+// saved step using either must still display correctly (line ~1199 below,
+// and RunHistoryPanel). send_sms is hidden because Indian SMS delivery needs
+// DLT template registration this account doesn't have yet (confirmed this
+// session: an SMS Plivo "sent" successfully never reached a real phone).
+// send_email is hidden because it needs a verified Postmark sender
+// (EmailSendConnection) that has never actually been set up - the Settings
+// card for it exists, but nobody has connected it.
+const SELECTABLE_ACTIONS: AutomationAction[] = (Object.keys(ACTION_LABEL) as AutomationAction[]).filter(
+  (a) => a !== "send_sms" && a !== "send_email",
+);
+
 const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   whatsapp_followup: MessageSquare,
   create_escalation_task: AlertTriangle,
@@ -392,6 +405,7 @@ export default function AutomationsPage() {
 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingQuickRule, setIsCreatingQuickRule] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -523,6 +537,34 @@ export default function AutomationsPage() {
     closeBuilder();
     if (automationsTab === "scheduling") setTrigger("call.completed");
     setBuilderOpen(true);
+  };
+
+  // One click instead of hand-building the 3-step chain: notify the team,
+  // send the lead a WhatsApp acknowledgement, and call them. Mirrors the
+  // same default shared/care/post_call_actions.py::ensure_default_lead_
+  // automation seeds the first time a lead source is connected, offered
+  // again here for a business that deleted it, or never connected a lead
+  // source through Settings in the first place.
+  const handleCreateLeadOutreachRule = async () => {
+    setIsCreatingQuickRule(true);
+    setSaveError(null);
+    try {
+      const created = await postCallRules.create({
+        name: "Reach out to every new lead automatically",
+        trigger_type: "lead.received",
+        is_active: true,
+        steps: [
+          { action_type: "create_escalation_task", action_config: { reason: "A new lead came in - see the Leads page for who and from where." } },
+          { action_type: "whatsapp_followup", action_config: { message: "Thanks for your enquiry! Our team will call you shortly to help." } },
+          { action_type: "place_call", action_config: { reason: "Follow up on a new lead" } },
+        ],
+      });
+      setRules((prev) => [created, ...prev]);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not create this rule.");
+    } finally {
+      setIsCreatingQuickRule(false);
+    }
   };
 
   const openForEdit = (rule: AutomationRule) => {
@@ -774,7 +816,7 @@ export default function AutomationsPage() {
           }}
           className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
         >
-          {(Object.keys(ACTION_LABEL) as AutomationAction[]).map((a) => (
+          {SELECTABLE_ACTIONS.map((a) => (
             <option key={a} value={a}>{ACTION_LABEL[a]}</option>
           ))}
         </select>
@@ -1326,13 +1368,26 @@ export default function AutomationsPage() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => (builderOpen ? closeBuilder() : openForCreate())}
-              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> New rule
-            </button>
+            <div className="flex items-center gap-2">
+              {automationsTab === "rules" && !rules.some((r) => r.trigger_type === "lead.received") && (
+                <button
+                  type="button"
+                  onClick={handleCreateLeadOutreachRule}
+                  disabled={isCreatingQuickRule}
+                  title="Notify the team, send a WhatsApp acknowledgement, and call - all three, the moment a lead comes in"
+                  className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isCreatingQuickRule ? "Adding..." : "Quick start: reach out to every lead"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => (builderOpen ? closeBuilder() : openForCreate())}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> New rule
+              </button>
+            </div>
           </div>
 
           {builderOpen && (
