@@ -34,6 +34,7 @@ import {
   FileCheck2,
   Siren,
   Smartphone,
+  ClipboardList,
   X,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
@@ -267,6 +268,12 @@ export function AppSidebar({
       label: "Leads",
       href: "/leads",
       icon: UserPlus,
+      accent: "text-brass-bright",
+    },
+    {
+      label: "Forms",
+      href: "/forms",
+      icon: ClipboardList,
       accent: "text-brass-bright",
     },
     {

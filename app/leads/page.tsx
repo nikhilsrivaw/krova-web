@@ -18,6 +18,7 @@ const SOURCE_LABEL: Record<string, string> = {
   generic: "Other tool",
   other: "Other tool",
   email: "Email forwarding",
+  form: "Web form",
 };
 
 function sourceLabel(source: string): string {

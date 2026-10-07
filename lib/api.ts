@@ -365,6 +365,40 @@ export const leadSources = {
   leads: (limit = 10) => api.get<LeadSourceLead[]>(`/lead-sources/leads?limit=${limit}`),
 };
 
+export type FormFieldType = "name" | "phone" | "email" | "text" | "textarea" | "select" | "checkbox";
+
+export type LeadFormField = {
+  key: string;
+  label: string;
+  type: FormFieldType;
+  required: boolean;
+  options?: string[] | null;
+};
+
+export type LeadForm = {
+  id: string;
+  title: string;
+  description: string | null;
+  fields: LeadFormField[];
+  is_published: boolean;
+  public_url: string | null;
+  submission_count: number;
+};
+
+export type LeadFormInput = {
+  title: string;
+  description?: string | null;
+  fields: LeadFormField[];
+  is_published: boolean;
+};
+
+export const leadForms = {
+  list: () => api.get<LeadForm[]>("/forms"),
+  create: (body: LeadFormInput) => api.post<LeadForm>("/forms", body),
+  update: (id: string, body: LeadFormInput) => api.patch<LeadForm>(`/forms/${id}`, body),
+  remove: (id: string) => api.delete<void>(`/forms/${id}`),
+};
+
 export type IndiamartSettings = {
   configured: boolean;
   webhook_url: string | null;
