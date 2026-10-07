@@ -365,7 +365,17 @@ export const leadSources = {
   leads: (limit = 10) => api.get<LeadSourceLead[]>(`/lead-sources/leads?limit=${limit}`),
 };
 
-export type FormFieldType = "name" | "phone" | "email" | "text" | "textarea" | "select" | "checkbox";
+export type FormFieldType =
+  | "name"
+  | "phone"
+  | "email"
+  | "text"
+  | "textarea"
+  | "select"
+  | "checkbox"
+  | "file";
+
+export type LeadFormShowIf = { field_key: string; equals: string };
 
 export type LeadFormField = {
   key: string;
@@ -373,6 +383,11 @@ export type LeadFormField = {
   type: FormFieldType;
   required: boolean;
   options?: string[] | null;
+  // Which page this field renders on - 0 is the first page.
+  step: number;
+  // Only rendered (and only required) once the field named field_key
+  // currently holds the value equals. Undefined/null = always shown.
+  show_if?: LeadFormShowIf | null;
 };
 
 export type LeadForm = {
@@ -383,6 +398,8 @@ export type LeadForm = {
   is_published: boolean;
   public_url: string | null;
   submission_count: number;
+  logo_url: string | null;
+  accent_color: string | null;
 };
 
 export type LeadFormInput = {
@@ -390,6 +407,7 @@ export type LeadFormInput = {
   description?: string | null;
   fields: LeadFormField[];
   is_published: boolean;
+  accent_color?: string | null;
 };
 
 export const leadForms = {
@@ -397,6 +415,11 @@ export const leadForms = {
   create: (body: LeadFormInput) => api.post<LeadForm>("/forms", body),
   update: (id: string, body: LeadFormInput) => api.patch<LeadForm>(`/forms/${id}`, body),
   remove: (id: string) => api.delete<void>(`/forms/${id}`),
+  uploadLogo: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<LeadForm>(`/forms/${id}/logo`, formData, true);
+  },
 };
 
 export type IndiamartSettings = {

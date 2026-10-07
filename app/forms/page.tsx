@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ClipboardList, Plus, Trash2, Pencil, Copy, Check, ExternalLink } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ClipboardList, Plus, Trash2, Pencil, Copy, Check, ExternalLink, Upload } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -22,10 +22,19 @@ const FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
   textarea: "Long text",
   select: "Dropdown",
   checkbox: "Checkbox",
+  file: "File upload",
 };
 
+// A field of one of these types can be the target of another field's
+// "show only if" condition - its answer is always one discrete value
+// (an option, or checked/unchecked), unlike free text.
+const CONDITION_TARGET_TYPES: FormFieldType[] = ["select", "checkbox"];
+
 function newField(): LeadFormField {
-  return { key: `field_${Math.random().toString(36).slice(2, 8)}`, label: "", type: "text", required: false };
+  return {
+    key: `field_${Math.random().toString(36).slice(2, 8)}`,
+    label: "", type: "text", required: false, step: 0,
+  };
 }
 
 type Draft = {
@@ -33,6 +42,7 @@ type Draft = {
   description: string;
   fields: LeadFormField[];
   is_published: boolean;
+  accent_color: string;
 };
 
 function emptyDraft(): Draft {
@@ -40,10 +50,11 @@ function emptyDraft(): Draft {
     title: "",
     description: "",
     fields: [
-      { key: "name", label: "Name", type: "name", required: true },
-      { key: "phone", label: "Phone number", type: "phone", required: true },
+      { key: "name", label: "Name", type: "name", required: true, step: 0 },
+      { key: "phone", label: "Phone number", type: "phone", required: true, step: 0 },
     ],
     is_published: false,
+    accent_color: "",
   };
 }
 
@@ -55,9 +66,12 @@ export default function FormsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLogoUrl, setEditingLogoUrl] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     setIsLoading(true);
@@ -75,6 +89,7 @@ export default function FormsPage() {
 
   const openCreate = () => {
     setEditingId(null);
+    setEditingLogoUrl(null);
     setDraft(emptyDraft());
     setSaveError(null);
     setIsModalOpen(true);
@@ -82,11 +97,13 @@ export default function FormsPage() {
 
   const openEdit = (form: LeadForm) => {
     setEditingId(form.id);
+    setEditingLogoUrl(form.logo_url);
     setDraft({
       title: form.title,
       description: form.description || "",
       fields: form.fields.map((f) => ({ ...f })),
       is_published: form.is_published,
+      accent_color: form.accent_color || "",
     });
     setSaveError(null);
     setIsModalOpen(true);
@@ -104,7 +121,11 @@ export default function FormsPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      const body = { ...draft, description: draft.description.trim() || null };
+      const body = {
+        ...draft,
+        description: draft.description.trim() || null,
+        accent_color: draft.accent_color.trim() || null,
+      };
       if (editingId) {
         await leadForms.update(editingId, body);
       } else {
@@ -139,6 +160,22 @@ export default function FormsPage() {
     }
   };
 
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !editingId) return;
+    setIsUploadingLogo(true);
+    setSaveError(null);
+    try {
+      const updated = await leadForms.uploadLogo(editingId, file);
+      setEditingLogoUrl(updated.logo_url);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not upload this logo.");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const updateField = (index: number, patch: Partial<LeadFormField>) => {
     setDraft((d) => ({
       ...d,
@@ -147,7 +184,15 @@ export default function FormsPage() {
   };
 
   const removeField = (index: number) => {
-    setDraft((d) => ({ ...d, fields: d.fields.filter((_, i) => i !== index) }));
+    const removedKey = draft.fields[index]?.key;
+    setDraft((d) => ({
+      ...d,
+      fields: d.fields
+        .filter((_, i) => i !== index)
+        // A field conditioned on the one just removed reverts to always-shown
+        // rather than silently pointing at a key that no longer exists.
+        .map((f) => (f.show_if?.field_key === removedKey ? { ...f, show_if: null } : f)),
+    }));
   };
 
   return (
@@ -283,57 +328,143 @@ export default function FormsPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] text-os-text-dim font-mono">Fields</label>
-            {draft.fields.map((field, i) => (
-              <div key={field.key} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-2">
+          <div className="flex items-center gap-4">
+            <div>
+              <label className="text-[11px] text-os-text-dim font-mono block mb-1">Accent color</label>
+              <input
+                type="color"
+                value={draft.accent_color || "#FFFFFF"}
+                onChange={(e) => setDraft((d) => ({ ...d, accent_color: e.target.value }))}
+                className="h-8 w-14 rounded-lg bg-white/[0.03] border border-white/[0.08] cursor-pointer"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-[11px] text-os-text-dim font-mono block mb-1">Logo</label>
+              {editingId ? (
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={field.label}
-                    onChange={(e) => updateField(i, { label: e.target.value })}
-                    placeholder="Field label"
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
-                  />
-                  <select
-                    value={field.type}
-                    onChange={(e) => updateField(i, { type: e.target.value as FormFieldType })}
-                    className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
-                  >
-                    {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
-                      <option key={value} value={value} className="bg-[#14151F]">
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                  {editingLogoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={editingLogoUrl} alt="Logo" className="h-8 w-8 rounded-lg object-cover border border-white/[0.1]" />
+                  )}
                   <button
                     type="button"
-                    onClick={() => removeField(i)}
-                    className="shrink-0 p-1.5 rounded-lg text-os-text-dim hover:text-red-400 hover:bg-white/[0.06]"
-                    aria-label="Remove field"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={isUploadingLogo}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] disabled:opacity-50"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Upload className="w-3.5 h-3.5" />
+                    {isUploadingLogo ? "Uploading..." : editingLogoUrl ? "Replace" : "Upload"}
                   </button>
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoChange} />
                 </div>
-                {field.type === "select" && (
-                  <input
-                    type="text"
-                    value={(field.options || []).join(", ")}
-                    onChange={(e) => updateField(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    placeholder="Options, comma-separated (e.g. Buying, Renting)"
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
-                  />
-                )}
-                <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim">
-                  <input
-                    type="checkbox"
-                    checked={field.required}
-                    onChange={(e) => updateField(i, { required: e.target.checked })}
-                  />
-                  Required
-                </label>
-              </div>
-            ))}
+              ) : (
+                <p className="text-[11px] text-os-text-dim">Save the form first, then add a logo.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] text-os-text-dim font-mono">Fields</label>
+            {draft.fields.map((field, i) => {
+              const earlierFields = draft.fields.filter(
+                (f, j) => j !== i && CONDITION_TARGET_TYPES.includes(f.type),
+              );
+              const target = field.show_if ? draft.fields.find((f) => f.key === field.show_if?.field_key) : undefined;
+              return (
+                <div key={field.key} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={field.label}
+                      onChange={(e) => updateField(i, { label: e.target.value })}
+                      placeholder="Field label"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
+                    />
+                    <select
+                      value={field.type}
+                      onChange={(e) => updateField(i, { type: e.target.value as FormFieldType })}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
+                    >
+                      {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
+                        <option key={value} value={value} className="bg-[#14151F]">
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={field.step}
+                      onChange={(e) => updateField(i, { step: Math.max(0, Number(e.target.value) || 0) })}
+                      title="Which page this field appears on (0 = first page)"
+                      className="w-14 px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeField(i)}
+                      className="shrink-0 p-1.5 rounded-lg text-os-text-dim hover:text-red-400 hover:bg-white/[0.06]"
+                      aria-label="Remove field"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {field.type === "select" && (
+                    <input
+                      type="text"
+                      value={(field.options || []).join(", ")}
+                      onChange={(e) => updateField(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                      placeholder="Options, comma-separated (e.g. Buying, Renting)"
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
+                    />
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim">
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={(e) => updateField(i, { required: e.target.checked })}
+                      />
+                      Required
+                    </label>
+                    {earlierFields.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-os-text-dim">Show only if</span>
+                        <select
+                          value={field.show_if?.field_key || ""}
+                          onChange={(e) => {
+                            const key = e.target.value;
+                            if (!key) { updateField(i, { show_if: null }); return; }
+                            const t = draft.fields.find((f) => f.key === key);
+                            updateField(i, { show_if: { field_key: key, equals: t?.type === "checkbox" ? "true" : (t?.options?.[0] || "") } });
+                          }}
+                          className="px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-white outline-none"
+                        >
+                          <option value="" className="bg-[#14151F]">Always</option>
+                          {earlierFields.map((f) => (
+                            <option key={f.key} value={f.key} className="bg-[#14151F]">{f.label || "(untitled)"}</option>
+                          ))}
+                        </select>
+                        {field.show_if && target?.type === "select" && (
+                          <select
+                            value={field.show_if.equals}
+                            onChange={(e) => updateField(i, { show_if: { field_key: field.show_if!.field_key, equals: e.target.value } })}
+                            className="px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-white outline-none"
+                          >
+                            {(target.options || []).map((opt) => (
+                              <option key={opt} value={opt} className="bg-[#14151F]">{opt}</option>
+                            ))}
+                          </select>
+                        )}
+                        {field.show_if && target?.type === "checkbox" && (
+                          <span className="text-[11px] text-os-text-dim">is checked</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             <button
               type="button"
               onClick={() => setDraft((d) => ({ ...d, fields: [...d.fields, newField()] }))}
