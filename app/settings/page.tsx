@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Settings,
   Shield,
@@ -448,21 +449,31 @@ export default function SettingsPage() {
 
   // Email forwarding: the owner forwards portal alert emails to this address.
   const [emailLeadsSettings, setEmailLeadsSettings] = useState<EmailLeadsSettings | null>(null);
-  const [emailLeadsRows, setEmailLeadsRows] = useState<EmailLeadRow[]>([]);
   const [isGeneratingEmailLeads, setIsGeneratingEmailLeads] = useState(false);
   const [emailLeadsError, setEmailLeadsError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([emailLeads.settings(), emailLeads.leads(10)]).then(([s, l]) => {
-      if (!mounted) return;
-      if (s.status === "fulfilled") setEmailLeadsSettings(s.value);
-      if (l.status === "fulfilled") setEmailLeadsRows(l.value);
-    });
+    emailLeads.settings().then((s) => {
+      if (mounted) setEmailLeadsSettings(s);
+    }).catch(() => {});
     return () => {
       mounted = false;
     };
   }, []);
+
+  // One shared copy-to-clipboard for every generated lead URL/address below -
+  // the same affordance everywhere, rather than Justdial's own one-off version.
+  const [copiedLeadValue, setCopiedLeadValue] = useState<string | null>(null);
+  const handleCopyLeadValue = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLeadValue(value);
+    } catch {
+      // Clipboard permission denied or unavailable - the value is still
+      // shown in full, so it can be selected and copied by hand.
+    }
+  };
 
   const handleGenerateEmailLeads = async () => {
     if (emailLeadsSettings?.configured) {
@@ -497,8 +508,7 @@ export default function SettingsPage() {
     setAddMessage(null);
     try {
       const r = await leadImports.upload(addFile, addSource);
-      setAddMessage(`Imported ${r.rows} rows: ${r.received} new, ${r.duplicate} duplicate, ${r.no_phone} without a phone number.`);
-      leadSources.leads(10).then(setLeadSourceLeads).catch(() => {});
+      setAddMessage(`Imported ${r.rows} rows: ${r.received} new, ${r.duplicate} duplicate, ${r.no_phone} without a phone number. See the Leads page for all of them.`);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
@@ -521,8 +531,7 @@ export default function SettingsPage() {
       setManualName("");
       setManualPhone("");
       setManualQuery("");
-      setAddMessage("Lead added.");
-      leadSources.leads(10).then(setLeadSourceLeads).catch(() => {});
+      setAddMessage("Lead added. See the Leads page to find it.");
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Could not add this lead.");
     } finally {
@@ -533,17 +542,14 @@ export default function SettingsPage() {
   // Lead sources that need only a URL: Magicbricks, 99Acres, Housing.com, and any tool.
   const [leadSourceList, setLeadSourceList] = useState<LeadSource[]>([]);
   const [leadSourceUrls, setLeadSourceUrls] = useState<Record<string, string>>({});
-  const [leadSourceLeads, setLeadSourceLeads] = useState<LeadSourceLead[]>([]);
   const [leadSourceBusy, setLeadSourceBusy] = useState<string | null>(null);
   const [leadSourceError, setLeadSourceError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([leadSources.list(), leadSources.leads(10)]).then(([s, l]) => {
-      if (!mounted) return;
-      if (s.status === "fulfilled") setLeadSourceList(s.value);
-      if (l.status === "fulfilled") setLeadSourceLeads(l.value);
-    });
+    leadSources.list().then((s) => {
+      if (mounted) setLeadSourceList(s);
+    }).catch(() => {});
     return () => {
       mounted = false;
     };
@@ -565,17 +571,14 @@ export default function SettingsPage() {
 
   // IndiaMART push: the owner pastes this URL into IndiaMART's Push API settings.
   const [indiamartSettings, setIndiamartSettings] = useState<IndiamartSettings | null>(null);
-  const [indiamartLeads, setIndiamartLeads] = useState<IndiamartLeadRow[]>([]);
   const [isGeneratingIndiamart, setIsGeneratingIndiamart] = useState(false);
   const [indiamartError, setIndiamartError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([indiamart.settings(), indiamart.leads(10)]).then(([s, l]) => {
-      if (!mounted) return;
-      if (s.status === "fulfilled") setIndiamartSettings(s.value);
-      if (l.status === "fulfilled") setIndiamartLeads(l.value);
-    });
+    indiamart.settings().then((s) => {
+      if (mounted) setIndiamartSettings(s);
+    }).catch(() => {});
     return () => {
       mounted = false;
     };
@@ -598,21 +601,16 @@ export default function SettingsPage() {
   };
 
   // Justdial lead intake. The owner generates a URL once and gives it to
-  // Justdial's account manager; recent leads show here so the flow can be
-  // checked without waiting for a sales call.
+  // Justdial's account manager.
   const [justdialSettings, setJustdialSettings] = useState<JustdialSettings | null>(null);
-  const [justdialLeads, setJustdialLeads] = useState<InboundLeadRow[]>([]);
   const [isGeneratingJustdial, setIsGeneratingJustdial] = useState(false);
   const [justdialError, setJustdialError] = useState<string | null>(null);
-  const [justdialCopied, setJustdialCopied] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([justdial.settings(), justdial.leads(10)]).then(([s, l]) => {
-      if (!mounted) return;
-      if (s.status === "fulfilled") setJustdialSettings(s.value);
-      if (l.status === "fulfilled") setJustdialLeads(l.value);
-    });
+    justdial.settings().then((s) => {
+      if (mounted) setJustdialSettings(s);
+    }).catch(() => {});
     return () => {
       mounted = false;
     };
@@ -627,7 +625,6 @@ export default function SettingsPage() {
     }
     setIsGeneratingJustdial(true);
     setJustdialError(null);
-    setJustdialCopied(false);
     try {
       const fresh = await justdial.generateToken();
       setJustdialSettings(fresh);
@@ -635,15 +632,6 @@ export default function SettingsPage() {
       setJustdialError(err instanceof Error ? err.message : "Could not generate the Justdial URL.");
     } finally {
       setIsGeneratingJustdial(false);
-    }
-  };
-
-  const handleCopyJustdial = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setJustdialCopied(true);
-    } catch {
-      setJustdialError("Could not copy automatically - select the URL and copy it.");
     }
   };
 
@@ -1470,57 +1458,6 @@ export default function SettingsPage() {
           {importError && <p className="text-xs text-red-400">{importError}</p>}
         </GlassCard>
 
-        {/* SECTION 2z000: EMAIL FORWARDED LEADS */}
-        <GlassCard className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">Leads by email forwarding</h3>
-          </div>
-          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Generate an address below, then set a rule in your own mailbox to forward portal lead alert emails to it. Needs the server-side mail setup done once.
-          </p>
-
-          <button
-            type="button"
-            onClick={handleGenerateEmailLeads}
-            disabled={isGeneratingEmailLeads}
-            className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isGeneratingEmailLeads ? "Generating..." : emailLeadsSettings?.configured ? "Generate a new address" : "Generate forwarding address"}
-          </button>
-
-          {emailLeadsSettings?.address && (
-            <div className="space-y-1">
-              <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
-              <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
-                {emailLeadsSettings.address}
-              </code>
-            </div>
-          )}
-
-          {emailLeadsError && <p className="text-xs text-red-400">{emailLeadsError}</p>}
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-white">Recent leads from email</p>
-            {emailLeadsRows.length === 0 ? (
-              <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
-            ) : (
-              emailLeadsRows.map((lead) => (
-                <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white">{lead.name || "No name"}</span>
-                    <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
-                      {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
-                    </Badge>
-                  </div>
-                  <p>{lead.phone || "No phone number in the email"}</p>
-                  {lead.query && <p>{lead.query}</p>}
-                </div>
-              ))
-            )}
-          </div>
-        </GlassCard>
-
         {/* SECTION 2z00: ADD LEADS BY HAND */}
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -1580,16 +1517,100 @@ export default function SettingsPage() {
           {addError && <p className="text-xs text-red-400">{addError}</p>}
         </GlassCard>
 
-        {/* SECTION 2z0: LEAD SOURCES */}
+        {/* SECTION 2z0: CONNECT LEAD SOURCES */}
         <GlassCard className="p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">Lead sources</h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-os-accent" />
+              <h3 className="text-sm font-bold text-white">Connect lead sources</h3>
+            </div>
+            <Link href="/leads" className="text-xs text-os-accent hover:underline">
+              See all incoming leads &rarr;
+            </Link>
           </div>
           <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Connect a listing platform or any tool that sends leads. Each one gets its own URL and setup steps below.
+            Each source below gets its own URL or address. Generate it, copy it once, and set it up on that platform&apos;s side. Leads from all of them land in one place - the Leads page.
           </p>
 
+          {/* Justdial */}
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Justdial</span>
+              <Badge variant={justdialSettings?.configured ? "emerald" : "amber"} dot>
+                {justdialSettings?.configured ? "URL created" : "Not set up"}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-os-text-dim font-mono">
+              Generate the URL, then send it to your Justdial account manager to connect it to your listing.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateJustdial}
+              disabled={isGeneratingJustdial}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isGeneratingJustdial ? "Generating..." : justdialSettings?.configured ? "Generate a new URL" : "Generate URL"}
+            </button>
+            {justdialSettings?.webhook_url && (
+              <div className="space-y-1">
+                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                    {justdialSettings.webhook_url}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLeadValue(justdialSettings.webhook_url as string)}
+                    className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                  >
+                    {copiedLeadValue === justdialSettings.webhook_url ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {justdialError && <p className="text-xs text-red-400">{justdialError}</p>}
+          </div>
+
+          {/* IndiaMART */}
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">IndiaMART</span>
+              <Badge variant={indiamartSettings?.configured ? "emerald" : "amber"} dot>
+                {indiamartSettings?.configured ? "URL created" : "Not set up"}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-os-text-dim font-mono">
+              Generate the URL, then paste it in IndiaMART under Lead Manager &rarr; Import/Export Leads &rarr; Push API, as the Listener URL. Needs an active IndiaMART paid plan.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateIndiamart}
+              disabled={isGeneratingIndiamart}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isGeneratingIndiamart ? "Generating..." : indiamartSettings?.configured ? "Generate a new URL" : "Generate URL"}
+            </button>
+            {indiamartSettings?.webhook_url && (
+              <div className="space-y-1">
+                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                    {indiamartSettings.webhook_url}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLeadValue(indiamartSettings.webhook_url as string)}
+                    className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                  >
+                    {copiedLeadValue === indiamartSettings.webhook_url ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {indiamartError && <p className="text-xs text-red-400">{indiamartError}</p>}
+          </div>
+
+          {/* Magicbricks, 99Acres, Housing.com, any other tool */}
           {leadSourceList.map((source) => (
             <div key={source.key} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center justify-between">
@@ -1614,164 +1635,61 @@ export default function SettingsPage() {
               {leadSourceUrls[source.key] && (
                 <div className="space-y-1">
                   <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
-                  <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
-                    {leadSourceUrls[source.key]}
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                      {leadSourceUrls[source.key]}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLeadValue(leadSourceUrls[source.key])}
+                      className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                    >
+                      {copiedLeadValue === leadSourceUrls[source.key] ? "Copied" : "Copy"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           ))}
-
           {leadSourceError && <p className="text-xs text-red-400">{leadSourceError}</p>}
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-white">Recent leads from these sources</p>
-            {leadSourceLeads.length === 0 ? (
-              <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
-            ) : (
-              leadSourceLeads.map((lead) => (
-                <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white">{lead.name || "No name"} - {lead.source}</span>
-                    <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
-                      {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
-                    </Badge>
-                  </div>
-                  <p>{lead.phone || "No phone number in the lead"}</p>
-                  {lead.query && <p>{lead.query}</p>}
-                </div>
-              ))
-            )}
-          </div>
-        </GlassCard>
-
-        {/* SECTION 2y: INDIAMART LEADS */}
-        <GlassCard className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">IndiaMART leads</h3>
-          </div>
-          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Generate a URL here, then paste it in IndiaMART under Lead Manager, Import/Export Leads, Push API, as the Listener URL. Needs an active IndiaMART paid plan.
-          </p>
-
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleGenerateIndiamart}
-              disabled={isGeneratingIndiamart}
-              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
-            >
-              {isGeneratingIndiamart ? "Generating..." : indiamartSettings?.configured ? "Generate a new URL" : "Generate IndiaMART URL"}
-            </button>
-
-            {indiamartSettings?.webhook_url && (
-              <div className="space-y-2">
-                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
-                <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
-                  {indiamartSettings.webhook_url}
-                </code>
-              </div>
-            )}
-
-            {indiamartError && <p className="text-xs text-red-400">{indiamartError}</p>}
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-white">Recent leads</p>
-              {indiamartLeads.length === 0 ? (
-                <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
-              ) : (
-                indiamartLeads.map((lead) => (
-                  <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">{lead.name || "No name"}</span>
-                      <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
-                        {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
-                      </Badge>
-                    </div>
-                    <p>{lead.phone || "No phone number in the lead"}</p>
-                    {lead.query && <p>{lead.query}</p>}
-                  </div>
-                ))
-              )}
+          {/* Email forwarding */}
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Email forwarding</span>
+              <Badge variant={emailLeadsSettings?.configured ? "emerald" : "amber"} dot>
+                {emailLeadsSettings?.configured ? "Address created" : "Not set up"}
+              </Badge>
             </div>
-          </div>
-        </GlassCard>
-
-        {/* SECTION 2x: JUSTDIAL LEADS */}
-        <GlassCard className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">Justdial leads</h3>
-          </div>
-          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Leads from your Justdial listing come into KROVA through a URL. Generate it here, then send it to your Justdial account manager to connect it to your listing.
-          </p>
-
-          <div className="space-y-3">
+            <p className="text-[11px] text-os-text-dim font-mono">
+              Generate the address, then set a rule in your own mailbox to forward portal lead alert emails to it. Needs the server-side mail setup done once.
+            </p>
             <button
               type="button"
-              onClick={handleGenerateJustdial}
-              disabled={isGeneratingJustdial}
+              onClick={handleGenerateEmailLeads}
+              disabled={isGeneratingEmailLeads}
               className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
             >
-              {isGeneratingJustdial
-                ? "Generating..."
-                : justdialSettings?.configured
-                  ? "Generate a new URL"
-                  : "Generate Justdial URL"}
+              {isGeneratingEmailLeads ? "Generating..." : emailLeadsSettings?.configured ? "Generate a new address" : "Generate address"}
             </button>
-
-            {justdialSettings?.webhook_url && (
-              <div className="space-y-2">
-                <p className="text-[11px] text-os-text-dim font-mono">
-                  Copy this now - it is shown only once. Send it to your Justdial account manager.
-                </p>
+            {emailLeadsSettings?.address && (
+              <div className="space-y-1">
+                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
-                    {justdialSettings.webhook_url}
+                    {emailLeadsSettings.address}
                   </code>
                   <button
                     type="button"
-                    onClick={() => handleCopyJustdial(justdialSettings.webhook_url as string)}
-                    className="px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                    onClick={() => handleCopyLeadValue(emailLeadsSettings.address as string)}
+                    className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
                   >
-                    {justdialCopied ? "Copied" : "Copy"}
+                    {copiedLeadValue === emailLeadsSettings.address ? "Copied" : "Copy"}
                   </button>
                 </div>
               </div>
             )}
-
-            {justdialError && <p className="text-xs text-red-400">{justdialError}</p>}
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-white">Recent leads</p>
-              {justdialLeads.length === 0 ? (
-                <p className="text-[11px] text-os-text-dim font-mono">
-                  No leads yet{justdialSettings?.last_lead_at ? "" : " - none received from Justdial"}.
-                </p>
-              ) : (
-                justdialLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">{lead.name || "No name"}</span>
-                      <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
-                        {lead.status === "received"
-                          ? "Saved"
-                          : lead.status === "duplicate"
-                            ? "Duplicate"
-                            : "No phone"}
-                      </Badge>
-                    </div>
-                    <p>{lead.phone || "No phone number in the lead"}</p>
-                    {lead.query && <p>{lead.query}</p>}
-                  </div>
-                ))
-              )}
-            </div>
+            {emailLeadsError && <p className="text-xs text-red-400">{emailLeadsError}</p>}
           </div>
         </GlassCard>
 

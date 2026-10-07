@@ -380,6 +380,41 @@ export type IndiamartLeadRow = {
   received_at: string;
 };
 
+export type LeadRow = {
+  id: string;
+  source: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  query: string | null;
+  status: "received" | "duplicate" | "no_phone";
+  customer_id: string | null;
+  received_at: string;
+};
+
+export type LeadListResult = {
+  items: LeadRow[];
+  total: number;
+};
+
+export type LeadSourceCount = {
+  source: string;
+  total: number;
+};
+
+export const leads = {
+  list: (params: { source?: string; status?: string; q?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.source) qs.set("source", params.source);
+    if (params.status) qs.set("status", params.status);
+    if (params.q) qs.set("q", params.q);
+    qs.set("limit", String(params.limit ?? 25));
+    qs.set("offset", String(params.offset ?? 0));
+    return api.get<LeadListResult>(`/leads?${qs.toString()}`);
+  },
+  sources: () => api.get<LeadSourceCount[]>("/leads/sources"),
+};
+
 export const indiamart = {
   settings: () => api.get<IndiamartSettings>("/indiamart/settings"),
   generateToken: () => api.post<IndiamartSettings>("/indiamart/token"),
@@ -1283,6 +1318,10 @@ export type AutomationTrigger =
   | "appointment.cancelled"
   | "appointment.rescheduled"
   | "escalation.raised"
+  // A lead is resolved to a real customer (a phone number was found) -
+  // fires the same way for Justdial, IndiaMART, a portal webhook, a
+  // CSV/Excel upload, a manually typed lead, or a forwarded email.
+  | "lead.received"
   | "queue_token.issued"
   | "competitor.mentioned"
   | "churn_risk.detected"
@@ -1372,6 +1411,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
   "appointment.rescheduled": ["starts_at", "intake_channel"],
   "escalation.raised": ["reason"],
+  "lead.received": ["source", "name", "query"],
   "queue_token.issued": ["shift", "queue_number"],
   "competitor.mentioned": ["severity", "title", "body"],
   "churn_risk.detected": ["severity", "title", "body"],

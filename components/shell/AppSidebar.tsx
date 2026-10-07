@@ -10,6 +10,7 @@ import {
   Instagram,
   PhoneCall,
   Users,
+  UserPlus,
   BookOpen,
   CheckSquare,
   BarChart3,
@@ -261,6 +262,12 @@ export function AppSidebar({
       href: "/ledger",
       icon: Layers,
       shortcut: "G L",
+    },
+    {
+      label: "Leads",
+      href: "/leads",
+      icon: UserPlus,
+      accent: "text-brass-bright",
     },
     {
       label: "Customers",
