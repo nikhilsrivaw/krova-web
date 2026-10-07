@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Settings,
@@ -28,6 +28,7 @@ import {
   Github,
   ShoppingBag,
   Users,
+  Upload,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -123,6 +124,9 @@ export default function SettingsPage() {
   const [isSavingWaProfile, setIsSavingWaProfile] = useState(false);
   const [waProfileSaved, setWaProfileSaved] = useState(false);
   const [waProfileError, setWaProfileError] = useState<string | null>(null);
+  const [isUploadingWaPicture, setIsUploadingWaPicture] = useState(false);
+  const [waPictureError, setWaPictureError] = useState<string | null>(null);
+  const waPictureInputRef = useRef<HTMLInputElement>(null);
 
   // Click-to-WhatsApp ad attribution
   const [datasetId, setDatasetId] = useState("");
@@ -771,6 +775,22 @@ export default function SettingsPage() {
       setWaProfileError(err instanceof Error ? err.message : "Could not save this profile.");
     } finally {
       setIsSavingWaProfile(false);
+    }
+  };
+
+  const handleUploadWaPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setIsUploadingWaPicture(true);
+    setWaPictureError(null);
+    try {
+      const { profile_picture_url } = await waAccount.updateProfilePicture(file);
+      setWaProfile((p) => (p ? { ...p, profile_picture_url } : p));
+    } catch (err) {
+      setWaPictureError(err instanceof Error ? err.message : "Could not upload this photo.");
+    } finally {
+      setIsUploadingWaPicture(false);
     }
   };
 
@@ -2248,6 +2268,39 @@ export default function SettingsPage() {
                 )}
                 {waProfileError && <span className="text-xs font-mono text-red-400">{waProfileError}</span>}
               </div>
+
+              <div className="flex items-center gap-3">
+                {waProfile.profile_picture_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={waProfile.profile_picture_url}
+                    alt="WhatsApp profile icon"
+                    className="h-14 w-14 rounded-full object-cover border border-white/[0.12]"
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-full bg-white/[0.04] border border-white/[0.12] flex items-center justify-center text-os-text-dim">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => waPictureInputRef.current?.click()}
+                    disabled={isUploadingWaPicture}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {isUploadingWaPicture ? "Uploading..." : waProfile.profile_picture_url ? "Change icon" : "Upload icon"}
+                  </button>
+                  <input
+                    ref={waPictureInputRef} type="file" accept="image/jpeg,image/png"
+                    className="hidden" onChange={handleUploadWaPicture}
+                  />
+                  <p className="text-[11px] text-os-text-dim">JPG or PNG, up to 5MB. This is the icon customers see next to this number on WhatsApp.</p>
+                  {waPictureError && <p className="text-xs text-red-400">{waPictureError}</p>}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">About (short status line)</label>

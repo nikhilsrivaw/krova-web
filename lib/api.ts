@@ -2406,6 +2406,12 @@ export const waAccount = {
     }>,
   ) => api.post<WhatsAppProfile>("/account/whatsapp/profile", data),
 
+  updateProfilePicture: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{ profile_picture_url: string }>("/account/whatsapp/profile/picture", formData, true);
+  },
+
   verticals: () => api.get<{ value: string; label: string }[]>("/account/whatsapp/verticals"),
 
   health: () => api.get<WhatsAppHealth>("/account/whatsapp/health"),
