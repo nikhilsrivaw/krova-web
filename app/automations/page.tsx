@@ -1026,6 +1026,13 @@ export default function AutomationsPage() {
             placeholder="e.g. interested, follow-up"
             className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
           />
+          {trigger === "lead.received" && (
+            <p className="text-[11px] text-os-text-dim mt-1.5">
+              Use <code className="text-cyan-400">{"{{source}}"}</code> to tag by where the lead came from - one
+              rule with tag <code className="text-cyan-400">{"lead-{{source}}"}</code> tags a Justdial lead
+              lead-justdial and an IndiaMART one lead-indiamart, instead of one rule per source.
+            </p>
+          )}
         </div>
       )}
 
