@@ -447,6 +447,24 @@ export default function SettingsPage() {
     }
   };
 
+  // Which lead-source keys fit a business's own vertical best - grounded in
+  // what each platform actually is (a real-estate portal, a B2B wholesale
+  // marketplace, or a local-business directory), not a guess. Old,
+  // no-longer-selectable vertical keys (real_estate, clinic, restaurant, ...)
+  // still exist on businesses that picked them before the market-type
+  // migration (shared/verticals/__init__.py's own docstring), so they are
+  // covered here too. This only changes which sources show open by default -
+  // nothing is ever hidden, every business can still open "More lead
+  // sources" and generate a URL for any of them.
+  const PRIMARY_LEAD_SOURCES: Record<string, string[]> = {
+    b2b: ["indiamart", "justdial"],
+    local_service: ["justdial", "magicbricks", "99acres", "housing"],
+    real_estate: ["magicbricks", "99acres", "housing", "justdial"],
+  };
+  const primaryLeadSourceKeys = PRIMARY_LEAD_SOURCES[vertical] ?? null;
+  const isPrimaryLeadSource = (key: string) => !primaryLeadSourceKeys || primaryLeadSourceKeys.includes(key);
+  const [showMoreLeadSources, setShowMoreLeadSources] = useState(false);
+
   // Email forwarding: the owner forwards portal alert emails to this address.
   const [emailLeadsSettings, setEmailLeadsSettings] = useState<EmailLeadsSettings | null>(null);
   const [isGeneratingEmailLeads, setIsGeneratingEmailLeads] = useState(false);
@@ -1533,6 +1551,7 @@ export default function SettingsPage() {
           </p>
 
           {/* Justdial */}
+          {(isPrimaryLeadSource("justdial") || showMoreLeadSources) && (
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white">Justdial</span>
@@ -1570,8 +1589,10 @@ export default function SettingsPage() {
             )}
             {justdialError && <p className="text-xs text-red-400">{justdialError}</p>}
           </div>
+          )}
 
           {/* IndiaMART */}
+          {(isPrimaryLeadSource("indiamart") || showMoreLeadSources) && (
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white">IndiaMART</span>
@@ -1609,9 +1630,10 @@ export default function SettingsPage() {
             )}
             {indiamartError && <p className="text-xs text-red-400">{indiamartError}</p>}
           </div>
+          )}
 
           {/* Magicbricks, 99Acres, Housing.com, any other tool */}
-          {leadSourceList.map((source) => (
+          {leadSourceList.filter((s) => isPrimaryLeadSource(s.key) || showMoreLeadSources).map((source) => (
             <div key={source.key} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white">{source.label}</span>
@@ -1652,6 +1674,16 @@ export default function SettingsPage() {
             </div>
           ))}
           {leadSourceError && <p className="text-xs text-red-400">{leadSourceError}</p>}
+
+          {primaryLeadSourceKeys && (
+            <button
+              type="button"
+              onClick={() => setShowMoreLeadSources((v) => !v)}
+              className="text-xs text-os-accent hover:underline cursor-pointer"
+            >
+              {showMoreLeadSources ? "Show fewer lead sources" : "Show more lead sources"}
+            </button>
+          )}
 
           {/* Email forwarding */}
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
