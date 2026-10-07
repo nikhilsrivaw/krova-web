@@ -43,6 +43,9 @@ import {
   indiamart,
   leadSources,
   leadImports,
+  emailLeads,
+  type EmailLeadsSettings,
+  type EmailLeadRow,
   type LeadSourceKey,
   type LeadSource,
   type LeadSourceLead,
@@ -440,6 +443,40 @@ export default function SettingsPage() {
       setImportError(err instanceof Error ? err.message : "Could not import this file.");
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  // Email forwarding: the owner forwards portal alert emails to this address.
+  const [emailLeadsSettings, setEmailLeadsSettings] = useState<EmailLeadsSettings | null>(null);
+  const [emailLeadsRows, setEmailLeadsRows] = useState<EmailLeadRow[]>([]);
+  const [isGeneratingEmailLeads, setIsGeneratingEmailLeads] = useState(false);
+  const [emailLeadsError, setEmailLeadsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([emailLeads.settings(), emailLeads.leads(10)]).then(([s, l]) => {
+      if (!mounted) return;
+      if (s.status === "fulfilled") setEmailLeadsSettings(s.value);
+      if (l.status === "fulfilled") setEmailLeadsRows(l.value);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleGenerateEmailLeads = async () => {
+    if (emailLeadsSettings?.configured) {
+      const ok = window.confirm("A forwarding address already exists. Generating a new one stops the old address from working. Continue?");
+      if (!ok) return;
+    }
+    setIsGeneratingEmailLeads(true);
+    setEmailLeadsError(null);
+    try {
+      setEmailLeadsSettings(await emailLeads.generateToken());
+    } catch (err) {
+      setEmailLeadsError(err instanceof Error ? err.message : "Could not generate the forwarding address.");
+    } finally {
+      setIsGeneratingEmailLeads(false);
     }
   };
 
@@ -1431,6 +1468,57 @@ export default function SettingsPage() {
             </div>
           )}
           {importError && <p className="text-xs text-red-400">{importError}</p>}
+        </GlassCard>
+
+        {/* SECTION 2z000: EMAIL FORWARDED LEADS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Leads by email forwarding</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Generate an address below, then set a rule in your own mailbox to forward portal lead alert emails to it. Needs the server-side mail setup done once.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleGenerateEmailLeads}
+            disabled={isGeneratingEmailLeads}
+            className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+          >
+            {isGeneratingEmailLeads ? "Generating..." : emailLeadsSettings?.configured ? "Generate a new address" : "Generate forwarding address"}
+          </button>
+
+          {emailLeadsSettings?.address && (
+            <div className="space-y-1">
+              <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+              <code className="block px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
+                {emailLeadsSettings.address}
+              </code>
+            </div>
+          )}
+
+          {emailLeadsError && <p className="text-xs text-red-400">{emailLeadsError}</p>}
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-white">Recent leads from email</p>
+            {emailLeadsRows.length === 0 ? (
+              <p className="text-[11px] text-os-text-dim font-mono">No leads yet.</p>
+            ) : (
+              emailLeadsRows.map((lead) => (
+                <div key={lead.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] font-mono text-os-text-dim space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white">{lead.name || "No name"}</span>
+                    <Badge variant={lead.status === "received" ? "emerald" : "amber"} dot>
+                      {lead.status === "received" ? "Saved" : lead.status === "duplicate" ? "Duplicate" : "No phone"}
+                    </Badge>
+                  </div>
+                  <p>{lead.phone || "No phone number in the email"}</p>
+                  {lead.query && <p>{lead.query}</p>}
+                </div>
+              ))
+            )}
+          </div>
         </GlassCard>
 
         {/* SECTION 2z00: ADD LEADS BY HAND */}

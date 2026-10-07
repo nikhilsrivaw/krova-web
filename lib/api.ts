@@ -335,6 +335,28 @@ export const leadImports = {
     api.post<{ status: string; id: string }>("/leads/manual", body),
 };
 
+export type EmailLeadsSettings = {
+  configured: boolean;
+  address: string | null;
+  last_lead_at: string | null;
+};
+
+export type EmailLeadRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  query: string | null;
+  status: "received" | "duplicate" | "no_phone";
+  received_at: string;
+};
+
+export const emailLeads = {
+  settings: () => api.get<EmailLeadsSettings>("/email-leads/settings"),
+  generateToken: () => api.post<EmailLeadsSettings>("/email-leads/token"),
+  leads: (limit = 10) => api.get<EmailLeadRow[]>(`/email-leads/leads?limit=${limit}`),
+};
+
 export const leadSources = {
   list: () => api.get<LeadSource[]>("/lead-sources"),
   generateToken: (key: string) => api.post<{ key: string; webhook_url: string }>(`/lead-sources/${key}/token`),
