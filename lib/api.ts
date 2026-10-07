@@ -300,6 +300,7 @@ export type LeadSource = {
   setup: "account_manager" | "self_serve";
   steps: string[];
   configured: boolean;
+  webhook_url: string | null;
   last_lead_at: string | null;
 };
 
@@ -339,6 +340,7 @@ export type EmailLeadsSettings = {
   configured: boolean;
   address: string | null;
   last_lead_at: string | null;
+  steps: string[];
 };
 
 export type EmailLeadRow = {
@@ -367,6 +369,7 @@ export type IndiamartSettings = {
   configured: boolean;
   webhook_url: string | null;
   last_lead_at: string | null;
+  steps: string[];
 };
 
 export type IndiamartLeadRow = {
@@ -423,9 +426,9 @@ export const indiamart = {
 
 export type JustdialSettings = {
   configured: boolean;
-  /** Only returned right after generating - the server keeps just a hash. */
   webhook_url: string | null;
   last_lead_at: string | null;
+  steps: string[];
 };
 
 export type InboundLeadRow = {

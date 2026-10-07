@@ -579,7 +579,7 @@ export default function SettingsPage() {
     try {
       const { webhook_url } = await leadSources.generateToken(key);
       setLeadSourceUrls((prev) => ({ ...prev, [key]: webhook_url }));
-      setLeadSourceList((prev) => prev.map((s) => (s.key === key ? { ...s, configured: true } : s)));
+      setLeadSourceList((prev) => prev.map((s) => (s.key === key ? { ...s, configured: true, webhook_url } : s)));
     } catch (err) {
       setLeadSourceError(err instanceof Error ? err.message : "Could not generate the URL.");
     } finally {
@@ -1559,9 +1559,11 @@ export default function SettingsPage() {
                 {justdialSettings?.configured ? "URL created" : "Not set up"}
               </Badge>
             </div>
-            <p className="text-[11px] text-os-text-dim font-mono">
-              Generate the URL, then send it to your Justdial account manager to connect it to your listing.
-            </p>
+            <ol className="list-decimal pl-5 space-y-1 text-[11px] text-os-text-dim font-mono">
+              {(justdialSettings?.steps ?? []).map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
             <button
               type="button"
               onClick={handleGenerateJustdial}
@@ -1572,7 +1574,7 @@ export default function SettingsPage() {
             </button>
             {justdialSettings?.webhook_url && (
               <div className="space-y-1">
-                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <p className="text-[11px] text-os-text-dim font-mono">Your webhook URL:</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
                     {justdialSettings.webhook_url}
@@ -1600,9 +1602,11 @@ export default function SettingsPage() {
                 {indiamartSettings?.configured ? "URL created" : "Not set up"}
               </Badge>
             </div>
-            <p className="text-[11px] text-os-text-dim font-mono">
-              Generate the URL, then paste it in IndiaMART under Lead Manager &rarr; Import/Export Leads &rarr; Push API, as the Listener URL. Needs an active IndiaMART paid plan.
-            </p>
+            <ol className="list-decimal pl-5 space-y-1 text-[11px] text-os-text-dim font-mono">
+              {(indiamartSettings?.steps ?? []).map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
             <button
               type="button"
               onClick={handleGenerateIndiamart}
@@ -1613,7 +1617,7 @@ export default function SettingsPage() {
             </button>
             {indiamartSettings?.webhook_url && (
               <div className="space-y-1">
-                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <p className="text-[11px] text-os-text-dim font-mono">Your Listener URL:</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
                     {indiamartSettings.webhook_url}
@@ -1654,19 +1658,19 @@ export default function SettingsPage() {
               >
                 {leadSourceBusy === source.key ? "Generating..." : source.configured ? "Generate a new URL" : "Generate URL"}
               </button>
-              {leadSourceUrls[source.key] && (
+              {(source.webhook_url ?? leadSourceUrls[source.key]) && (
                 <div className="space-y-1">
-                  <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                  <p className="text-[11px] text-os-text-dim font-mono">Your webhook URL:</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
-                      {leadSourceUrls[source.key]}
+                      {source.webhook_url ?? leadSourceUrls[source.key]}
                     </code>
                     <button
                       type="button"
-                      onClick={() => handleCopyLeadValue(leadSourceUrls[source.key])}
+                      onClick={() => handleCopyLeadValue((source.webhook_url ?? leadSourceUrls[source.key]) as string)}
                       className="shrink-0 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
                     >
-                      {copiedLeadValue === leadSourceUrls[source.key] ? "Copied" : "Copy"}
+                      {copiedLeadValue === (source.webhook_url ?? leadSourceUrls[source.key]) ? "Copied" : "Copy"}
                     </button>
                   </div>
                 </div>
@@ -1693,9 +1697,11 @@ export default function SettingsPage() {
                 {emailLeadsSettings?.configured ? "Address created" : "Not set up"}
               </Badge>
             </div>
-            <p className="text-[11px] text-os-text-dim font-mono">
-              Generate the address, then set a rule in your own mailbox to forward portal lead alert emails to it. Needs the server-side mail setup done once.
-            </p>
+            <ol className="list-decimal pl-5 space-y-1 text-[11px] text-os-text-dim font-mono">
+              {(emailLeadsSettings?.steps ?? []).map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
             <button
               type="button"
               onClick={handleGenerateEmailLeads}
@@ -1706,7 +1712,7 @@ export default function SettingsPage() {
             </button>
             {emailLeadsSettings?.address && (
               <div className="space-y-1">
-                <p className="text-[11px] text-os-text-dim font-mono">Copy this now - it is shown only once.</p>
+                <p className="text-[11px] text-os-text-dim font-mono">Your forwarding address:</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] text-[11px] text-white break-all">
                     {emailLeadsSettings.address}
