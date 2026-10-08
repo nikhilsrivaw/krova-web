@@ -1398,6 +1398,7 @@ export type AutomationTrigger =
   // Deterministic-sweep signal kinds, customer-scoped.
   | "overdue_followup.detected"
   | "report_not_collected.detected"
+  | "callback_overdue.detected"
   | "overdue_refund.detected"
   | "intent_leakage.detected"
   | "rto_risk.detected"
@@ -1483,6 +1484,7 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "praise.detected": ["severity", "title", "body"],
   "overdue_followup.detected": ["severity", "title", "body"],
   "report_not_collected.detected": ["severity", "title", "body"],
+  "callback_overdue.detected": ["severity", "title", "body"],
   "overdue_refund.detected": ["severity", "title", "body"],
   "intent_leakage.detected": ["severity", "title", "body"],
   "rto_risk.detected": ["severity", "title", "body"],
@@ -2654,7 +2656,7 @@ export const cases = {
 
 // ── Product Feedback Signals (Startups) ─────────────────────────────────────
 
-export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention" | "escalation_rate" | "claim_status_changed";
+export type SignalKind = "bug" | "feature_request" | "complaint" | "churn_risk" | "praise" | "account_health" | "overdue_followup" | "report_not_collected" | "callback_overdue" | "intent_leakage" | "overdue_refund" | "rto_risk" | "demo_request" | "pricing_question" | "competitor_mention" | "escalation_rate" | "claim_status_changed";
 export type SignalSeverity = "info" | "warning" | "critical";
 
 export type Signal = {
@@ -3191,6 +3193,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "praise.detected",
   "overdue_followup.detected",
   "report_not_collected.detected",
+  "callback_overdue.detected",
   "overdue_refund.detected",
   "intent_leakage.detected",
   "rto_risk.detected",

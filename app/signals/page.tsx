@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff, Zap, ShieldCheck } from "lucide-react";
+import { Radar, Bug, Sparkles, MessageSquareWarning, TrendingDown, Heart, Check, Activity, Clock, FileWarning, ReceiptIndianRupee, TriangleAlert, Github, Video, Tag, Swords, PhoneOff, PhoneMissed, Zap, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { signals as signalsApi, ledger, type Signal, type SignalKind, type SignalSeverity, type CustomerSummary, type AutomationTrigger } from "@/lib/api";
+import { signals as signalsApi, ledger, account, type Signal, type SignalKind, type SignalSeverity, type CustomerSummary, type AutomationTrigger, type Capability } from "@/lib/api";
 
 const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "rose" | "indigo" | "amber" | "purple" | "emerald" }> = {
   bug: { label: "Bug", icon: Bug, badge: "rose" },
@@ -18,6 +18,7 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   account_health: { label: "Account Health", icon: Activity, badge: "purple" },
   overdue_followup: { label: "Overdue Follow-up", icon: Clock, badge: "amber" },
   report_not_collected: { label: "Not Yet Collected", icon: FileWarning, badge: "amber" },
+  callback_overdue: { label: "Callback Overdue", icon: PhoneMissed, badge: "amber" },
   intent_leakage: { label: "Intent Leakage", icon: Radar, badge: "indigo" },
   overdue_refund: { label: "Refund/Replacement Owed", icon: ReceiptIndianRupee, badge: "amber" },
   rto_risk: { label: "Delivery Risk", icon: TriangleAlert, badge: "rose" },
@@ -26,6 +27,47 @@ const KIND_META: Record<SignalKind, { label: string; icon: typeof Bug; badge: "r
   competitor_mention: { label: "Competitor Mentioned", icon: Swords, badge: "rose" },
   escalation_rate: { label: "Escalation Rate", icon: PhoneOff, badge: "rose" },
   claim_status_changed: { label: "Claim Status Changed", icon: ShieldCheck, badge: "indigo" },
+};
+
+// Which kinds a business can even see, so the top grid and filter row show
+// only what's actually possible for them rather than every kind every
+// business could ever get - the page was showing 16 cards (now 17, with
+// callback_overdue added above - a real gap, the backend has emitted this
+// kind since shared/ai/recall_insights.py shipped but the frontend had no
+// entry for it, which would have thrown on render the first time one
+// appeared) regardless of vertical, most reading "0" forever for a given
+// business and burying the handful that actually matter.
+//
+// Three tiers, grounded in each kind's real backend gate (confirmed by
+// reading each generator, not guessed):
+// - universal: every business gets these regardless of capability -
+//   complaint/churn_risk/praise/competitor_mention (shared/ai/signals.py's
+//   conversation mode, which every business is in), account_health
+//   (shared/channels/whatsapp/health_monitor.py fires for any connected
+//   number), escalation_rate (shared/care/escalation_alerts.py, business-
+//   level for everyone).
+// - capability-gated: bug/feature_request/demo_request/pricing_question
+//   need product_feedback (shared/ai/signals.py's product mode);
+//   intent_leakage/rto_risk need order_sync (shared/care/
+//   intent_leakage.py's own docstring: "D2C risk sweeps - order_sync
+//   capability"); claim_status_changed needs tpa_claim_tracking
+//   (services/api/routers/insurance_claims.py).
+// - no single capability flag covers these (shared/ai/recall_insights.py
+//   generates them off each vertical's own watch_for template config, not
+//   a Capability): overdue_followup/report_not_collected/callback_overdue/
+//   overdue_refund. Shown only once this business actually has one -
+//   data-driven rather than guessed from the template.
+const UNIVERSAL_KINDS: SignalKind[] = [
+  "complaint", "churn_risk", "praise", "competitor_mention", "account_health", "escalation_rate",
+];
+const CAPABILITY_GATED: Partial<Record<SignalKind, Capability>> = {
+  bug: "product_feedback",
+  feature_request: "product_feedback",
+  demo_request: "product_feedback",
+  pricing_question: "product_feedback",
+  intent_leakage: "order_sync",
+  rto_risk: "order_sync",
+  claim_status_changed: "tpa_claim_tracking",
 };
 
 const SEVERITY_BADGE: Record<SignalSeverity, "rose" | "amber" | "default"> = {
@@ -49,6 +91,7 @@ const SIGNAL_KIND_TO_TRIGGER: Partial<Record<SignalKind, AutomationTrigger>> = {
   praise: "praise.detected",
   overdue_followup: "overdue_followup.detected",
   report_not_collected: "report_not_collected.detected",
+  callback_overdue: "callback_overdue.detected",
   intent_leakage: "intent_leakage.detected",
   overdue_refund: "overdue_refund.detected",
   rto_risk: "rto_risk.detected",
@@ -61,6 +104,7 @@ const SIGNAL_KIND_TO_TRIGGER: Partial<Record<SignalKind, AutomationTrigger>> = {
 export default function SignalsPage() {
   const [allSignals, setAllSignals] = useState<Signal[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [kindFilter, setKindFilter] = useState<SignalKind | "all">("all");
   const [severityFilter, setSeverityFilter] = useState<SignalSeverity | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -76,12 +120,16 @@ export default function SignalsPage() {
   const loadData = async () => {
     setIsLoading(true);
     setLoadError(null);
-    const results = await Promise.allSettled([signalsApi.list(), ledger.customers()]);
-    const [signalsRes, customersRes] = results;
+    const results = await Promise.allSettled([signalsApi.list(), ledger.customers(), account.profile()]);
+    const [signalsRes, customersRes, profileRes] = results;
     if (signalsRes.status === "fulfilled") setAllSignals(signalsRes.value);
     if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
+    if (profileRes.status === "fulfilled") setCapabilities(profileRes.value.capabilities || []);
 
-    const failed = results.find((r) => r.status === "rejected");
+    // Only the first two matter for the page's own error banner - a failed
+    // capabilities fetch just means the kind grid falls back to "show
+    // everything with a signal" below, not a broken page.
+    const failed = [signalsRes, customersRes].find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
       setLoadError(failed.reason instanceof Error ? failed.reason.message : "Could not load signals.");
     }
@@ -95,6 +143,10 @@ export default function SignalsPage() {
   const filtered = allSignals.filter(
     (s) => (kindFilter === "all" || s.kind === kindFilter) && (severityFilter === "all" || s.severity === severityFilter),
   );
+
+  // See UNIVERSAL_KINDS/CAPABILITY_GATED's own comment above for how each
+  // tier is grounded. counts is computed below this, so the data-driven
+  // tier is folded in right where it's used (visibleKinds), not here.
 
   const handleDismiss = async (id: string) => {
     setActionError(null);
@@ -127,6 +179,21 @@ export default function SignalsPage() {
     return c;
   }, [allSignals]);
 
+  // What actually gets a card/filter button - universal kinds always,
+  // capability-gated kinds only once this business has that capability,
+  // and everything else (the vertical-watch_for-driven kinds with no
+  // single capability flag) only once it has actually produced a signal.
+  // This is what keeps the page from showing 17 cards to every business
+  // when most verticals can only ever get 7-9 of them.
+  const visibleKinds = useMemo(() => {
+    return (Object.keys(KIND_META) as SignalKind[]).filter((kind) => {
+      if (UNIVERSAL_KINDS.includes(kind)) return true;
+      const needsCapability = CAPABILITY_GATED[kind];
+      if (needsCapability) return capabilities.includes(needsCapability);
+      return (counts[kind] || 0) > 0;
+    });
+  }, [capabilities, counts]);
+
   return (
     <AppLayout
       title="Signals"
@@ -144,8 +211,8 @@ export default function SignalsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {(Object.keys(KIND_META) as SignalKind[]).map((kind) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {visibleKinds.map((kind) => {
             const meta = KIND_META[kind];
             const Icon = meta.icon;
             return (
@@ -168,7 +235,7 @@ export default function SignalsPage() {
           >
             All kinds
           </button>
-          {(Object.keys(KIND_META) as SignalKind[]).map((kind) => (
+          {visibleKinds.map((kind) => (
             <button
               key={kind}
               type="button"

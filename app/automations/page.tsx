@@ -107,6 +107,7 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "praise.detected": "A customer praises you",
   "overdue_followup.detected": "A follow-up becomes overdue",
   "report_not_collected.detected": "A report isn't collected in time",
+  "callback_overdue.detected": "A promised callback becomes overdue",
   "overdue_refund.detected": "A promised refund becomes overdue",
   "intent_leakage.detected": "A customer shows signs of buying elsewhere",
   "rto_risk.detected": "An order is at risk of return-to-origin",
