@@ -8,10 +8,12 @@ import {
   ledger,
   approvals,
   analytics,
+  waAccount,
   type LedgerSummary,
   type Commitment,
   type MessageDraft,
   type AnalyticsOverview,
+  type WhatsAppReadiness,
 } from "@/lib/api";
 
 const CHANNEL_META: Record<string, { label: string; icon: React.ElementType }> = {
@@ -54,17 +56,22 @@ export default function DashboardPage() {
   const [pendingDrafts, setPendingDrafts] = useState<MessageDraft[]>([]);
   const [overdueCommitments, setOverdueCommitments] = useState<Commitment[]>([]);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  const [waReadiness, setWaReadiness] = useState<WhatsAppReadiness | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const loadDashboard = async () => {
-      const [sumRes, draftsRes, overdueRes, overRes] = await Promise.allSettled([
+      // waAccount.readiness() is intentionally outside the error-reporting
+      // group below - it 409s for any business that simply hasn't connected
+      // WhatsApp yet, which is a normal state, not a dashboard load failure.
+      const [sumRes, draftsRes, overdueRes, overRes, readinessRes] = await Promise.allSettled([
         ledger.summary(),
         approvals.list("pending"),
         ledger.commitments({ overdue_only: true, direction: "they_owe", limit: 5 }),
         analytics.overview(),
+        waAccount.readiness(),
       ]);
       if (!mounted) return;
 
@@ -72,6 +79,7 @@ export default function DashboardPage() {
       if (draftsRes.status === "fulfilled") setPendingDrafts(draftsRes.value.slice(0, 5));
       if (overdueRes.status === "fulfilled") setOverdueCommitments(overdueRes.value);
       if (overRes.status === "fulfilled") setOverview(overRes.value);
+      if (readinessRes.status === "fulfilled") setWaReadiness(readinessRes.value);
 
       const failed = [sumRes, draftsRes, overdueRes, overRes].find(
         (r) => r.status === "rejected",
@@ -112,6 +120,7 @@ export default function DashboardPage() {
         pendingDrafts={pendingDrafts}
         overdueCommitments={overdueCommitments}
         overview={overview}
+        waReadiness={waReadiness}
         isLoading={isLoading}
         loadError={loadError}
         expiryUrgency={expiryUrgency}

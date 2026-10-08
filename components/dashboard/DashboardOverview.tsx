@@ -3,11 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import {
-  ArrowDownLeft, ArrowRight, ArrowUpRight, CheckCheck, CheckSquare,
+  AlertTriangle, ArrowDownLeft, ArrowRight, ArrowUpRight, CheckCheck, CheckSquare,
   ChevronDown, Clock, Layers, MessageSquare, Radio, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/EmptyState";
-import { formatPaise, type AnalyticsOverview, type Commitment, type MessageDraft } from "@/lib/api";
+import { formatPaise, type AnalyticsOverview, type Commitment, type MessageDraft, type WhatsAppReadiness } from "@/lib/api";
 
 interface DashboardOverviewProps {
   owedToUs: number;
@@ -19,10 +19,45 @@ interface DashboardOverviewProps {
   pendingDrafts: MessageDraft[];
   overdueCommitments: Commitment[];
   overview: AnalyticsOverview | null;
+  // null until loaded, or for a business with no WhatsApp connection yet
+  // (the backend 409s - that's a normal state, not an error, see
+  // app/dashboard/page.tsx's own comment on why this is excluded from
+  // loadError's failure group).
+  waReadiness: WhatsAppReadiness | null;
   isLoading: boolean;
   loadError: string | null;
   expiryUrgency: (expiresAt: string | null) => { label: string; className: string } | null;
   channelMeta: Record<string, { label: string; icon: React.ElementType }>;
+}
+
+/** Unmissable, top-of-page - a business finishing WhatsApp onboarding with
+ * every other tick green still cannot send a single message without this,
+ * and Meta gives no other signal than this one blocker description (see
+ * shared/channels/whatsapp/account.py's Readiness.needs_payment_method
+ * docstring). Shown on every dashboard visit until it's actually fixed,
+ * rather than only on a Settings page the owner might not think to open. */
+function PaymentMethodBanner({ readiness }: { readiness: WhatsAppReadiness }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3">
+      <AlertTriangle className="h-5 w-5 shrink-0 text-rose-300" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-rose-200">WhatsApp messages are not sending</p>
+        <p className="mt-0.5 text-xs leading-5 text-rose-200/80">
+          {readiness.action_required || "Meta requires a payment method on your WhatsApp Business account before anything can send."}
+        </p>
+      </div>
+      {readiness.billing_url && (
+        <a
+          href={readiness.billing_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-rose-500 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-rose-400"
+        >
+          Add payment method <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      )}
+    </div>
+  );
 }
 
 function SectionHeading({ id, icon: Icon, title, description }: {
@@ -60,10 +95,12 @@ function DraftText({ body }: { body: string | null }) {
 /** Presentation only. Request scopes, review limits and financial calculations stay in the page. */
 export function DashboardOverview({
   owedToUs, overduePaise, overdueCount, pendingCount, openCount, unconfirmedCount,
-  pendingDrafts, overdueCommitments, overview, isLoading, loadError, expiryUrgency, channelMeta,
+  pendingDrafts, overdueCommitments, overview, waReadiness, isLoading, loadError, expiryUrgency, channelMeta,
 }: DashboardOverviewProps) {
   return (
     <div className="mx-auto max-w-[1440px] space-y-7 sm:space-y-8" aria-busy={isLoading}>
+      {waReadiness?.needs_payment_method && <PaymentMethodBanner readiness={waReadiness} />}
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="workspace-eyebrow mb-2 flex items-center gap-2 text-teal-bright">
