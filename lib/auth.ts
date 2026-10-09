@@ -110,6 +110,62 @@ export async function register(input: {
 }
 
 /**
+ * Passwordless login/registration - a code by email, or read aloud over a
+ * voice call for a phone number (never SMS - see shared/auth/otp.py's own
+ * docstring on why). Same request() call whether or not an account
+ * already exists at this destination; the caller decides whether to call
+ * otpLogin or otpRegister next.
+ */
+export async function requestOtp(destination: string, channel: "email" | "call"): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/otp/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination, channel }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Could not send the verification code");
+  }
+}
+
+export async function otpLogin(
+  destination: string, channel: "email" | "call", code: string,
+): Promise<Session> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/otp/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination, channel, code }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || "Could not sign in");
+  storeSession(body);
+  return body;
+}
+
+// Email only - a phone number can log into an account but never create
+// one, see shared/auth/otp.py's own module docstring on why.
+export async function otpRegister(input: {
+  destination: string;
+  code: string;
+  full_name?: string;
+  business_name: string;
+  vertical: string;
+}): Promise<Session> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/otp/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    throw new Error(detail || "Could not create the account");
+  }
+  storeSession(body);
+  return body;
+}
+
+/**
  * Where to send the browser for Google sign-in/sign-up.
  *
  * businessName/vertical are only meaningful from the signup form - they ride

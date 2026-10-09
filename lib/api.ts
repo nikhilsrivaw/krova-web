@@ -2320,6 +2320,11 @@ export type UserProfile = {
   user_id: string;
   email: string;
   full_name: string | null;
+  // None until linked via account.requestAddPhone/verifyAddPhone -
+  // optional, additive alternate login, see services/api/routers/
+  // auth.py's own MeResponse docstring.
+  phone: string | null;
+  phone_verified: boolean;
   business_id: string | null;
   business_name: string | null;
   vertical: string | null;
@@ -2348,6 +2353,13 @@ export const account = {
     google_review_url?: string;
     proactive_deadline_calls_enabled?: boolean;
   }) => api.post<UserProfile>("/auth/me", data),
+
+  // Link a phone number to the signed-in account for alternate, OTP-via-
+  // call login (lib/auth.ts's otpLogin) - never SMS, see shared/auth/
+  // otp.py's own module docstring on why.
+  requestAddPhone: (phone: string) => api.post<void>("/auth/account/phone/request", { phone }),
+  verifyAddPhone: (phone: string, code: string) =>
+    api.post<UserProfile>("/auth/account/phone/verify", { phone, code }),
 };
 
 // ── WhatsApp Business Account management ─────────────────────────────────────

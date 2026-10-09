@@ -4,8 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { googleStart, signIn } from "@/lib/auth";
+import { ArrowRight, Eye, EyeOff, AlertCircle, Mail, PhoneCall } from "lucide-react";
+import { googleStart, signIn, requestOtp, otpLogin } from "@/lib/auth";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -28,6 +28,10 @@ export default function LoginPage() {
   );
 }
 
+type Mode = "password" | "otp";
+type OtpChannel = "email" | "call";
+type OtpStep = "destination" | "code";
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,6 +41,14 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<Mode>("password");
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>("email");
+  const [otpStep, setOtpStep] = useState<OtpStep>("destination");
+  const [otpDestination, setOtpDestination] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
 
   useEffect(() => {
     const code = searchParams.get("error");
@@ -67,6 +79,41 @@ function LoginForm() {
     }
   };
 
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setOtpSending(true);
+    try {
+      await requestOtp(otpDestination.trim(), otpChannel);
+      setOtpStep("code");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the code");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setOtpVerifying(true);
+    try {
+      await otpLogin(otpDestination.trim(), otpChannel, otpCode.trim());
+      router.push("/ledger");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in");
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError(null);
+    setOtpStep("destination");
+    setOtpCode("");
+  };
+
   return (
     <AuthShell>
       <div className="relative os-window overflow-visible">
@@ -84,7 +131,7 @@ function LoginForm() {
             </span>
           </div>
 
-          <form onSubmit={handleEmailLogin} className="p-8 space-y-5 relative">
+          <div className="p-8 pb-0 space-y-5 relative">
             <div className="relative">
               <h1 className="text-2xl font-bold tracking-tight mb-1">
                 Welcome <AuroraText>back.</AuroraText>
@@ -120,67 +167,178 @@ function LoginForm() {
               <div className="flex-1 h-px bg-os-border" />
             </div>
 
-            <div className="space-y-1.5 relative">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
-              />
+            <div className="flex rounded-lg border border-os-border p-0.5 relative">
+              <button
+                type="button"
+                onClick={() => switchMode("password")}
+                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${mode === "password" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("otp")}
+                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${mode === "otp" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+              >
+                Code
+              </button>
             </div>
+          </div>
 
-            <div className="space-y-1.5 relative">
-              <div className="flex items-center justify-between">
+          {mode === "password" ? (
+            <form onSubmit={handleEmailLogin} className="p-8 pt-5 space-y-5 relative">
+              <div className="space-y-1.5 relative">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                  Password
+                  Email
                 </label>
-                <button
-                  type="button"
-                  className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
-                >
-                  Forgot?
-                </button>
-              </div>
-              <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
                   required
-                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10"
+                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
                 />
+              </div>
+
+              <div className="space-y-1.5 relative">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
+                  >
+                    Forgot?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              <motion.button
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.02 }}
+                whileTap={{ scale: loading ? 1 : 0.98 }}
+                className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2 relative"
+              >
+                {loading ? (
+                  "Signing in..."
+                ) : (
+                  <>
+                    Sign In <ArrowRight size={16} />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : (
+            <div className="p-8 pt-5 space-y-5 relative">
+              <div className="flex rounded-lg border border-os-border p-0.5">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
+                  onClick={() => { setOtpChannel("email"); setOtpStep("destination"); setOtpDestination(""); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "email" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  <Mail size={12} /> Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtpChannel("call"); setOtpStep("destination"); setOtpDestination(""); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "call" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+                >
+                  <PhoneCall size={12} /> Phone call
                 </button>
               </div>
-            </div>
 
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: loading ? 1 : 0.98 }}
-              className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2 relative"
-            >
-              {loading ? (
-                "Signing in..."
+              {otpStep === "destination" ? (
+                <form onSubmit={handleSendOtp} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                      {otpChannel === "email" ? "Email" : "Phone number"}
+                    </label>
+                    <input
+                      type={otpChannel === "email" ? "email" : "tel"}
+                      value={otpDestination}
+                      onChange={(e) => setOtpDestination(e.target.value)}
+                      placeholder={otpChannel === "email" ? "you@example.com" : "+91 98765 43210"}
+                      required
+                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                    />
+                    {otpChannel === "call" && (
+                      <p className="text-[10px] text-os-text-dim">
+                        Only works if this number was already linked in Settings - a phone number can log in, not create a new account.
+                      </p>
+                    )}
+                  </div>
+                  <motion.button
+                    type="submit"
+                    disabled={otpSending}
+                    whileHover={{ scale: otpSending ? 1 : 1.02 }}
+                    whileTap={{ scale: otpSending ? 1 : 0.98 }}
+                    className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2"
+                  >
+                    {otpSending ? "Sending..." : otpChannel === "email" ? "Email me a code" : "Call me with a code"}
+                  </motion.button>
+                </form>
               ) : (
-                <>
-                  Sign In <ArrowRight size={16} />
-                </>
+                <form onSubmit={handleVerifyOtp} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                        Verification code
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setOtpStep("destination")}
+                        className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      placeholder="123456"
+                      required
+                      autoFocus
+                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono tracking-[0.3em] text-center"
+                    />
+                    <p className="text-[10px] text-os-text-dim">
+                      {otpChannel === "email" ? `Sent to ${otpDestination}` : `Read aloud on a call to ${otpDestination}`}
+                    </p>
+                  </div>
+                  <motion.button
+                    type="submit"
+                    disabled={otpVerifying}
+                    whileHover={{ scale: otpVerifying ? 1 : 1.02 }}
+                    whileTap={{ scale: otpVerifying ? 1 : 0.98 }}
+                    className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2"
+                  >
+                    {otpVerifying ? "Verifying..." : "Verify & sign in"}
+                  </motion.button>
+                </form>
               )}
-            </motion.button>
-          </form>
+            </div>
+          )}
 
           <div className="px-8 pb-6 text-center relative">
             <p className="text-[11px] text-os-text-dim">

@@ -111,6 +111,14 @@ export default function SettingsPage() {
   const [isExportingCustomers, setIsExportingCustomers] = useState(false);
   const [isExportingConversations, setIsExportingConversations] = useState(false);
 
+  // Linking a phone number for OTP-via-call login (lib/auth.ts's otpLogin)
+  // - never SMS, see shared/auth/otp.py's own module docstring on why.
+  const [addPhoneNumber, setAddPhoneNumber] = useState("");
+  const [addPhoneStep, setAddPhoneStep] = useState<"idle" | "destination" | "code">("idle");
+  const [addPhoneCode, setAddPhoneCode] = useState("");
+  const [addPhoneBusy, setAddPhoneBusy] = useState(false);
+  const [addPhoneError, setAddPhoneError] = useState<string | null>(null);
+
   // WhatsApp Business Account - profile, health, readiness
   const [waProfile, setWaProfile] = useState<WhatsAppProfile | null>(null);
   const [waHealth, setWaHealth] = useState<WhatsAppHealth | null>(null);
@@ -903,6 +911,37 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSendAddPhoneCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddPhoneError(null);
+    setAddPhoneBusy(true);
+    try {
+      await account.requestAddPhone(addPhoneNumber.trim());
+      setAddPhoneStep("code");
+    } catch (err) {
+      setAddPhoneError(err instanceof Error ? err.message : "Could not place the verification call.");
+    } finally {
+      setAddPhoneBusy(false);
+    }
+  };
+
+  const handleVerifyAddPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddPhoneError(null);
+    setAddPhoneBusy(true);
+    try {
+      const updated = await account.verifyAddPhone(addPhoneNumber.trim(), addPhoneCode.trim());
+      setProfile(updated);
+      setAddPhoneStep("idle");
+      setAddPhoneNumber("");
+      setAddPhoneCode("");
+    } catch (err) {
+      setAddPhoneError(err instanceof Error ? err.message : "Could not verify that code.");
+    } finally {
+      setAddPhoneBusy(false);
+    }
+  };
+
   const handleSaveQueue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!queueSettings) return;
@@ -1105,6 +1144,109 @@ export default function SettingsPage() {
             </div>
           </GlassCard>
         </form>
+
+        {/* SECTION 1a: LOGIN & SECURITY - linking a phone number for
+            OTP-via-call login (lib/auth.ts's otpLogin), alongside the
+            email you already sign in with. Never SMS - see shared/auth/
+            otp.py's own module docstring on why a call reads the code
+            aloud instead. */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+            <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+              <Phone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Phone Login</h3>
+              <p className="text-xs text-os-text-dim">
+                Link a phone number so you can also sign in with a code read aloud over a call.
+              </p>
+            </div>
+          </div>
+
+          {profile?.phone_verified ? (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-seal/10 border border-seal/30">
+              <span className="text-xs text-seal-bright font-mono">{profile.phone}</span>
+              <Badge variant="emerald">Verified</Badge>
+            </div>
+          ) : addPhoneStep === "idle" ? (
+            <button
+              type="button"
+              onClick={() => setAddPhoneStep("destination")}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+            >
+              Add phone number
+            </button>
+          ) : addPhoneStep === "destination" ? (
+            <form onSubmit={handleSendAddPhoneCode} className="space-y-3">
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Phone number</label>
+                <input
+                  type="tel"
+                  required
+                  value={addPhoneNumber}
+                  onChange={(e) => setAddPhoneNumber(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+                <p className="text-[10px] text-os-text-dim font-mono mt-1">
+                  We'll call this number and read out a 6-digit code - no SMS.
+                </p>
+              </div>
+              {addPhoneError && <p className="text-xs text-red-400">{addPhoneError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={addPhoneBusy}
+                  className="px-3.5 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {addPhoneBusy ? "Calling..." : "Call me with a code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddPhoneStep("idle"); setAddPhoneError(null); }}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyAddPhone} className="space-y-3">
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                  Code from the call to {addPhoneNumber}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  autoFocus
+                  value={addPhoneCode}
+                  onChange={(e) => setAddPhoneCode(e.target.value)}
+                  placeholder="123456"
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono tracking-[0.3em] text-center focus:border-brass focus:outline-none"
+                />
+              </div>
+              {addPhoneError && <p className="text-xs text-red-400">{addPhoneError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={addPhoneBusy}
+                  className="px-3.5 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {addPhoneBusy ? "Verifying..." : "Verify & link"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddPhoneStep("destination"); setAddPhoneError(null); }}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+                >
+                  Back
+                </button>
+              </div>
+            </form>
+          )}
+        </GlassCard>
 
         {/* SECTION 1b: WALK-IN QUEUE */}
         {queueSettings && (
