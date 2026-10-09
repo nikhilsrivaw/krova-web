@@ -23,6 +23,9 @@ const FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
   select: "Dropdown",
   checkbox: "Checkbox",
   file: "File upload",
+  date: "Date",
+  number: "Number",
+  url: "Website link",
 };
 
 // A field of one of these types can be the target of another field's
@@ -371,34 +374,17 @@ export default function FormsPage() {
               );
               const target = field.show_if ? draft.fields.find((f) => f.key === field.show_if?.field_key) : undefined;
               return (
-                <div key={field.key} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-2">
-                  <div className="flex items-center gap-2">
+                <div key={field.key} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md bg-white/[0.06] text-[10px] font-bold text-os-text-dim">
+                      {i + 1}
+                    </span>
                     <input
                       type="text"
                       value={field.label}
                       onChange={(e) => updateField(i, { label: e.target.value })}
-                      placeholder="Field label"
-                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
-                    />
-                    <select
-                      value={field.type}
-                      onChange={(e) => updateField(i, { type: e.target.value as FormFieldType })}
-                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
-                    >
-                      {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
-                        <option key={value} value={value} className="bg-[#14151F]">
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={field.step}
-                      onChange={(e) => updateField(i, { step: Math.max(0, Number(e.target.value) || 0) })}
-                      title="Which page this field appears on (0 = first page)"
-                      className="w-14 px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
+                      placeholder="Field label, e.g. Name"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none focus:border-white/[0.2]"
                     />
                     <button
                       type="button"
@@ -409,17 +395,34 @@ export default function FormsPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  {field.type === "select" && (
-                    <input
-                      type="text"
-                      value={(field.options || []).join(", ")}
-                      onChange={(e) => updateField(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                      placeholder="Options, comma-separated (e.g. Buying, Renting)"
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none"
-                    />
-                  )}
-                  <div className="flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim">
+
+                  <div className="flex flex-wrap items-end gap-3 pl-[30px]">
+                    <div>
+                      <label className="block text-[10px] text-os-text-dim font-mono mb-1">Type</label>
+                      <select
+                        value={field.type}
+                        onChange={(e) => updateField(i, { type: e.target.value as FormFieldType })}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
+                      >
+                        {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
+                          <option key={value} value={value} className="bg-[#14151F]">
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-os-text-dim font-mono mb-1" title="Fields on the same page number appear together">Page</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={field.step}
+                        onChange={(e) => updateField(i, { step: Math.max(0, Number(e.target.value) || 0) })}
+                        className="w-14 px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
+                      />
+                    </div>
+                    <label className="flex items-center gap-1.5 text-[11px] text-os-text-dim pb-1.5">
                       <input
                         type="checkbox"
                         checked={field.required}
@@ -427,6 +430,18 @@ export default function FormsPage() {
                       />
                       Required
                     </label>
+                  </div>
+
+                  {field.type === "select" && (
+                    <input
+                      type="text"
+                      value={(field.options || []).join(", ")}
+                      onChange={(e) => updateField(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                      placeholder="Options, comma-separated (e.g. Buying, Renting)"
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white placeholder:text-os-text-dim outline-none ml-[30px] w-[calc(100%-30px)]"
+                    />
+                  )}
+                  <div className="flex items-center justify-end gap-3">
                     {earlierFields.length > 0 && (
                       <div className="flex items-center gap-1.5">
                         <span className="text-[11px] text-os-text-dim">Show only if</span>

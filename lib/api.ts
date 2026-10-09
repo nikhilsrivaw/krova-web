@@ -373,7 +373,10 @@ export type FormFieldType =
   | "textarea"
   | "select"
   | "checkbox"
-  | "file";
+  | "file"
+  | "date"
+  | "number"
+  | "url";
 
 export type LeadFormShowIf = { field_key: string; equals: string };
 
