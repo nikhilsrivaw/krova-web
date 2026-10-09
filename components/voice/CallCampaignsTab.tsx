@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
+  parseNumberList,
   callCampaigns,
   callScripts,
   type AudienceSegment,
@@ -35,6 +36,7 @@ export function CallCampaignsTab() {
   const [audience, setAudience] = useState<AudienceKey | null>(null);
   const [tag, setTag] = useState("");
   const [gonequietDays, setGoneQuietDays] = useState("30");
+  const [numbersText, setNumbersText] = useState("");
   const [objective, setObjective] = useState("");
   const [scripts, setScripts] = useState<CallScript[]>([]);
   const [callScriptId, setCallScriptId] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function CallCampaignsTab() {
   const audienceParams = (): Record<string, unknown> => {
     if (audience === "by_tag") return { tag };
     if (audience === "gone_quiet") return { days: Number(gonequietDays) || 30 };
+    if (audience === "numbers") return { numbers: parseNumberList(numbersText) };
     return {};
   };
 
@@ -79,6 +82,10 @@ export function CallCampaignsTab() {
       return;
     }
     if (audience === "by_tag" && !tag.trim()) {
+      setPreviewData(null);
+      return;
+    }
+    if (audience === "numbers" && parseNumberList(numbersText).length === 0) {
       setPreviewData(null);
       return;
     }
@@ -109,7 +116,7 @@ export function CallCampaignsTab() {
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audience, tag, gonequietDays, objective]);
+  }, [audience, tag, gonequietDays, numbersText, objective]);
 
   const handleLaunch = async () => {
     if (!audience || !purpose) return;
@@ -128,6 +135,7 @@ export function CallCampaignsTab() {
       setIsConfirmOpen(false);
       setName("");
       setAudience(null);
+      setNumbersText("");
       setObjective("");
       setCallScriptId(null);
       setPurpose("");
@@ -224,6 +232,22 @@ export function CallCampaignsTab() {
                 placeholder="Days of silence"
                 className="mt-2 w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
               />
+            )}
+            {audience === "numbers" && (
+              <div className="mt-2 space-y-1.5">
+                <textarea
+                  value={numbersText}
+                  onChange={(e) => setNumbersText(e.target.value)}
+                  rows={3}
+                  placeholder={"Your own number is the safest way to test, e.g.\n+91 98765 43210"}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none font-mono resize-none"
+                />
+                <p className="text-[11px] text-os-text-dim">
+                  One number per line, or separated by commas (up to 25). Only these numbers are
+                  called - nobody else in your customer list. A number that is not a customer yet
+                  is saved as one when you launch.
+                </p>
+              </div>
             )}
           </div>
 

@@ -21,7 +21,6 @@ import {
   Headset,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
-import { CallCampaignsTab } from "@/components/voice/CallCampaignsTab";
 import { PostCallRulesTab } from "@/components/voice/PostCallRulesTab";
 import { CallScriptsTab } from "@/components/voice/CallScriptsTab";
 import { NumberRequestForm } from "@/components/voice/NumberRequestForm";
@@ -80,7 +79,7 @@ const SENTIMENT_VARIANT: Record<NonNullable<CallLog["sentiment"]>, "emerald" | "
 };
 
 export default function VoicePage() {
-  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "call-campaigns" | "automations" | "scripts">("compliance");
+  const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "automations" | "scripts">("compliance");
   const [subaccount, setSubaccount] = useState<Subaccount | null>(null);
   const [requirement, setRequirement] = useState<ComplianceRequirement | null>(null);
   const [hasEndUser, setHasEndUser] = useState(false);
@@ -332,7 +331,6 @@ export default function VoicePage() {
             { key: "numbers", label: `Phone Numbers (${voiceConnections.length})` },
             { key: "logs", label: `Call Logs (${callLogs.length})` },
             { key: "settings", label: "Agent Speech & Greeting" },
-            { key: "call-campaigns", label: "Call Campaigns" },
             { key: "scripts", label: "Scripts" },
             { key: "automations", label: "Automations" },
           ].map((tab) => (
@@ -1099,9 +1097,7 @@ export default function VoicePage() {
               </div>
             )}
 
-            {/* TAB 5: OUTBOUND CALL CAMPAIGNS */}
-            {activeTab === "call-campaigns" && <CallCampaignsTab />}
-
+            {/* Outbound call campaigns now live on the Campaigns page (Voice Campaigns). */}
             {activeTab === "scripts" && <CallScriptsTab />}
 
             {activeTab === "automations" && <PostCallRulesTab />}

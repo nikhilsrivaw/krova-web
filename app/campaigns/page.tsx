@@ -10,13 +10,16 @@ import {
   Plus,
   X,
   Clock3,
+  PhoneOutgoing,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
+import { CallCampaignsTab } from "@/components/voice/CallCampaignsTab";
 import {
+  parseNumberList,
   campaigns,
   templates,
   crm,
@@ -73,6 +76,11 @@ export default function CampaignsPage() {
   // Campaign Builder State
   const [selectedAudience, setSelectedAudience] = useState<AudienceKey | "">("");
   const [audienceTag, setAudienceTag] = useState<string>("");
+  // The "specific numbers" audience - what was typed, split into a list below.
+  const [numbersText, setNumbersText] = useState<string>("");
+  // This page holds two separate tools: WhatsApp template broadcasts (below)
+  // and outbound AI phone-call campaigns (components/voice/CallCampaignsTab).
+  const [mode, setMode] = useState<"whatsapp" | "voice">("whatsapp");
   const [previewData, setPreviewData] = useState<CampaignPreview | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
   const [campaignName, setCampaignName] = useState<string>("");
@@ -167,8 +175,13 @@ export default function CampaignsPage() {
     );
   }, [selectedTemplateName]);
 
+  const manualNumbers = parseNumberList(numbersText);
   const audienceParams =
-    selectedAudience === "by_tag" && audienceTag ? { tag: audienceTag } : undefined;
+    selectedAudience === "by_tag" && audienceTag
+      ? { tag: audienceTag }
+      : selectedAudience === "numbers"
+        ? { numbers: manualNumbers }
+        : undefined;
 
   const carouselCardsPayload =
     selectedTemplate?.is_carousel
@@ -190,39 +203,50 @@ export default function CampaignsPage() {
       setPreviewData(null);
       return;
     }
+    // Same for typed numbers: nothing entered yet is a prompt, not "reaches 0".
+    if (selectedAudience === "numbers" && manualNumbers.length === 0) {
+      setPreviewData(null);
+      return;
+    }
     let cancelled = false;
-    setIsLoadingPreview(true);
-    setActionError(null);
 
-    campaigns
-      .preview({
-        name: campaignName || "Untitled campaign",
-        audience: selectedAudience,
-        audience_params: audienceParams,
-        template_name: selectedTemplate.name,
-        template_language: selectedTemplate.language,
-        variable_mapping: variableMapping,
-        carousel_cards: carouselCardsPayload,
-      })
-      .then((p) => {
-        if (!cancelled) setPreviewData(p);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setPreviewData(null);
-          setActionError(err instanceof Error ? err.message : "Could not preview this campaign.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingPreview(false);
-      });
+    // Debounced: typing a phone number changes the preview inputs on every
+    // keystroke, and each preview is a round trip.
+    const timer = setTimeout(() => {
+      setIsLoadingPreview(true);
+      setActionError(null);
+
+      campaigns
+        .preview({
+          name: campaignName || "Untitled campaign",
+          audience: selectedAudience,
+          audience_params: audienceParams,
+          template_name: selectedTemplate.name,
+          template_language: selectedTemplate.language,
+          variable_mapping: variableMapping,
+          carousel_cards: carouselCardsPayload,
+        })
+        .then((p) => {
+          if (!cancelled) setPreviewData(p);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setPreviewData(null);
+            setActionError(err instanceof Error ? err.message : "Could not preview this campaign.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingPreview(false);
+        });
+    }, 400);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    selectedAudience, audienceTag, selectedTemplateName,
+    selectedAudience, audienceTag, numbersText, selectedTemplateName,
     JSON.stringify(variableMapping), JSON.stringify(cardMapping),
   ]);
 
@@ -273,6 +297,7 @@ export default function CampaignsPage() {
   const handleLaunchCampaign = async () => {
     if (!selectedAudience || !selectedTemplate || !campaignName.trim()) return;
     if (selectedAudience === "by_tag" && !audienceTag) return;
+    if (selectedAudience === "numbers" && manualNumbers.length === 0) return;
     setIsSending(true);
     setActionError(null);
     try {
@@ -303,12 +328,52 @@ export default function CampaignsPage() {
     }
   };
 
+  const modeToggle = (
+    <div className="inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+      {(
+        [
+          { key: "whatsapp", label: "WhatsApp Campaigns", icon: MessageSquare },
+          { key: "voice", label: "Voice Campaigns", icon: PhoneOutgoing },
+        ] as const
+      ).map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => setMode(key)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            mode === key
+              ? "bg-brass/15 text-white border border-brass/40"
+              : "text-os-text-dim hover:text-white border border-transparent"
+          }`}
+        >
+          <Icon className="w-3.5 h-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (mode === "voice") {
+    return (
+      <AppLayout
+        title="Campaigns"
+        subtitle="Reach customers with WhatsApp templates or AI phone calls"
+      >
+        <div className="workspace-campaigns space-y-6">
+          {modeToggle}
+          <CallCampaignsTab />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout
-      title="Broadcast Campaigns"
-      subtitle="Template-based WhatsApp outreach to segmented customer audiences"
+      title="Campaigns"
+      subtitle="Reach customers with WhatsApp templates or AI phone calls"
     >
       <div className="workspace-campaigns space-y-6">
+        {modeToggle}
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
@@ -403,6 +468,23 @@ export default function CampaignsPage() {
                         No confirmed tags yet - tag a customer from the Customers page first.
                       </p>
                     )}
+                  </div>
+                )}
+                {selectedAudience === "numbers" && (
+                  <div className="mt-2.5 space-y-1.5">
+                    <textarea
+                      value={numbersText}
+                      onChange={(e) => setNumbersText(e.target.value)}
+                      rows={3}
+                      placeholder={"Your own number is the safest way to test, e.g.\n+91 98765 43210"}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none font-mono resize-none"
+                    />
+                    <p className="text-[11px] text-os-text-dim">
+                      One number per line, or separated by commas (up to 25). Only these numbers
+                      get the message - nobody else in your customer list. Only enter people who
+                      have agreed to hear from you; a number you add that is not a customer yet is
+                      saved as one when you send.
+                    </p>
                   </div>
                 )}
               </div>

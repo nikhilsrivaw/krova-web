@@ -1733,12 +1733,26 @@ export type AudienceKey =
   | "we_promised"
   | "gone_quiet"
   | "by_tag"
-  | "all_customers";
+  | "all_customers"
+  | "numbers";
+
+/**
+ * Splits what someone typed or pasted into the "specific numbers" box into
+ * separate entries - commas, semicolons and new lines separate numbers, but
+ * not spaces, since "+91 98765 43210" is one number. Validation (is this a
+ * real phone number) stays with the backend.
+ */
+export function parseNumberList(raw: string): string[] {
+  return raw
+    .split(/[,;\n]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+}
 
 export type AudienceSegment = {
   value: AudienceKey;
   label: string;
-  /** "gone_quiet" needs a days-quiet threshold; "by_tag" needs a tag label. */
+  /** "gone_quiet" needs a days-quiet threshold; "by_tag" a tag label; "numbers" a list of phone numbers. */
   needs_params: boolean;
 };
 
