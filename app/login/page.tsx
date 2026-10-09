@@ -283,7 +283,7 @@ function LoginForm() {
                     />
                     {otpChannel === "call" && (
                       <p className="text-[10px] text-os-text-dim">
-                        Only works if this number was already linked in Settings - a phone number can log in, not create a new account.
+                        No account yet? <Link href="/signup" className="text-white hover:underline">Sign up</Link> instead.
                       </p>
                     )}
                   </div>

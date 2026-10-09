@@ -827,7 +827,7 @@ export const conversations = {
 
 // ── Team ─────────────────────────────────────────────────────────────────────
 
-export type TeamMember = { user_id: string; full_name: string | null; email: string; role: string };
+export type TeamMember = { user_id: string; full_name: string | null; email: string | null; role: string };
 
 export const team = {
   list: () => api.get<TeamMember[]>("/team"),
@@ -2054,7 +2054,7 @@ export type AgentPerformance = {
 export type TeamMemberPerformance = {
   user_id: string;
   full_name: string | null;
-  email: string;
+  email: string | null;
   messages_sent: number;
   replies_counted: number;
   avg_first_response_minutes: number | null;
@@ -2318,7 +2318,9 @@ export type Capability =
 
 export type UserProfile = {
   user_id: string;
-  email: string;
+  // Null for a phone-only account - see shared/db/models/identity.py's
+  // User.email docstring.
+  email: string | null;
   full_name: string | null;
   // None until linked via account.requestAddPhone/verifyAddPhone -
   // optional, additive alternate login, see services/api/routers/

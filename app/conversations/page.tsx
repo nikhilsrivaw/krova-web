@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { getEmail } from "@/lib/auth";
+import { getUserId } from "@/lib/auth";
 import {
   conversations,
   channels,
@@ -505,7 +505,7 @@ export default function ConversationsPage() {
     }
   };
 
-  const myUserId = teamMembers.find((m) => m.email === getEmail())?.user_id || null;
+  const myUserId = getUserId();
 
   const filteredThreads = threadList.filter((item) => {
     const phone = phoneOf(item.identities) || "";

@@ -14,6 +14,7 @@
 const ACCESS_KEY = "krova.access";
 const REFRESH_KEY = "krova.refresh";
 const EMAIL_KEY = "krova.email";
+const USER_ID_KEY = "krova.user_id";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -22,7 +23,9 @@ export type Session = {
   access_token: string;
   refresh_token: string;
   user_id: string;
-  email: string;
+  // Null for a phone-only account - see shared/db/models/identity.py's
+  // User.email docstring.
+  email: string | null;
   business_id: string | null;
   business_name: string | null;
   vertical: string | null;
@@ -56,6 +59,15 @@ export function getEmail(): string | null {
   return read(EMAIL_KEY);
 }
 
+// user_id is the one identifier guaranteed both unique and non-null
+// (email is null for a phone-only account - see shared/db/models/
+// identity.py's User.email docstring) - "is this thread/message mine"
+// checks (app/conversations/page.tsx) should match on this, not email,
+// so two phone-only team members are never confused for each other.
+export function getUserId(): string | null {
+  return read(USER_ID_KEY);
+}
+
 export function isSignedIn(): boolean {
   return getAccessToken() !== null;
 }
@@ -64,12 +76,14 @@ export function storeSession(session: Session): void {
   write(ACCESS_KEY, session.access_token);
   write(REFRESH_KEY, session.refresh_token);
   write(EMAIL_KEY, session.email);
+  write(USER_ID_KEY, session.user_id);
 }
 
 export function clearSession(): void {
   write(ACCESS_KEY, null);
   write(REFRESH_KEY, null);
   write(EMAIL_KEY, null);
+  write(USER_ID_KEY, null);
 }
 
 export async function signIn(email: string, password: string): Promise<Session> {
@@ -142,9 +156,10 @@ export async function otpLogin(
   return body;
 }
 
-// Email only - a phone number can log into an account but never create
-// one, see shared/auth/otp.py's own module docstring on why.
+// Either channel can create a brand-new account - see shared/auth/otp.py's
+// own module docstring.
 export async function otpRegister(input: {
+  channel: "email" | "call";
   destination: string;
   code: string;
   full_name?: string;

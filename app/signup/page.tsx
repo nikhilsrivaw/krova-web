@@ -46,6 +46,8 @@ function SignupForm() {
   const [verticals, setVerticals] = useState<Vertical[]>([]);
 
   const [signupMode, setSignupMode] = useState<"password" | "otp">("password");
+  const [otpChannel, setOtpChannel] = useState<"email" | "call">("email");
+  const [otpDestination, setOtpDestination] = useState("");
   const [otpStep, setOtpStep] = useState<"destination" | "code">("destination");
   const [otpCode, setOtpCode] = useState("");
   const [otpSending, setOtpSending] = useState(false);
@@ -87,13 +89,13 @@ function SignupForm() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email.trim()) {
-      setError("Enter your email first.");
+    if (!otpDestination.trim()) {
+      setError(otpChannel === "email" ? "Enter your email first." : "Enter your phone number first.");
       return;
     }
     setOtpSending(true);
     try {
-      await requestOtp(email.trim(), "email");
+      await requestOtp(otpDestination.trim(), otpChannel);
       setOtpStep("code");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send the code");
@@ -108,7 +110,8 @@ function SignupForm() {
     setLoading(true);
     try {
       await otpRegister({
-        destination: email.trim(),
+        channel: otpChannel,
+        destination: otpDestination.trim(),
         code: otpCode.trim(),
         full_name: name,
         business_name: businessName,
@@ -311,21 +314,6 @@ function SignupForm() {
               />
             </div>
 
-            <div className="space-y-1.5 relative">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                disabled={signupMode === "otp" && otpStep === "code"}
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono disabled:opacity-60"
-              />
-            </div>
-
             <div className="flex rounded-lg border border-os-border p-0.5 relative">
               <button
                 type="button"
@@ -339,60 +327,112 @@ function SignupForm() {
                 onClick={() => { setSignupMode("otp"); setOtpStep("destination"); setError(null); }}
                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${signupMode === "otp" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
               >
-                Email code
+                Code
               </button>
             </div>
 
             {signupMode === "password" ? (
-              <div className="space-y-1.5 relative">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 10 characters"
-                    required
-                    className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-            ) : otpStep === "code" ? (
-              <div className="space-y-1.5 relative">
-                <div className="flex items-center justify-between">
+              <>
+                <div className="space-y-1.5 relative">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                    Verification code
+                    Email
                   </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5 relative">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Min. 10 characters"
+                      required
+                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex rounded-lg border border-os-border p-0.5 relative">
                   <button
                     type="button"
-                    onClick={() => setOtpStep("destination")}
-                    className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
+                    onClick={() => { setOtpChannel("email"); setOtpStep("destination"); setOtpDestination(""); }}
+                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "email" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
                   >
-                    Change email
+                    Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setOtpChannel("call"); setOtpStep("destination"); setOtpDestination(""); }}
+                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "call" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+                  >
+                    Phone call
                   </button>
                 </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="123456"
-                  required
-                  autoFocus
-                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono tracking-[0.3em] text-center"
-                />
-                <p className="text-[11px] text-os-text-dim">Sent to {email}</p>
-              </div>
-            ) : null}
+
+                {otpStep === "destination" ? (
+                  <div className="space-y-1.5 relative">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                      {otpChannel === "email" ? "Email" : "Phone number"}
+                    </label>
+                    <input
+                      type={otpChannel === "email" ? "email" : "tel"}
+                      value={otpDestination}
+                      onChange={(e) => setOtpDestination(e.target.value)}
+                      placeholder={otpChannel === "email" ? "you@example.com" : "+91 98765 43210"}
+                      required
+                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 relative">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                        Verification code
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setOtpStep("destination")}
+                        className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      placeholder="123456"
+                      required
+                      autoFocus
+                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono tracking-[0.3em] text-center"
+                    />
+                    <p className="text-[11px] text-os-text-dim">
+                      {otpChannel === "email" ? `Sent to ${otpDestination}` : `Read aloud on a call to ${otpDestination}`}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
             {signupMode === "password" ? (
               <motion.button
