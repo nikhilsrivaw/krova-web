@@ -211,12 +211,9 @@ function SignupForm() {
           </div>
 
           <div className="p-8 pb-0 relative">
-            <h1 className="text-2xl font-bold tracking-tight mb-1">
+            <h1 className="text-2xl font-bold tracking-tight">
               Create your <AuroraText>workspace.</AuroraText>
             </h1>
-            <p className="text-xs text-os-text-dim">
-              14-day free trial. No credit card required.
-            </p>
           </div>
 
           {error && (
