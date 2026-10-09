@@ -162,6 +162,7 @@ export async function otpRegister(input: {
   channel: "email" | "call";
   destination: string;
   code: string;
+  password: string;
   full_name?: string;
   business_name: string;
   vertical: string;

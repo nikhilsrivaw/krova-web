@@ -4,8 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, AlertCircle, Mail, CheckCircle2 } from "lucide-react";
-import { googleStart, register, requestOtp, otpRegister } from "@/lib/auth";
+import { ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { googleStart, requestOtp, otpRegister } from "@/lib/auth";
 import { fetchVerticals, type Vertical } from "@/lib/api";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -30,27 +30,33 @@ export default function SignupPage() {
   );
 }
 
+type OtpChannel = "email" | "call";
+type OtpStep = "destination" | "code";
+
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmEmail, setConfirmEmail] = useState(false);
+
+  // Always collected, regardless of how the email/phone gets verified -
+  // business name, business type, full name, and a real password the
+  // person chooses and signs in with afterwards (OTP below only proves
+  // the email/phone is really theirs, it is not a passwordless login).
   const [businessName, setBusinessName] = useState("");
   const [vertical, setVertical] = useState("general");
   const [verticals, setVerticals] = useState<Vertical[]>([]);
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [signupMode, setSignupMode] = useState<"password" | "otp">("password");
-  const [otpChannel, setOtpChannel] = useState<"email" | "call">("email");
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>("email");
   const [otpDestination, setOtpDestination] = useState("");
-  const [otpStep, setOtpStep] = useState<"destination" | "code">("destination");
+  const [otpStep, setOtpStep] = useState<OtpStep>("destination");
   const [otpCode, setOtpCode] = useState("");
   const [otpSending, setOtpSending] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // The list comes from the server so adding a vertical stays a config change
   // rather than a frontend release.
@@ -63,32 +69,13 @@ function SignupForm() {
     if (code) setError(GOOGLE_ERROR_MESSAGES[code] || "Could not sign up with Google.");
   }, [searchParams]);
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (password.length < 10) {
       setError("Password must be at least 10 characters.");
       return;
     }
-    setLoading(true);
-    try {
-      await register({
-        email,
-        password,
-        full_name: name,
-        business_name: businessName,
-        vertical,
-      });
-      router.push("/onboarding");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the account");
-      setLoading(false);
-    }
-  };
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
     if (!otpDestination.trim()) {
       setError(otpChannel === "email" ? "Enter your email first." : "Enter your phone number first.");
       return;
@@ -104,7 +91,7 @@ function SignupForm() {
     }
   };
 
-  const handleVerifyOtpSignup = async (e: React.FormEvent) => {
+  const handleVerifyAndCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -113,6 +100,7 @@ function SignupForm() {
         channel: otpChannel,
         destination: otpDestination.trim(),
         code: otpCode.trim(),
+        password,
         full_name: name,
         business_name: businessName,
         vertical,
@@ -139,65 +127,6 @@ function SignupForm() {
     }
   };
 
-  // Confirmation screen
-  if (confirmEmail) {
-    return (
-      <AuthShell>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full text-center"
-        >
-          <motion.div
-            initial={{ scale: 0.5, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200 }}
-            className="relative w-20 h-20 mx-auto mb-8"
-          >
-            <div className="absolute inset-0 rounded-3xl bg-teal/20 blur-xl" />
-            <div className="relative w-20 h-20 bg-os-card border border-os-border rounded-3xl flex items-center justify-center overflow-hidden">
-              <BorderBeam size={60} duration={6} colorFrom="#5EEAD4" colorTo="#00A387" />
-              <Mail size={32} className="text-teal relative z-10" />
-            </div>
-          </motion.div>
-
-          <h1 className="text-3xl font-bold tracking-tight mb-3">
-            Check your <AuroraText>email.</AuroraText>
-          </h1>
-          <p className="text-os-text-dim text-sm leading-relaxed mb-8">
-            We sent a confirmation link to{" "}
-            <span className="text-white font-bold font-mono">{email}</span>. Click it to activate
-            your account and continue setup.
-          </p>
-
-          <div className="os-card p-4 text-left space-y-3 mb-8 relative overflow-hidden">
-            <BorderBeam size={120} duration={10} colorFrom="#5EEAD4" colorTo="#00A387" />
-            {[
-              "Open your email inbox",
-              "Click the confirmation link from KROVA",
-              "You'll be taken to workspace setup",
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-3 relative">
-                <div className="w-6 h-6 rounded-full bg-teal/15 border border-teal/30 flex items-center justify-center text-[10px] font-bold shrink-0 text-teal">
-                  {i + 1}
-                </div>
-                <span className="text-xs text-os-text-dim">{step}</span>
-              </div>
-            ))}
-          </div>
-
-          <Link
-            href="/login"
-            className="text-[11px] font-bold uppercase tracking-widest text-os-text-dim hover:text-white transition-colors inline-flex items-center gap-1.5"
-          >
-            <CheckCircle2 size={11} className="text-teal" />
-            Already confirmed? Sign in →
-          </Link>
-        </motion.div>
-      </AuthShell>
-    );
-  }
-
   return (
     <AuthShell>
       <div className="relative os-window overflow-visible">
@@ -216,13 +145,7 @@ function SignupForm() {
           </div>
 
           <form
-            onSubmit={
-              signupMode === "password"
-                ? handleSignup
-                : otpStep === "destination"
-                ? handleSendOtp
-                : handleVerifyOtpSignup
-            }
+            onSubmit={otpStep === "destination" ? handleSendOtp : handleVerifyAndCreate}
             className="p-8 space-y-5 relative"
           >
             <div className="relative">
@@ -251,7 +174,8 @@ function SignupForm() {
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Sharma Dental"
                 required
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                disabled={otpStep === "code"}
+                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono disabled:opacity-60"
               />
             </div>
 
@@ -262,7 +186,8 @@ function SignupForm() {
               <select
                 value={vertical}
                 onChange={(e) => setVertical(e.target.value)}
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                disabled={otpStep === "code"}
+                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono disabled:opacity-60"
               >
                 {verticals.length === 0 && (
                   <option value="general">General business</option>
@@ -310,131 +235,114 @@ function SignupForm() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Deepak Mehta"
                 required
-                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                disabled={otpStep === "code"}
+                className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono disabled:opacity-60"
               />
+            </div>
+
+            <div className="space-y-1.5 relative">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min. 10 characters"
+                  required
+                  disabled={otpStep === "code"}
+                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
 
             <div className="flex rounded-lg border border-os-border p-0.5 relative">
               <button
                 type="button"
-                onClick={() => { setSignupMode("password"); setError(null); }}
-                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${signupMode === "password" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+                onClick={() => { setOtpChannel("email"); setOtpStep("destination"); setOtpDestination(""); setError(null); }}
+                disabled={otpStep === "code"}
+                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors disabled:opacity-60 ${otpChannel === "email" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
               >
-                Password
+                Email
               </button>
               <button
                 type="button"
-                onClick={() => { setSignupMode("otp"); setOtpStep("destination"); setError(null); }}
-                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${signupMode === "otp" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+                onClick={() => { setOtpChannel("call"); setOtpStep("destination"); setOtpDestination(""); setError(null); }}
+                disabled={otpStep === "code"}
+                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors disabled:opacity-60 ${otpChannel === "call" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
               >
-                Code
+                Phone call
               </button>
             </div>
 
-            {signupMode === "password" ? (
-              <>
-                <div className="space-y-1.5 relative">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5 relative">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 10 characters"
-                      required
-                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-os-text-dim hover:text-white transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </>
+            {otpStep === "destination" ? (
+              <div className="space-y-1.5 relative">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                  {otpChannel === "email" ? "Email" : "Phone number"}
+                </label>
+                <input
+                  type={otpChannel === "email" ? "email" : "tel"}
+                  value={otpDestination}
+                  onChange={(e) => setOtpDestination(e.target.value)}
+                  placeholder={otpChannel === "email" ? "you@example.com" : "+91 98765 43210"}
+                  required
+                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
+                />
+                <p className="text-[11px] text-os-text-dim">
+                  {otpChannel === "email"
+                    ? "We'll email a 6-digit code to confirm this address."
+                    : "We'll call this number and read out a 6-digit code - no SMS."}
+                </p>
+              </div>
             ) : (
-              <>
-                <div className="flex rounded-lg border border-os-border p-0.5 relative">
+              <div className="space-y-1.5 relative">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
+                    Verification code
+                  </label>
                   <button
                     type="button"
-                    onClick={() => { setOtpChannel("email"); setOtpStep("destination"); setOtpDestination(""); }}
-                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "email" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
+                    onClick={() => setOtpStep("destination")}
+                    className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
                   >
-                    Email
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setOtpChannel("call"); setOtpStep("destination"); setOtpDestination(""); }}
-                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors ${otpChannel === "call" ? "bg-os-border-bright text-white" : "text-os-text-dim hover:text-white"}`}
-                  >
-                    Phone call
+                    Change
                   </button>
                 </div>
-
-                {otpStep === "destination" ? (
-                  <div className="space-y-1.5 relative">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                      {otpChannel === "email" ? "Email" : "Phone number"}
-                    </label>
-                    <input
-                      type={otpChannel === "email" ? "email" : "tel"}
-                      value={otpDestination}
-                      onChange={(e) => setOtpDestination(e.target.value)}
-                      placeholder={otpChannel === "email" ? "you@example.com" : "+91 98765 43210"}
-                      required
-                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 relative">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-os-text-dim">
-                        Verification code
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setOtpStep("destination")}
-                        className="text-[10px] text-os-text-dim hover:text-white transition-colors uppercase tracking-widest"
-                      >
-                        Change
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="123456"
-                      required
-                      autoFocus
-                      className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono tracking-[0.3em] text-center"
-                    />
-                    <p className="text-[11px] text-os-text-dim">
-                      {otpChannel === "email" ? `Sent to ${otpDestination}` : `Read aloud on a call to ${otpDestination}`}
-                    </p>
-                  </div>
-                )}
-              </>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  className="w-full bg-os-bg border border-os-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-os-text-dim focus:outline-none focus:border-os-border-bright transition-colors font-mono tracking-[0.3em] text-center"
+                />
+                <p className="text-[11px] text-os-text-dim">
+                  {otpChannel === "email" ? `Sent to ${otpDestination}` : `Read aloud on a call to ${otpDestination}`}
+                </p>
+              </div>
             )}
 
-            {signupMode === "password" ? (
+            {otpStep === "destination" ? (
+              <motion.button
+                type="submit"
+                disabled={otpSending}
+                whileHover={{ scale: otpSending ? 1 : 1.02 }}
+                whileTap={{ scale: otpSending ? 1 : 0.98 }}
+                className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2 relative"
+              >
+                {otpSending ? "Sending..." : otpChannel === "email" ? "Email me a code" : "Call me with a code"}
+              </motion.button>
+            ) : (
               <motion.button
                 type="submit"
                 disabled={loading}
@@ -446,29 +354,9 @@ function SignupForm() {
                   "Creating..."
                 ) : (
                   <>
-                    Create Account <ArrowRight size={16} />
+                    Verify & Create Account <ArrowRight size={16} />
                   </>
                 )}
-              </motion.button>
-            ) : otpStep === "destination" ? (
-              <motion.button
-                type="submit"
-                disabled={otpSending}
-                whileHover={{ scale: otpSending ? 1 : 1.02 }}
-                whileTap={{ scale: otpSending ? 1 : 0.98 }}
-                className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2 relative"
-              >
-                {otpSending ? "Sending..." : "Email me a code"}
-              </motion.button>
-            ) : (
-              <motion.button
-                type="submit"
-                disabled={loading}
-                whileHover={{ scale: loading ? 1 : 1.02 }}
-                whileTap={{ scale: loading ? 1 : 0.98 }}
-                className="os-button os-button-cta w-full justify-center py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed gap-2 relative"
-              >
-                {loading ? "Creating..." : "Verify & create account"}
               </motion.button>
             )}
 
