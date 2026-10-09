@@ -3,18 +3,21 @@
 /**
  * Account creation.
  *
- * Layout follows three things rather than being arranged ad hoc (the
- * previous version put "Continue with Google" in the middle of the form,
- * splitting business fields from personal ones):
+ * Three ways to create an account - Google, email + password, phone +
+ * password - and the layout follows from what each one actually needs:
  *
- * - Gestalt proximity (NN/g): fields near each other read as related, so
- *   personal details and business details are two separate, headed
- *   chunks with real white space between them - never interleaved.
- * - Chunking (NN/g): a headed section of 3-4 fields reads as simple
- *   where the same fields in one undifferentiated list read as a wall.
- * - Social auth is its own block, above the form, behind an "or"
- *   divider - a person who wants it never has to read the form at all,
- *   and it never interrupts someone who has started filling it in.
+ * - Business name and business type are needed by ALL of them, Google
+ *   included (googleStart carries both through its OAuth round trip), so
+ *   they come first, as the first headed chunk. An earlier version put the
+ *   Google button above them, which made it look like an independent
+ *   option and then rejected the click with "enter your business name
+ *   first" - the button depended on fields placed below it.
+ * - Only then "How you'll sign in": Google needs nothing further (name and
+ *   a verified email come from Google, so no password and no code), while
+ *   email/phone adds a full name, the identifier, a password the person
+ *   signs in with afterwards, and a code proving the identifier is theirs.
+ * - Gestalt proximity + chunking (NN/g): those are two headed sections with
+ *   real white space, never interleaved, so related fields read as related.
  *
  * Once a code is on its way, the filled form collapses to a one-line
  * summary and only the code input is shown: at that point every other
@@ -261,7 +264,53 @@ function SignupForm() {
             </form>
           ) : (
             <form onSubmit={handleSendCode} className="p-8 space-y-5 relative">
-              {/* ── Social auth: its own block, above the form ── */}
+              {/* ── Chunk 1: shared by EVERY way of signing up. Google needs
+                  these too (googleStart carries business name + type through
+                  its OAuth round trip), so they come first - the previous
+                  layout put the Google button above them and then errored
+                  "enter your business name first" for anyone who clicked it,
+                  which made it look like an independent option when it was
+                  not. ── */}
+              <SectionHeading>Your business</SectionHeading>
+
+              <div className="space-y-1.5">
+                <FieldLabel>Business name</FieldLabel>
+                <input
+                  type="text"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Sharma Dental"
+                  required
+                  className={FIELD_CLASS}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel>What kind of business</FieldLabel>
+                <select
+                  value={vertical}
+                  onChange={(e) => setVertical(e.target.value)}
+                  className={FIELD_CLASS}
+                >
+                  {verticals.length === 0 && <option value="general">General business</option>}
+                  {verticals.map((v) => (
+                    <option key={v.key} value={v.key}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-os-text-dim">
+                  Krova uses this to set up your agent before your first conversation. You can
+                  change it later.
+                </p>
+              </div>
+
+              {/* ── Chunk 2: how this person will sign in. Google asks for
+                  nothing more (name and verified email come from Google);
+                  email/phone adds a name, the identifier, a password, and a
+                  code that proves the identifier is theirs. ── */}
+              <SectionHeading>How you&apos;ll sign in</SectionHeading>
+
               <button
                 type="button"
                 onClick={handleGoogleSignup}
@@ -276,17 +325,17 @@ function SignupForm() {
                 </svg>
                 {googleLoading ? "Redirecting..." : "Continue with Google"}
               </button>
+              <p className="text-[11px] text-os-text-dim -mt-2 text-center">
+                Nothing else to fill in - Google confirms your email and name.
+              </p>
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-os-border" />
                 <span className="text-[10px] text-os-text-dim uppercase tracking-widest whitespace-nowrap">
-                  or sign up with email or phone
+                  or with email / phone
                 </span>
                 <div className="flex-1 h-px bg-os-border" />
               </div>
-
-              {/* ── Chunk 1: who this person is ── */}
-              <SectionHeading>Your details</SectionHeading>
 
               <div className="space-y-1.5">
                 <FieldLabel>Full name</FieldLabel>
@@ -301,7 +350,7 @@ function SignupForm() {
               </div>
 
               <div className="space-y-1.5">
-                <FieldLabel>How should we verify you</FieldLabel>
+                <FieldLabel>Verify with</FieldLabel>
                 <div className="flex rounded-lg border border-os-border p-0.5">
                   <button
                     type="button"
@@ -352,41 +401,6 @@ function SignupForm() {
                     {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
-              </div>
-
-              {/* ── Chunk 2: what the workspace is for ── */}
-              <SectionHeading>Your business</SectionHeading>
-
-              <div className="space-y-1.5">
-                <FieldLabel>Business name</FieldLabel>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="Sharma Dental"
-                  required
-                  className={FIELD_CLASS}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <FieldLabel>What kind of business</FieldLabel>
-                <select
-                  value={vertical}
-                  onChange={(e) => setVertical(e.target.value)}
-                  className={FIELD_CLASS}
-                >
-                  {verticals.length === 0 && <option value="general">General business</option>}
-                  {verticals.map((v) => (
-                    <option key={v.key} value={v.key}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-os-text-dim">
-                  Krova uses this to set up your agent before your first conversation. You can
-                  change it later.
-                </p>
               </div>
 
               <motion.button
