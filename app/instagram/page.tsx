@@ -616,6 +616,25 @@ export default function InstagramPage() {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-os-text-dim">
+                    Pick someone who has messaged this account in the last 24 hours.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadIgConversations}
+                    disabled={igLoadingConversations}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${igLoadingConversations ? "animate-spin" : ""}`} />
+                    {igLoadingConversations ? "Loading…" : "Load conversations"}
+                  </button>
+                </div>
+
+                {igConversationsError && (
+                  <p className="text-[11px] text-red-400 font-mono">{igConversationsError}</p>
+                )}
+
                 {igConversations.length > 0 && (
                   <div className="space-y-1.5">
                     <label className="block text-[10px] uppercase tracking-wide text-os-text-dim font-mono">
@@ -656,7 +675,7 @@ export default function InstagramPage() {
                     placeholder={
                       igConversations.length > 0
                         ? "Or paste an Instagram-scoped ID directly"
-                        : "Paste an Instagram-scoped ID, or click Load conversations above to pick someone"
+                        : "Paste an Instagram-scoped ID, or click Load conversations to pick someone"
                     }
                     className="w-full px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono placeholder:text-os-text-dim/50 outline-none focus:border-white/[0.2]"
                   />
