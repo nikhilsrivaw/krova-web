@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail, Instagram,
-  Filter, Clock, TrendingDown, History,
+  Filter, Clock, TrendingDown, History, GalleryHorizontal,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -19,7 +19,11 @@ import {
   postCallRules,
   flows as flowsApi,
   account,
+  channels as channelsApi,
+  templates as templatesApi,
   CONDITION_FIELDS,
+  type SavedInstagramCarousel,
+  type Template,
   type AutomationRule,
   type AutomationStepConfig,
   type AutomationTrigger,
@@ -167,6 +171,7 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   send_email: "Send an email",
   instagram_followup: "Send an Instagram reply",
   instagram_comment_reply: "Reply privately to a comment",
+  send_carousel: "Send a carousel",
 };
 
 // Offered when building a NEW rule. send_sms and send_email stay out of this
@@ -192,6 +197,7 @@ const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   send_email: Mail,
   instagram_followup: Instagram,
   instagram_comment_reply: Instagram,
+  send_carousel: GalleryHorizontal,
 };
 
 // Human labels for the real, per-trigger_type condition fields
@@ -323,6 +329,10 @@ const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[])
   if (step.action_type === "send_email") {
     return step.action_config.subject || "";
   }
+  if (step.action_type === "send_carousel") {
+    const via = step.action_config.kind === "whatsapp" ? "WhatsApp" : "Instagram";
+    return `${via} carousel: ${step.action_config.carousel_name || step.action_config.template_name || ""}`;
+  }
   return step.action_config.message || step.action_config.reason || step.action_config.tag || "";
 };
 
@@ -403,6 +413,13 @@ export default function AutomationsPage() {
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
   const [flowCta, setFlowCta] = useState("Open");
+  // send_carousel: which channel's carousel, and which one. Instagram sends a
+  // saved carousel (Instagram page); WhatsApp sends an approved carousel template.
+  const [carouselKind, setCarouselKind] = useState<"instagram" | "whatsapp">("instagram");
+  const [carouselId, setCarouselId] = useState("");
+  const [carouselTemplateName, setCarouselTemplateName] = useState("");
+  const [savedCarousels, setSavedCarousels] = useState<SavedInstagramCarousel[]>([]);
+  const [carouselTemplates, setCarouselTemplates] = useState<Template[]>([]);
 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -410,9 +427,23 @@ export default function AutomationsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [rulesRes, flowsRes, profileRes] = await Promise.allSettled([
+    const [rulesRes, flowsRes, profileRes, carouselsRes, templatesRes] = await Promise.allSettled([
       postCallRules.list(), flowsApi.list(), account.profile(),
+      channelsApi.listSavedInstagramCarousels(), templatesApi.list(),
     ]);
+    // Both best-effort: a business with no Instagram or no templates just sees
+    // an empty picker for that kind, never a broken page.
+    if (carouselsRes.status === "fulfilled") setSavedCarousels(carouselsRes.value ?? []);
+    if (templatesRes.status === "fulfilled") {
+      // Only approved carousel templates with no {{variables}} anywhere - a
+      // rule has no per-customer values to fill a card's text with.
+      setCarouselTemplates(
+        templatesRes.value.filter(
+          (t) => t.is_carousel && t.sendable && t.variables.length === 0
+            && !JSON.stringify(t.components ?? "").includes("{{"),
+        ),
+      );
+    }
     if (rulesRes.status === "fulfilled") {
       setRules(rulesRes.value);
       setLoadError(null);
@@ -503,6 +534,10 @@ export default function AutomationsPage() {
     setFlowId(step?.action_type === "send_flow" ? config.flow_id || "" : "");
     setFlowBody(step?.action_type === "send_flow" ? config.body || "Please fill this in:" : "Please fill this in:");
     setFlowCta(step?.action_type === "send_flow" ? config.cta || "Open" : "Open");
+    const isCarousel = step?.action_type === "send_carousel";
+    setCarouselKind(isCarousel && config.kind === "whatsapp" ? "whatsapp" : "instagram");
+    setCarouselId(isCarousel ? config.carousel_id || "" : "");
+    setCarouselTemplateName(isCarousel ? config.template_name || "" : "");
     setSendTo(config.send_to === "payer" ? "payer" : "customer");
     setConditionRows(
       (step?.conditions ?? []).map((c) => ({ field: c.field, operator: c.operator, value: String(c.value) })),
@@ -659,6 +694,16 @@ export default function AutomationsPage() {
     if (action === "send_flow") {
       if (!selectedFlow || !flowBody.trim() || !flowScreen) return null;
       return { flow_id: selectedFlow.id, body: flowBody.trim(), screen: flowScreen, cta: flowCta.trim() || "Open" };
+    }
+    if (action === "send_carousel") {
+      if (carouselKind === "instagram") {
+        const saved = savedCarousels.find((c) => c.id === carouselId);
+        return saved ? { kind: "instagram", carousel_id: saved.id, carousel_name: saved.name } : null;
+      }
+      const template = carouselTemplates.find((t) => t.name === carouselTemplateName);
+      return template
+        ? { kind: "whatsapp", template_name: template.name, template_language: template.language }
+        : null;
     }
     if (action === "place_call") {
       return textConfig.trim() ? { reason: textConfig.trim() } : null;
@@ -1043,6 +1088,97 @@ export default function AutomationsPage() {
             placeholder="Thanks for the comment! Check your DMs 🙌"
             className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
           />
+        </div>
+      )}
+
+      {action === "send_carousel" && (
+        <div className="space-y-2.5">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Send it on</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { key: "instagram", label: "Instagram" },
+                  { key: "whatsapp", label: "WhatsApp" },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCarouselKind(key)}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border cursor-pointer transition-all ${
+                    carouselKind === key
+                      ? "bg-cyan-500/10 border-cyan-500/50 text-white"
+                      : "bg-white/[0.02] border-white/[0.08] text-os-text-dim hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {carouselKind === "instagram" ? (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Saved carousel</label>
+              {savedCarousels.length === 0 ? (
+                <p className="text-[11px] text-amber-400">
+                  No saved carousels yet -{" "}
+                  <Link href="/instagram" className="underline hover:text-amber-300">
+                    build one on the Instagram page and save it
+                  </Link>
+                  , then come back here.
+                </p>
+              ) : (
+                <select
+                  value={carouselId}
+                  onChange={(e) => setCarouselId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="">Choose a carousel...</option>
+                  {savedCarousels.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[11px] text-os-text-dim mt-1.5">
+                Sent as an Instagram carousel - no Meta review needed, but Instagram only delivers it
+                within 24 hours of the customer&apos;s last message.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Approved carousel template</label>
+              {carouselTemplates.length === 0 ? (
+                <p className="text-[11px] text-amber-400">
+                  No approved carousel templates without variables yet. Create one in Templates and wait for Meta&apos;s approval.
+                </p>
+              ) : (
+                <select
+                  value={carouselTemplateName}
+                  onChange={(e) => setCarouselTemplateName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="">Choose a template...</option>
+                  {carouselTemplates.map((t) => (
+                    <option key={`${t.name}-${t.language}`} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[11px] text-os-text-dim mt-1.5">
+                Only templates with no {"{{variables}}"} are listed - a rule has no per-customer values to
+                fill a card with. Meta charges for template messages.
+              </p>
+            </div>
+          )}
+
+          {channel && channel !== carouselKind && (
+            <p className="text-[11px] text-amber-400">
+              This rule only runs on {CHANNEL_LABEL[channel as AutomationChannel]}, but this carousel is sent on{" "}
+              {carouselKind === "instagram" ? "Instagram" : "WhatsApp"} - the customer needs an account there, so it
+              may do nothing. Use &quot;any channel&quot; or match the two.
+            </p>
+          )}
         </div>
       )}
 

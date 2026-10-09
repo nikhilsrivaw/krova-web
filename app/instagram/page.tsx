@@ -163,8 +163,9 @@ export default function InstagramPage() {
     }
   };
 
-  const canSendCarousel =
-    carouselTo.trim() &&
+  // The cards on their own are complete: enough of them, each with a title, no
+  // image still uploading, any button filled in. Saving needs only this.
+  const cardsAreComplete =
     carouselCards.length >= MIN_CAROUSEL_CARDS &&
     carouselCards.every(
       (c) =>
@@ -172,6 +173,10 @@ export default function InstagramPage() {
         !c.isUploading &&
         (!c.buttonEnabled || (c.buttonTitle.trim() && (c.buttonType === "web_url" ? c.buttonUrl.trim() : c.buttonPayload.trim()))),
     );
+  // Sending also needs someone to send to. Saving used to share this check, so
+  // the Save button stayed dead until a recipient was picked - for something
+  // that has nothing to do with a recipient.
+  const canSendCarousel = !!carouselTo.trim() && cardsAreComplete;
 
   const buildCarouselElements = (): InstagramCarouselElement[] =>
     carouselCards.map((c) => ({
@@ -236,15 +241,21 @@ export default function InstagramPage() {
     loadSavedCarousels();
   }, [loadSavedCarousels]);
 
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+
   const handleSaveCarousel = async () => {
-    if (!saveName.trim() || !canSendCarousel) return;
+    if (!saveName.trim() || !cardsAreComplete) return;
     setIsSaving(true);
     setSaveError(null);
+    setSaveNotice(null);
     try {
       const saved = await channels.saveInstagramCarousel(
         saveName.trim(), saveDescription.trim(), buildCarouselElements(),
       );
       setSavedCarousels((prev) => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+      // The name is normalised on the server (lowercase, underscores), so say
+      // what it was actually saved as - that is what the AI and rules see.
+      setSaveNotice(`Saved as "${saved.name}". Your AI and automations can now use it.`);
       setSaveName("");
       setSaveDescription("");
     } catch (err) {
@@ -826,12 +837,18 @@ export default function InstagramPage() {
                     <button
                       type="button"
                       onClick={handleSaveCarousel}
-                      disabled={!saveName.trim() || !canSendCarousel || isSaving}
+                      disabled={!saveName.trim() || !cardsAreComplete || isSaving}
                       className="shrink-0 px-4 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
                     >
                       {isSaving ? "Saving…" : "Save"}
                     </button>
                   </div>
+                  {!cardsAreComplete && saveName.trim() && (
+                    <p className="text-[11px] text-amber-400">
+                      Every card needs a title (and a filled-in button, if you added one) before it can be saved.
+                    </p>
+                  )}
+                  {saveNotice && <p className="text-[11px] text-emerald-400">{saveNotice}</p>}
                   {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
                 </div>
               </GlassCard>

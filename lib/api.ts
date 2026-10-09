@@ -1438,7 +1438,8 @@ export type AutomationAction =
   | "send_sms"
   | "send_email"
   | "instagram_followup"
-  | "instagram_comment_reply";
+  | "instagram_comment_reply"
+  | "send_carousel";
 
 // The real channels a trigger can actually come from - matches the
 // backend's own Channel enum (shared/db/models/channel.py). Kept here

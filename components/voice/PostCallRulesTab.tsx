@@ -51,6 +51,7 @@ const ACTION_LABEL: Record<string, string> = {
   send_email: "send an email",
   instagram_followup: "send an Instagram reply",
   instagram_comment_reply: "reply privately to a comment",
+  send_carousel: "send a carousel",
 };
 
 function formatDelay(seconds: number): string {
