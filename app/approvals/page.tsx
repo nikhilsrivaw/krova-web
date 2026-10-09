@@ -29,6 +29,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 import {
   approvals,
   type MessageDraft,
@@ -73,6 +74,9 @@ export default function ApprovalsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Edit Modal State
+  // Drafts where the person turned off the carousel the AI suggested with the
+  // reply - everything else sends it, since that was the AI's call.
+  const [carouselOff, setCarouselOff] = useState<Record<string, boolean>>({});
   const [editingDraft, setEditingDraft] = useState<MessageDraft | null>(null);
   const [editedText, setEditedText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,7 +156,7 @@ export default function ApprovalsPage() {
     setIsSubmitting(true);
     setActionError(null);
     try {
-      await approvals.approve(draftId, customBody);
+      await approvals.approve(draftId, customBody, !carouselOff[draftId]);
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
       setEditingDraft(null);
     } catch (err) {
@@ -494,6 +498,17 @@ export default function ApprovalsPage() {
                       <p className="text-white leading-relaxed whitespace-pre-wrap font-sans">
                         {draft.body}
                       </p>
+                    </div>
+                  )}
+
+                  {statusFilter === "pending" && draft.action !== "escalate" && draft.share_carousel && (
+                    <div className="mb-5 px-4 py-3 rounded-xl bg-teal/[0.04] border border-teal/20">
+                      <DraftCarouselOption
+                        name={draft.share_carousel}
+                        send={!carouselOff[draft.id]}
+                        onChange={(send) => setCarouselOff((prev) => ({ ...prev, [draft.id]: !send }))}
+                        disabled={isSubmitting}
+                      />
                     </div>
                   )}
 

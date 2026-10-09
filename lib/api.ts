@@ -721,6 +721,8 @@ export type MessageDraft = {
   expires_at: string | null;
   expired: boolean;
   created_at: string;
+  /** A carousel the AI wants to send along with this reply, by name - null when it chose none. */
+  share_carousel: string | null;
 };
 
 export const approvals = {
@@ -729,10 +731,15 @@ export const approvals = {
 
   count: () => api.get<{ pending: number; needs_you: number }>("/approvals/count"),
 
-  /** Pass the edited text if a person changed it; omit to send the agent's words unchanged. */
-  approve: (id: string, editedBody?: string) =>
+  /**
+   * Pass the edited text if a person changed it; omit to send the agent's words
+   * unchanged. `sendCarousel: false` sends the reply without the carousel the AI
+   * suggested with it (ignored when the draft has none).
+   */
+  approve: (id: string, editedBody?: string, sendCarousel: boolean = true) =>
     api.post<MessageDraft>(`/approvals/${id}/approve`, {
       body: editedBody || null,
+      send_carousel: sendCarousel,
     }),
 
   reject: (id: string, note?: string) =>

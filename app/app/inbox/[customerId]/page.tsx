@@ -26,6 +26,7 @@ import {
   type Identity,
 } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
+import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -60,6 +61,8 @@ export default function AppConversationThreadPage() {
 
   const [pendingDrafts, setPendingDrafts] = useState<MessageDraft[]>([]);
   const [actioningDraftId, setActioningDraftId] = useState<string | null>(null);
+  // Drafts where the carousel the AI suggested was switched off before sending.
+  const [carouselOff, setCarouselOff] = useState<Record<string, boolean>>({});
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editedDraftText, setEditedDraftText] = useState("");
 
@@ -101,7 +104,7 @@ export default function AppConversationThreadPage() {
   const handleApproveDraft = async (id: string) => {
     setActioningDraftId(id);
     try {
-      await approvals.approve(id, editingDraftId === id ? editedDraftText : undefined);
+      await approvals.approve(id, editingDraftId === id ? editedDraftText : undefined, !carouselOff[id]);
       setPendingDrafts((prev) => prev.filter((d) => d.id !== id));
       setEditingDraftId(null);
     } catch {
@@ -251,6 +254,16 @@ export default function AppConversationThreadPage() {
                   />
                 ) : (
                   <p className="text-xs text-os-ink/90 leading-relaxed whitespace-pre-wrap">{d.body}</p>
+                )}
+                {d.action === "reply" && d.share_carousel && (
+                  <div className="mt-2.5">
+                    <DraftCarouselOption
+                      name={d.share_carousel}
+                      send={!carouselOff[d.id]}
+                      onChange={(send) => setCarouselOff((prev) => ({ ...prev, [d.id]: !send }))}
+                      disabled={actioningDraftId === d.id}
+                    />
+                  </div>
                 )}
               </div>
               {d.action === "reply" && (
