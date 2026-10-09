@@ -415,6 +415,23 @@ export default function CampaignsPage() {
                 Something&apos;s down - send an incident update to everyone
               </button>
 
+              {/* Trying a template out on one's own number, without touching
+                  the customer list. Only offered when the backend knows the
+                  "numbers" audience. */}
+              {audiences.some((a) => a.value === "numbers") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCampaignName(`Test - ${new Date().toLocaleDateString("en-IN")}`);
+                    setSelectedAudience("numbers");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-brass/[0.06] hover:bg-brass/[0.12] border border-brass/25 text-brass text-xs font-semibold transition-all cursor-pointer"
+                >
+                  <Send className="w-4 h-4 shrink-0" />
+                  Test on my own number first - send to one number, not your customers
+                </button>
+              )}
+
               {/* Step 1: Campaign Name */}
               <div>
                 <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
@@ -797,9 +814,17 @@ export default function CampaignsPage() {
               ) : null}
 
               {/* Launch CTA */}
+              {previewData && previewData.will_reach === 0 && (
+                <p className="text-[11px] text-amber-300">
+                  No one matches this audience, so nothing would be sent. Pick another audience
+                  {audiences.some((a) => a.value === "numbers")
+                    ? ", or choose \"Specific phone numbers\" to try it on your own number."
+                    : "."}
+                </p>
+              )}
               <button
                 type="button"
-                disabled={!previewData || !campaignName.trim()}
+                disabled={!previewData || previewData.will_reach === 0 || !campaignName.trim()}
                 onClick={() => setIsConfirmModalOpen(true)}
                 className="w-full py-3 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-lg shadow-brass/20 flex items-center justify-center gap-2 cursor-pointer"
               >
