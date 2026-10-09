@@ -433,7 +433,11 @@ export default function AutomationsPage() {
     ]);
     // Both best-effort: a business with no Instagram or no templates just sees
     // an empty picker for that kind, never a broken page.
-    if (carouselsRes.status === "fulfilled") setSavedCarousels(carouselsRes.value ?? []);
+    // A saved carousel with {{placeholders}} is for the AI to fill from a chat; a
+    // rule has no chat to read, so it would send the literal "{{1}}".
+    if (carouselsRes.status === "fulfilled") {
+      setSavedCarousels((carouselsRes.value ?? []).filter((c) => !JSON.stringify(c.elements).includes("{{")));
+    }
     if (templatesRes.status === "fulfilled") {
       // Only approved carousel templates with no {{variables}} anywhere - a
       // rule has no per-customer values to fill a card's text with.

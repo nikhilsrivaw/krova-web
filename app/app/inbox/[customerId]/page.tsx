@@ -259,6 +259,7 @@ export default function AppConversationThreadPage() {
                   <div className="mt-2.5">
                     <DraftCarouselOption
                       name={d.share_carousel}
+                      values={d.share_carousel_values}
                       send={!carouselOff[d.id]}
                       onChange={(send) => setCarouselOff((prev) => ({ ...prev, [d.id]: !send }))}
                       disabled={actioningDraftId === d.id}

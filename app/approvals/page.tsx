@@ -505,6 +505,7 @@ export default function ApprovalsPage() {
                     <div className="mb-5 px-4 py-3 rounded-xl bg-teal/[0.04] border border-teal/20">
                       <DraftCarouselOption
                         name={draft.share_carousel}
+                        values={draft.share_carousel_values}
                         send={!carouselOff[draft.id]}
                         onChange={(send) => setCarouselOff((prev) => ({ ...prev, [draft.id]: !send }))}
                         disabled={isSubmitting}

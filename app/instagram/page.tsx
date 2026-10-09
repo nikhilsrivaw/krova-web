@@ -819,6 +819,13 @@ export default function InstagramPage() {
                     Save these cards under a name, and KROVA's AI can offer this same carousel on
                     its own during a live reply - when a customer's message matches what it's for.
                   </p>
+                  <p className="text-[11px] text-os-text-dim">
+                    Want it personal? Put <code className="text-brass-bright">{"{{1}}"}</code>,{" "}
+                    <code className="text-brass-bright">{"{{2}}"}</code> in a card&apos;s title or subtitle, e.g.
+                    &quot;Hi {"{{1}}"}, picked for you&quot; - the AI fills it in from the chat (the
+                    customer&apos;s name, a number they wrote) and skips the carousel if it can&apos;t. Such a
+                    carousel can&apos;t be sent by hand.
+                  </p>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -877,14 +884,23 @@ export default function InstagramPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleSendSavedCarousel(c)}
-                          disabled={savingResultId === c.id}
-                          className="px-3 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 text-white text-[11px] font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
-                        >
-                          {savingResultId === c.id ? "Sending…" : "Send"}
-                        </button>
+                        {JSON.stringify(c.elements).includes("{{") ? (
+                          <span
+                            title="Has {{placeholders}} the AI fills in from a conversation - there's nothing to fill them with when sending by hand."
+                            className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[10px] font-mono text-os-text-dim"
+                          >
+                            AI fills in
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSendSavedCarousel(c)}
+                            disabled={savingResultId === c.id}
+                            className="px-3 py-1.5 rounded-lg bg-pink-500/[0.15] hover:bg-pink-500/[0.25] disabled:opacity-40 text-white text-[11px] font-semibold border border-pink-500/[0.3] transition-all cursor-pointer"
+                          >
+                            {savingResultId === c.id ? "Sending…" : "Send"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleDeleteSavedCarousel(c.id)}

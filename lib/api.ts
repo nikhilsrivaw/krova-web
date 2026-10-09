@@ -723,6 +723,8 @@ export type MessageDraft = {
   created_at: string;
   /** A carousel the AI wants to send along with this reply, by name - null when it chose none. */
   share_carousel: string | null;
+  /** What the AI filled the carousel's {{variables}} with, if it has any - so you can see "Hi Rahul" before it goes. */
+  share_carousel_values: { body: string[]; cards: string[][] } | null;
 };
 
 export const approvals = {
