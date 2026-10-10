@@ -50,6 +50,8 @@ interface SidebarProps {
   businessName?: string;
   vertical?: string;
   capabilities?: Capability[];
+  /** The signed-in person's role; owner-only areas are hidden from anyone else. */
+  role?: "owner" | "admin" | "agent" | null;
   autonomy?: AutonomyLevel;
   onAutonomyClick?: () => void;
 }
@@ -61,6 +63,7 @@ export function AppSidebar({
   businessName = "KROVA Business",
   vertical = "General",
   capabilities = [],
+  role = null,
   autonomy = "draft",
   onAutonomyClick,
 }: SidebarProps) {
@@ -121,6 +124,8 @@ export function AppSidebar({
     // latter (product_feedback OR care_recall, two different verticals'
     // reasons to see the same page).
     requiresCapability?: Capability | Capability[];
+    // Hidden from everyone but these roles - the matching API routes refuse anyone else.
+    requiresRole?: Array<"owner" | "admin">;
   };
 
   const ALL_NAV_ITEMS: NavItem[] = [
@@ -168,6 +173,7 @@ export function AppSidebar({
     {
       label: "Automations",
       href: "/automations",
+      requiresRole: ["owner", "admin"],
       icon: Zap,
       accent: "text-cyan-400",
     },
@@ -285,6 +291,7 @@ export function AppSidebar({
     {
       label: "Campaigns",
       href: "/campaigns",
+      requiresRole: ["owner", "admin"],
       icon: Send,
       shortcut: "G M",
     },
@@ -297,8 +304,15 @@ export function AppSidebar({
     {
       label: "Analytics",
       href: "/analytics",
+      requiresRole: ["owner", "admin"],
       icon: BarChart3,
       shortcut: "G Y",
+    },
+    {
+      label: "Team",
+      href: "/team",
+      icon: Users,
+      requiresRole: ["owner", "admin"],
     },
     {
       label: "Settings",
@@ -309,6 +323,7 @@ export function AppSidebar({
   ];
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => {
+    if (item.requiresRole && !(role && item.requiresRole.includes(role as "owner" | "admin"))) return false;
     if (!item.requiresCapability) return true;
     const required = Array.isArray(item.requiresCapability) ? item.requiresCapability : [item.requiresCapability];
     return required.some((cap) => capabilities.includes(cap));

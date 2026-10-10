@@ -133,6 +133,7 @@ export function AppLayout({
         businessName={profile?.business_name || "KROVA Business"}
         vertical={profile?.vertical || "General"}
         capabilities={profile?.capabilities || []}
+        role={profile?.role ?? null}
         autonomy={autonomy}
         onAutonomyClick={() => { navigation.close(); setIsCommandOpen(true); }}
       />

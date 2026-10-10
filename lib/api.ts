@@ -842,6 +842,66 @@ export const team = {
   list: () => api.get<TeamMember[]>("/team"),
 };
 
+// ── Team activity: what each person on the team has done ─────────────────────
+// Owner / admin only. See services/api/routers/team_activity.py.
+
+export type ActivityItem = {
+  id: string;
+  user_id: string | null;
+  /** Their name or email as it was at the time - still reads sensibly after they leave. */
+  user_label: string;
+  role: string | null;
+  action: string;
+  /** work = day-to-day for a customer; config = changes how the business runs; security = data leaving or access granted. */
+  kind: "work" | "config" | "security";
+  summary: string;
+  outcome: "ok" | "denied" | "failed";
+  /** Ids and counts only - never message text. */
+  detail: Record<string, string>;
+  ip: string | null;
+  user_agent: string | null;
+  occurred_at: string;
+};
+
+export type ActivityPage = { items: ActivityItem[]; next_before: string | null };
+
+export type MemberActivity = {
+  user_id: string | null;
+  name: string;
+  role: string | null;
+  last_active_at: string | null;
+  messages_sent: number;
+  drafts_approved: number;
+  drafts_rejected: number;
+  escalations_handled: number;
+  conversations_assigned: number;
+  config_changes: number;
+  data_exports: number;
+  sign_ins: number;
+  refused_attempts: number;
+};
+
+export const teamActivity = {
+  feed: (params: {
+    user_id?: string;
+    kind?: "work" | "config" | "security";
+    outcome?: "ok" | "denied" | "failed";
+    since?: string;
+    before?: string;
+    limit?: number;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== "") qs.set(key, String(value));
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<ActivityPage>(`/team/activity${suffix}`);
+  },
+
+  summary: (days = 7) =>
+    api.get<{ days: number; members: MemberActivity[] }>(`/team/activity/summary?days=${days}`),
+};
+
 // ── WhatsApp & Channels ───────────────────────────────────────────────────────
 
 export type ChannelConnection = {
