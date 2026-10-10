@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { MembersCard } from "@/components/team/MembersCard";
 import {
+  analytics,
   teamActivity,
   type ActivityItem,
   type MemberActivity,
@@ -80,6 +81,8 @@ function detailChips(detail: Record<string, string>): string[] {
 export default function TeamPage() {
   const [days, setDays] = useState<number>(7);
   const [members, setMembers] = useState<MemberActivity[]>([]);
+  // 30-day average minutes to a first reply, per person (the analytics numbers, shown where the person is).
+  const [replyMinutes, setReplyMinutes] = useState<Record<string, number | null>>({});
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
   const [personFilter, setPersonFilter] = useState<string>("");
@@ -107,6 +110,11 @@ export default function TeamPage() {
         }),
       ]);
       setMembers(summary.members);
+      analytics.team().then((t) => {
+        const map: Record<string, number | null> = {};
+        for (const m of t.members) map[m.user_id] = m.avg_first_response_minutes;
+        setReplyMinutes(map);
+      }).catch(() => {});
       setItems(page.items);
       setNextBefore(page.next_before);
     } catch (err) {
@@ -202,6 +210,9 @@ export default function TeamPage() {
                     <span>{m.config_changes} settings changes</span>
                     <span>{m.data_exports} downloads</span>
                     <span>{m.sign_ins} sign-ins</span>
+                    {m.user_id && replyMinutes[m.user_id] != null && (
+                      <span>first reply ~{Math.round(replyMinutes[m.user_id] as number)} min (30 days)</span>
+                    )}
                     {m.refused_attempts > 0 && (
                       <button
                         type="button"
