@@ -26,6 +26,7 @@ const LEVELS: { value: AutonomyLevel; label: string; detail: string }[] = [
 export default function AppSettingsPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const canEdit = profile?.role === "owner" || profile?.role === "admin";
   const [autonomy, setAutonomy] = useState<AutonomyLevel | null>(null);
   const [savingLevel, setSavingLevel] = useState<AutonomyLevel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export default function AppSettingsPage() {
                 key={lvl.value}
                 type="button"
                 onClick={() => chooseLevel(lvl.value)}
-                disabled={savingLevel !== null}
+                disabled={savingLevel !== null || !canEdit}
                 className={`w-full text-left px-4 py-3.5 flex items-start gap-3 active:bg-white/[0.03] disabled:opacity-60 ${
                   i !== LEVELS.length - 1 ? "border-b border-os-border" : ""
                 }`}
@@ -136,10 +137,15 @@ export default function AppSettingsPage() {
             );
           })}
         </div>
+        {!canEdit && (
+          <p className="text-[11px] text-os-text-dim">
+            Sirf owner ya admin AI ka level badal sakte hain.
+          </p>
+        )}
         {error && <p className="text-xs text-rose-400">{error}</p>}
       </section>
 
-      <SettingsControls canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+      <SettingsControls canEdit={canEdit} />
 
       <section className="space-y-2.5">
         <p className="text-[11px] font-mono uppercase tracking-wide text-os-text-dim">Notifications</p>
