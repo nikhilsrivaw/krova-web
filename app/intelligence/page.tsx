@@ -157,7 +157,7 @@ export default function IntelligencePage() {
             >
               <Link href="/signup">
                 <span className="os-button os-button-cta px-7 py-3 text-sm inline-flex">
-                  Start free trial <ArrowRight size={16} />
+                  Get started <ArrowRight size={16} />
                 </span>
               </Link>
               <Link
@@ -384,11 +384,11 @@ export default function IntelligencePage() {
           </p>
           <Link href="/signup">
             <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
-              Start free trial <ArrowRight size={16} />
+              Get started <ArrowRight size={16} />
             </span>
           </Link>
           <p className="text-[11px] text-os-text-dim mt-5">
-            No credit card · 14-day free trial · Setup in 5 minutes
+            Plans from ₹2,999/month + GST · Cancel anytime · Setup in 5 minutes
           </p>
         </div>
       </section>

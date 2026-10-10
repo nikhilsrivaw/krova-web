@@ -85,8 +85,8 @@ const FAQ_ITEMS = [
     a: "By default, no — every draft waits for your approval. You can enable specific Autopilot rules to send certain low-risk replies on their own (for example, a greeting on a new lead), but the safe default is approval-first.",
   },
   {
-    q: "What does the 14-day trial include?",
-    a: "The full Growth plan — all four channels, unlimited drafts, and the customer intelligence dashboard. No credit card.",
+    q: "Is there a free trial?",
+    a: "No. WhatsApp needs a payment method and phone numbers cost real money, so every account starts on a paid plan (from ₹2,999 a month plus 18% GST). Voice is paid from a prepaid wallet.",
   },
   {
     q: "How is this different from Zoho or Freshdesk?",
@@ -374,7 +374,7 @@ export default function DocsPage() {
 
             {/* SIGNUP */}
             <Section id="signup" eyebrow="Step 1" title="Create your account">
-              <P>Sign-up takes under a minute. You get a 14-day free trial, no credit card.</P>
+              <P>Sign-up takes under a minute. Then choose a plan on the Billing page (from ₹2,999 a month plus 18% GST).</P>
               <Steps
                 items={[
                   {

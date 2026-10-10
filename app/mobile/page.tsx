@@ -448,9 +448,9 @@ export default function MobilePage() {
           <p className="text-[11px] text-os-text-dim mt-5">
             You need a KROVA account —{" "}
             <Link href="/signup" className="text-os-ink hover:text-teal transition-colors">
-              sign up free
+              sign up
             </Link>
-            , 14-day trial, no card needed.
+            , then pick a plan (from ₹2,999 a month + GST).
           </p>
         </div>
       </section>

@@ -132,8 +132,8 @@ const FAQ_ITEMS = [
     a: "No. You connect your own WhatsApp Business account from Settings using the details in your Meta Business account. Instagram and voice connect the same way. Nothing needs to be installed.",
   },
   {
-    q: "What's the trial like?",
-    a: "14 days, full access to the Growth plan, no credit card. Cancel anytime — you keep your data export.",
+    q: "How does pricing work?",
+    a: "A monthly plan from ₹2,999 plus 18% GST, paid by card or UPI AutoPay. There is no free trial, because WhatsApp needs a payment method and phone numbers cost real money. Voice runs on a prepaid wallet. Cancel anytime — you keep your data export.",
   },
 ];
 
@@ -388,7 +388,7 @@ export default function Hero() {
               <Link href="/signup">
                 <Magnetic>
                   <span className="os-button os-button-cta px-7 py-3 text-sm">
-                    Start free trial <ArrowRight size={16} />
+                    Get started <ArrowRight size={16} />
                   </span>
                 </Magnetic>
               </Link>
@@ -676,17 +676,17 @@ export default function Hero() {
                 Plans start at{" "}
                 <span className="inline-flex items-baseline text-teal">
                   <IndianRupee size={26} className="mr-0.5" strokeWidth={2.5} />
-                  999
+                  2,999
                 </span>
-                <span className="text-os-text-dim text-xl font-normal">/month</span>
+                <span className="text-os-text-dim text-xl font-normal">/month + GST</span>
               </h2>
               <p className="text-os-text-dim max-w-md leading-relaxed">
-                One AI analyst across every channel you already use. 14-day free trial, no credit
-                card required.
+                One AI analyst across every channel you already use. Pay monthly by card or UPI
+                AutoPay. Voice runs on a prepaid wallet.
               </p>
               <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
                 {[
-                  "All 4 channels",
+                  "WhatsApp, Instagram and voice",
                   "Nightly AI analysis",
                   "Morning briefing",
                   "AI-drafted replies",
@@ -745,12 +745,12 @@ export default function Hero() {
             <Link href="/signup">
               <Magnetic>
                 <span className="os-button os-button-cta px-8 py-3 text-sm inline-flex">
-                  Start free trial <ArrowRight size={16} />
+                  Get started <ArrowRight size={16} />
                 </span>
               </Magnetic>
             </Link>
             <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-os-text-dim">
-              <Check size={12} className="text-teal" /> No credit card required · 14-day free trial
+              <Check size={12} className="text-teal" /> Plans from ₹2,999/month + GST · Cancel anytime
             </p>
           </div>
 
