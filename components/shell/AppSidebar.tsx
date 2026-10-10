@@ -35,6 +35,7 @@ import {
   Siren,
   Smartphone,
   ClipboardList,
+  Wallet,
   X,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
@@ -307,6 +308,12 @@ export function AppSidebar({
       requiresRole: ["owner", "admin"],
       icon: BarChart3,
       shortcut: "G Y",
+    },
+    {
+      label: "Billing",
+      href: "/billing",
+      icon: Wallet,
+      requiresRole: ["owner", "admin"],
     },
     {
       label: "Team",

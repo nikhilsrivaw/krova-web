@@ -941,6 +941,60 @@ export const teamSettings = {
     api.post<{ new_owner: string }>("/team/transfer-ownership", { user_id: userId, password }),
 };
 
+// ── Billing: the plan, the wallet, PayU ─────────────────────────────────────
+
+export type BillingPlan = { key: "starter" | "pro" | "scale"; label: string; base: string; gst: string; total: string };
+
+export type BillingOverview = {
+  payments_enabled: boolean;
+  plans: BillingPlan[];
+  subscription: {
+    plan: string;
+    status: "active" | "past_due" | "suspended" | "cancelled";
+    amount: string;
+    current_period_end: string;
+    next_charge_at: string | null;
+    cancel_at_period_end: boolean;
+    last_failure: string | null;
+    retry_until: string | null;
+  } | null;
+  blocked: boolean;
+  wallet_balance: string | null;
+  number_rent: string;
+  low_balance: boolean;
+  entries: { at: string; kind: string; amount: string; balance_after: string; note: string | null }[];
+  payments: { at: string; purpose: string; status: string; total: string; failure: string | null }[];
+};
+
+/** A signed form the browser posts to PayU. */
+export type PayuCheckout = { action: string; fields: Record<string, string>; total: string };
+
+export const billing = {
+  overview: () => api.get<BillingOverview>("/billing"),
+  quote: (amountRupees: number) =>
+    api.get<{ credit: string; gst: string; fee: string; total: string }>(`/billing/quote?amount_rupees=${amountRupees}`),
+  subscribe: (plan: BillingPlan["key"]) => api.post<PayuCheckout>("/billing/subscribe", { plan }),
+  topup: (amountRupees: number) => api.post<PayuCheckout>("/billing/topup", { amount_rupees: amountRupees }),
+  cancel: () => api.post<{ ends_on: string }>("/billing/cancel"),
+  resume: () => api.post<{ resumed: boolean }>("/billing/resume"),
+};
+
+/** Hand the customer to PayU: build the form and submit it. Leaves this page. */
+export function goToPayu(checkout: PayuCheckout): void {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = checkout.action;
+  for (const [name, value] of Object.entries(checkout.fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+}
+
 export type ThreadViewer = { user_id: string; name: string; typing: boolean };
 
 export type TeamCredentials = {
