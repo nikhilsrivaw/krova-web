@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Siren, Check, MessageSquare, Phone, Mail } from "lucide-react";
-import { escalations, type EscalationRow } from "@/lib/api";
+import { account, assignedToOther, escalations, type EscalationRow } from "@/lib/api";
+import { getUserId } from "@/lib/auth";
 import { appPath } from "@/lib/app-nav";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
@@ -31,22 +32,48 @@ export default function AppEscalationsPage() {
   const [rows, setRows] = useState<EscalationRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSupervisor, setIsSupervisor] = useState(false);
+  const me = getUserId();
 
   useEffect(() => {
-    escalations
-      .list(false)
-      .then(setRows)
+    // Unseen ones, plus the ones I have claimed (claiming also marks them seen,
+    // so they would otherwise vanish from my own list the moment I took them).
+    Promise.all([
+      escalations.list(false),
+      escalations.list(true, "mine").catch(() => [] as EscalationRow[]),
+    ])
+      .then(([open, mine]) => {
+        const held = mine.filter((r) => r.status === "open" || r.status === "in_progress");
+        const seen = new Set(open.map((r) => r.id));
+        setRows([...open, ...held.filter((r) => !seen.has(r.id))]);
+      })
       .catch(() => {})
       .finally(() => setIsLoading(false));
+    account.profile().then((p) => setIsSupervisor(p.role === "owner" || p.role === "admin")).catch(() => {});
   }, []);
+
+  const handleClaim = async (r: EscalationRow, force = false) => {
+    setActioningId(r.id);
+    setError(null);
+    try {
+      const updated = await escalations.claim(r.id, force);
+      setRows((prev) => prev.map((x) => (x.id === r.id ? updated : x)));
+    } catch (err) {
+      const other = assignedToOther(err);
+      setError(other ? `${other.name} already has this one.` : err instanceof Error ? err.message : "Could not take this.");
+    } finally {
+      setActioningId(null);
+    }
+  };
 
   const handleAcknowledge = async (id: string) => {
     setActioningId(id);
     try {
       await escalations.acknowledge(id);
       setRows((prev) => prev.filter((r) => r.id !== id));
-    } catch {
-      /* stays in the list - retry on tap */
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not acknowledge this.");
     } finally {
       setActioningId(null);
     }
@@ -59,6 +86,9 @@ export default function AppEscalationsPage() {
         Escalations
       </h1>
       <p className="text-xs text-os-text-dim mb-5">Flagged for a human - nothing was sent automatically.</p>
+      {error && (
+        <div role="alert" className="mb-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-100">{error}</div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -84,7 +114,26 @@ export default function AppEscalationsPage() {
                   </span>
                   <span className="text-[10px] text-os-text-dim">{timeAgo(r.created_at)}</span>
                 </div>
-                <p className="px-4 pb-3 text-xs text-os-ink/90 leading-relaxed">{r.reason}</p>
+                <p className="px-4 pb-2 text-xs text-os-ink/90 leading-relaxed">{r.reason}</p>
+                <p className="px-4 pb-3 text-[11px]">
+                  {r.assigned_to_user_id ? (
+                    <span className={r.assigned_to_user_id === me ? "text-teal font-semibold" : "text-amber-300"}>
+                      {r.assigned_to_user_id === me ? "You have this" : `With ${r.assigned_to_name ?? "a teammate"}`}
+                    </span>
+                  ) : (
+                    <span className="text-os-text-dim">Nobody has this yet</span>
+                  )}
+                </p>
+                {(!r.assigned_to_user_id || (r.assigned_to_user_id !== me && isSupervisor)) && (
+                  <button
+                    type="button"
+                    disabled={actioningId === r.id}
+                    onClick={() => handleClaim(r, !!r.assigned_to_user_id)}
+                    className="w-full py-2.5 border-t border-thread/15 text-xs font-bold text-teal active:bg-teal/5 disabled:opacity-40"
+                  >
+                    {r.assigned_to_user_id ? `Take over from ${r.assigned_to_name ?? "teammate"}` : "I have got this"}
+                  </button>
+                )}
                 <div className="flex border-t border-thread/15">
                   {r.customer_id && (
                     <a

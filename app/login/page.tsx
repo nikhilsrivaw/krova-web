@@ -341,6 +341,12 @@ function LoginForm() {
           )}
 
           <div className="px-8 pb-6 text-center relative">
+            <p className="text-[11px] text-os-text-dim mb-2">
+              Part of a team?{" "}
+              <Link href="/team-login" className="text-white hover:underline font-bold">
+                Sign in with your Team ID
+              </Link>
+            </p>
             <p className="text-[11px] text-os-text-dim">
               No account?{" "}
               <Link href="/signup" className="text-white hover:underline font-bold">

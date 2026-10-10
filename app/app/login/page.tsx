@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { signIn, googleStart } from "@/lib/auth";
+import { signIn, teamSignIn, googleStart } from "@/lib/auth";
 import { appPath } from "@/lib/app-nav";
 
 export default function AppLoginPage() {
@@ -13,6 +13,8 @@ export default function AppLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
+  // A teammate signs in with the Team ID their owner made, not an email.
+  const [teamMode, setTeamMode] = useState(false);
 
   const continueWithGoogle = async () => {
     setGoogleBusy(true);
@@ -30,8 +32,13 @@ export default function AppLoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await signIn(email.trim(), password);
-      router.replace(appPath("/today"));
+      if (teamMode) {
+        const session = await teamSignIn(email.trim(), password);
+        router.replace(appPath(session.must_change_password ? "/change-password" : "/today"));
+      } else {
+        await signIn(email.trim(), password);
+        router.replace(appPath("/today"));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in.");
     } finally {
@@ -52,17 +59,20 @@ export default function AppLoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-[11px] font-mono uppercase tracking-wide text-os-text-dim mb-1.5">
-            Email
+            {teamMode ? "Team ID" : "Email"}
           </label>
           <input
-            type="email"
+            type={teamMode ? "text" : "email"}
             required
-            autoComplete="email"
-            inputMode="email"
+            autoComplete={teamMode ? "username" : "email"}
+            inputMode={teamMode ? "text" : "email"}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-os-card border border-os-border text-os-ink text-sm focus:border-teal focus:outline-none"
-            placeholder="you@business.com"
+            placeholder={teamMode ? "rahul@yourshop" : "you@business.com"}
           />
         </div>
         <div>
@@ -95,6 +105,14 @@ export default function AppLoginPage() {
           {!isLoading && <ArrowRight className="w-4 h-4" />}
         </button>
       </form>
+
+      <button
+        type="button"
+        onClick={() => { setTeamMode(!teamMode); setError(null); }}
+        className="mt-4 w-full text-center text-xs text-teal hover:underline"
+      >
+        {teamMode ? "I sign in with my email" : "I'm a team member - sign in with my Team ID"}
+      </button>
 
       <div className="flex items-center gap-3 my-6">
         <div className="h-px flex-1 bg-os-border" />

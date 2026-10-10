@@ -29,6 +29,8 @@ export type Session = {
   business_id: string | null;
   business_name: string | null;
   vertical: string | null;
+  /** True until a person signing in with a password someone else chose has set their own. */
+  must_change_password?: boolean;
 };
 
 /** localStorage throws in private windows and during SSR; never let that break a render. */
@@ -94,6 +96,39 @@ export async function signIn(email: string, password: string): Promise<Session> 
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.detail || "Could not sign in");
+  storeSession(body);
+  return body;
+}
+
+/**
+ * Sign in with the Team ID and password an owner or admin created. The caller
+ * checks `must_change_password` and sends the person to the change-password
+ * step before anything else.
+ */
+export async function teamSignIn(teamId: string, password: string): Promise<Session> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/team-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ team_id: teamId, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Could not sign in");
+  storeSession(body);
+  return body;
+}
+
+/** Choose your own password. Signs every other device out; this one gets a fresh session. */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<Session> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken() ?? ""}` },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    throw new Error(typeof detail === "string" ? detail : "Could not change the password");
+  }
   storeSession(body);
   return body;
 }

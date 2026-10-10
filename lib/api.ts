@@ -44,6 +44,43 @@ async function send(
   });
 }
 
+/**
+ * A failed API call. `message` is what to show; `detail` is the server's
+ * structured body when it sent one (e.g. {code: "assigned_to_other", ...}) so a
+ * caller can offer "Take over" instead of just printing the error.
+ */
+export class ApiError extends Error {
+  status: number;
+  detail: Record<string, unknown> | null;
+  constructor(message: string, status: number, detail: Record<string, unknown> | null = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+  get code(): string | null {
+    return typeof this.detail?.code === "string" ? this.detail.code : null;
+  }
+}
+
+/** The teammate whose chat/escalation this is, when an action was refused for that reason. */
+export function assignedToOther(err: unknown): { id: string; name: string } | null {
+  if (err instanceof ApiError && err.code === "assigned_to_other") {
+    return { id: String(err.detail?.assignee_id ?? ""), name: String(err.detail?.assignee_name ?? "a teammate") };
+  }
+  return null;
+}
+
+function toApiError(res: Response, err: { detail?: unknown }): ApiError {
+  const raw = err?.detail;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const d = raw as Record<string, unknown>;
+    return new ApiError(String(d.message ?? `Something went wrong (${res.status})`), res.status, d);
+  }
+  const text = Array.isArray(raw) ? (raw[0] as { msg?: string })?.msg : (raw as string | undefined);
+  return new ApiError(text || `Something went wrong (${res.status})`, res.status);
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -67,9 +104,12 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = Array.isArray(err?.detail) ? err.detail[0]?.msg : err?.detail;
-    throw new Error(detail || `Something went wrong (${res.status})`);
+    const apiError = toApiError(res, await res.json().catch(() => ({})));
+    if (apiError.code === "password_change_required" && typeof window !== "undefined") {
+      // A handed-over password is only good for choosing your own.
+      window.location.href = window.location.pathname.startsWith("/app") ? "/app/change-password" : "/change-password";
+    }
+    throw apiError;
   }
 
   if (res.status === 204) return {} as T;
@@ -92,9 +132,7 @@ async function requestBlob(method: string, path: string): Promise<Blob> {
     throw new NotAuthenticated();
   }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = Array.isArray(err?.detail) ? err.detail[0]?.msg : err?.detail;
-    throw new Error(detail || `Something went wrong (${res.status})`);
+    throw toApiError(res, await res.json().catch(() => ({})));
   }
   return res.blob();
 }
@@ -244,6 +282,10 @@ export type EscalationRow = {
   created_at: string;
   acknowledged_at: string | null;
   escalated_further_at: string | null;
+  /** The one person dealing with it; null = anyone may take it. */
+  assigned_to_user_id?: string | null;
+  assigned_to_name?: string | null;
+  assigned_at?: string | null;
 };
 
 export type ZohoStatus = {
@@ -514,8 +556,14 @@ export type EscalationSettings = {
 };
 
 export const escalations = {
-  list: (acknowledged = false) =>
-    api.get<EscalationRow[]>(`/escalations?acknowledged=${acknowledged}`),
+  list: (acknowledged = false, filter?: "mine" | "unassigned") =>
+    api.get<EscalationRow[]>(
+      `/escalations?acknowledged=${acknowledged}${filter ? `&${filter}=true` : ""}`,
+    ),
+  /** "I've got this." A teammate who already holds it gets the 409 assignedToOther() reads. */
+  claim: (id: string, force = false) =>
+    api.post<EscalationRow>(`/escalations/${id}/claim`, { force }),
+  release: (id: string) => api.post<EscalationRow>(`/escalations/${id}/release`),
   settings: () => api.get<EscalationSettings>("/escalations/settings"),
   updateSettings: (body: EscalationSettings) =>
     api.patch<EscalationSettings>("/escalations/settings", body),
@@ -827,6 +875,16 @@ export const conversations = {
       `/conversations/${customerId}/private?private=${isPrivate}`,
     ),
 
+  /** Make this chat yours, whoever had it. Logged for the owner. */
+  takeOver: (customerId: string) =>
+    api.post<{ customer_id: string; assigned_to_user_id: string; previous_user_id: string | null }>(
+      `/conversations/${customerId}/take-over`,
+    ),
+
+  /** Heartbeat from an open thread; returns the teammates who have it open too. */
+  presence: (customerId: string, typing = false, left = false) =>
+    api.post<{ viewers: ThreadViewer[] }>(`/conversations/${customerId}/presence`, { typing, left }),
+
   // Omit userId (or pass undefined) to unassign.
   assign: (customerId: string, userId?: string) =>
     api.post<{ customer_id: string; assigned_to_user_id: string | null }>(
@@ -836,10 +894,41 @@ export const conversations = {
 
 // ── Team ─────────────────────────────────────────────────────────────────────
 
-export type TeamMember = { user_id: string; full_name: string | null; email: string | null; role: string };
+export type TeamMember = {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+  /** Owner / admin only: what the person types to sign in, and their state. */
+  team_id?: string | null;
+  last_login_at?: string | null;
+  must_change_password?: boolean | null;
+  locked?: boolean | null;
+};
 
 export const team = {
   list: () => api.get<TeamMember[]>("/team"),
+  /** Owner / admin. The password in the result is shown once and never again. */
+  add: (body: { full_name: string; handle: string; role: "admin" | "agent"; password?: string }) =>
+    api.post<TeamCredentials>("/team/members", body),
+  setRole: (userId: string, role: "admin" | "agent") =>
+    api.patch<{ user_id: string; role: string }>(`/team/members/${userId}`, { role }),
+  resetPassword: (userId: string, password?: string) =>
+    api.post<TeamCredentials>(`/team/members/${userId}/reset-password`, { password: password ?? null }),
+  remove: (userId: string) =>
+    api.delete<{ removed: string; released: { conversations: number; cases: number; escalations: number } }>(
+      `/team/members/${userId}`,
+    ),
+};
+
+export type ThreadViewer = { user_id: string; name: string; typing: boolean };
+
+export type TeamCredentials = {
+  user_id: string;
+  full_name: string | null;
+  role: string;
+  team_id: string;
+  password: string;
 };
 
 // ── Team activity: what each person on the team has done ─────────────────────
@@ -2439,6 +2528,8 @@ export type UserProfile = {
   // previously "owner" | "manager" | "team_member", values the backend has
   // never actually issued.
   role: "owner" | "admin" | "agent" | null;
+  /** The Team ID, for people an owner or admin added. */
+  team_id?: string | null;
   google_review_url: string | null;
   // Whether shared/care/commitment_deadline_calls.py's proactive voice
   // calls are on for this business - opt-in, off by default.

@@ -17,6 +17,7 @@ import {
   Layers,
 } from "lucide-react";
 import {
+  assignedToOther,
   conversations,
   channels,
   approvals,
@@ -26,6 +27,7 @@ import {
   type Identity,
 } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
+import { useThreadPresence } from "@/lib/useThreadPresence";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
@@ -72,6 +74,12 @@ export default function AppConversationThreadPage() {
 
   const [showCommitments, setShowCommitments] = useState(false);
 
+  // A teammate owns this chat: the server refused, and we offer to take it over.
+  const [conflict, setConflict] = useState<{ id: string; name: string } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isTakingOver, setIsTakingOver] = useState(false);
+  const viewers = useThreadPresence(customerId ?? null, replyBody.trim().length > 0);
+
   useEffect(() => {
     if (!customerId) return;
     let mounted = true;
@@ -107,8 +115,11 @@ export default function AppConversationThreadPage() {
       await approvals.approve(id, editingDraftId === id ? editedDraftText : undefined, !carouselOff[id]);
       setPendingDrafts((prev) => prev.filter((d) => d.id !== id));
       setEditingDraftId(null);
-    } catch {
-      /* stays in the list - retry on click */
+    } catch (err) {
+      // Stays in the list. A teammate may have sent it already, or own this chat.
+      const other = assignedToOther(err);
+      if (other) setConflict(other);
+      setActionError(err instanceof Error ? err.message : "Could not send this.");
     } finally {
       setActioningDraftId(null);
     }
@@ -119,8 +130,10 @@ export default function AppConversationThreadPage() {
     try {
       await approvals.reject(id);
       setPendingDrafts((prev) => prev.filter((d) => d.id !== id));
-    } catch {
-      /* stays in the list */
+    } catch (err) {
+      const other = assignedToOther(err);
+      if (other) setConflict(other);
+      setActionError(err instanceof Error ? err.message : "Could not reject this.");
     } finally {
       setActioningDraftId(null);
     }
@@ -164,9 +177,26 @@ export default function AppConversationThreadPage() {
       );
       setReplyBody("");
     } catch (err) {
+      const other = assignedToOther(err);
+      if (other) setConflict(other);
       setReplyError(err instanceof Error ? err.message : "Could not send this reply.");
     } finally {
       setIsSendingReply(false);
+    }
+  };
+
+  const handleTakeOver = async () => {
+    setIsTakingOver(true);
+    try {
+      const result = await conversations.takeOver(customerId);
+      setConflict(null);
+      setReplyError(null);
+      setActionError(null);
+      setThread((prev) => (prev ? { ...prev, assigned_to_user_id: result.assigned_to_user_id } : prev));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not take over this chat.");
+    } finally {
+      setIsTakingOver(false);
     }
   };
 
@@ -194,6 +224,11 @@ export default function AppConversationThreadPage() {
               {thread.window_open ? "Reply window open" : "24h window closed"}
             </p>
           )}
+          {viewers.length > 0 && (
+            <p className="text-[10px] text-amber-300" aria-live="polite">
+              {viewers.map((v) => `${v.name} ${v.typing ? "is replying..." : "is here"}`).join(" - ")}
+            </p>
+          )}
         </div>
         {thread && thread.commitments.length > 0 && (
           <button
@@ -206,6 +241,22 @@ export default function AppConversationThreadPage() {
           </button>
         )}
       </div>
+
+      {(conflict || actionError) && (
+        <div role="alert" className="mx-3 mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-100 space-y-2">
+          <p>{conflict ? `This chat is with ${conflict.name}.` : actionError}</p>
+          {conflict && (
+            <button
+              type="button"
+              onClick={handleTakeOver}
+              disabled={isTakingOver}
+              className="w-full py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 font-semibold disabled:opacity-50 active:scale-[0.98]"
+            >
+              {isTakingOver ? "Taking over..." : `Take over from ${conflict.name}`}
+            </button>
+          )}
+        </div>
+      )}
 
       {showCommitments && thread && thread.commitments.length > 0 && (
         <div className="px-3 pt-3 space-y-2 border-b border-os-border pb-3">

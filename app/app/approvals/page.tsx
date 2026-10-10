@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, X, Pencil, AlertTriangle, Clock } from "lucide-react";
-import { approvals, type MessageDraft } from "@/lib/api";
+import { approvals, assignedToOther, conversations, type MessageDraft } from "@/lib/api";
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -17,6 +17,26 @@ export default function ApprovalsPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedText, setEditedText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{ customerId: string; name: string } | null>(null);
+
+  const fail = (id: string, err: unknown, fallback: string) => {
+    const other = assignedToOther(err);
+    const customerId = drafts.find((d) => d.id === id)?.customer_id;
+    setConflict(other && customerId ? { customerId, name: other.name } : null);
+    setError(err instanceof Error ? err.message : fallback);
+  };
+
+  const takeOver = async () => {
+    if (!conflict) return;
+    try {
+      await conversations.takeOver(conflict.customerId);
+      setConflict(null);
+      setError("It is yours now - tap again to send or reject.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not take over this chat.");
+    }
+  };
 
   const load = () => {
     approvals
@@ -30,12 +50,14 @@ export default function ApprovalsPage() {
 
   const handleApprove = async (id: string) => {
     setActioningId(id);
+    setError(null);
+    setConflict(null);
     try {
       await approvals.approve(id, editingId === id ? editedText : undefined);
       setDrafts((prev) => prev.filter((d) => d.id !== id));
       setEditingId(null);
-    } catch {
-      /* draft stays in the list - person can retry */
+    } catch (err) {
+      fail(id, err, "Could not send this."); // the draft stays in the list
     } finally {
       setActioningId(null);
     }
@@ -43,11 +65,13 @@ export default function ApprovalsPage() {
 
   const handleReject = async (id: string) => {
     setActioningId(id);
+    setError(null);
+    setConflict(null);
     try {
       await approvals.reject(id);
       setDrafts((prev) => prev.filter((d) => d.id !== id));
-    } catch {
-      /* draft stays in the list */
+    } catch (err) {
+      fail(id, err, "Could not reject this."); // the draft stays in the list
     } finally {
       setActioningId(null);
     }
@@ -56,6 +80,17 @@ export default function ApprovalsPage() {
   return (
     <div className="px-4 pt-5 max-w-md mx-auto">
       <h1 className="text-lg font-semibold text-os-ink mb-4">Approvals</h1>
+
+      {error && (
+        <div role="alert" className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-100 space-y-2">
+          <p>{error}</p>
+          {conflict && (
+            <button type="button" onClick={takeOver} className="w-full py-2 rounded-lg bg-amber-400/20 border border-amber-300/40 font-semibold active:scale-[0.98]">
+              Take over from {conflict.name}
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">

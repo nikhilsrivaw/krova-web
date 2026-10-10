@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
+import { MembersCard } from "@/components/team/MembersCard";
 import {
   teamActivity,
   type ActivityItem,
@@ -141,8 +142,10 @@ export default function TeamPage() {
   };
 
   return (
-    <AppLayout title="Team" subtitle="Who on your team did what - every change, every refused attempt, every sign-in">
+    <AppLayout title="Team" subtitle="Add your people, and see who did what - every change, every refused attempt, every sign-in">
       <div className="space-y-6">
+        <MembersCard />
+
         {error && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">{error}</div>
         )}

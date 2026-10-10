@@ -8,7 +8,8 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
+import { account, assignedToOther, escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
+import { getUserId } from "@/lib/auth";
 
 const STATUS_LABEL: Record<string, string> = {
   open: "Open",
@@ -97,6 +98,25 @@ export default function EscalationsPage() {
   }, [viewMode]);
 
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [isSupervisor, setIsSupervisor] = useState(false);
+  const myUserId = getUserId();
+  useEffect(() => {
+    account.profile().then((p) => setIsSupervisor(p.role === "owner" || p.role === "admin")).catch(() => {});
+  }, []);
+
+  const handleClaim = async (id: string, force = false) => {
+    setStatusBusyId(id);
+    try {
+      const updated = await escalations.claim(id, force);
+      setRows((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      setSelected((prev) => (prev && prev.id === id ? updated : prev));
+    } catch (err) {
+      const other = assignedToOther(err);
+      alert(other ? `${other.name} already has this one.` : err instanceof Error ? err.message : "Could not take this.");
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
   const [selected, setSelected] = useState<EscalationRow | null>(null);
   const [resolveNote, setResolveNote] = useState("");
 
@@ -120,7 +140,8 @@ export default function EscalationsPage() {
         setSelected(updated);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not update status.");
+      const other = assignedToOther(err);
+      alert(other ? `${other.name} is handling this one. Take it over first if you need to change it.` : err instanceof Error ? err.message : "Could not update status.");
     } finally {
       setStatusBusyId(null);
     }
@@ -249,6 +270,11 @@ export default function EscalationsPage() {
                 )}
                 <div className="flex items-center gap-3 flex-wrap text-[11px] font-mono text-os-text-dim">
                   <span>Status: {STATUS_LABEL[e.status] || e.status}</span>
+                  <span className={e.assigned_to_user_id ? "text-amber-300" : ""}>
+                    {e.assigned_to_user_id
+                      ? e.assigned_to_user_id === myUserId ? "You have this" : `With ${e.assigned_to_name ?? "a teammate"}`
+                      : "Nobody has this yet"}
+                  </span>
                   {e.caller_phone && (
                     <a href={`tel:${e.caller_phone}`} className="text-brass-bright hover:underline">
                       Call {e.caller_phone}
@@ -259,6 +285,19 @@ export default function EscalationsPage() {
                 </div>
               </div>
               <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                {(!e.assigned_to_user_id || (e.assigned_to_user_id !== myUserId && isSupervisor)) && e.status !== "resolved" && e.status !== "dismissed" && (
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      handleClaim(e.id, !!e.assigned_to_user_id);
+                    }}
+                    disabled={statusBusyId === e.id}
+                    className="px-3.5 py-1.5 rounded-lg bg-teal/15 hover:bg-teal/25 disabled:opacity-40 text-white text-xs font-semibold border border-teal/40 transition-all cursor-pointer"
+                  >
+                    {e.assigned_to_user_id ? `Take over from ${e.assigned_to_name ?? "teammate"}` : "I have got this"}
+                  </button>
+                )}
                 {e.status === "open" && (
                   <button
                     type="button"

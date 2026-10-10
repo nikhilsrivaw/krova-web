@@ -39,7 +39,9 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { getUserId } from "@/lib/auth";
+import { useThreadPresence } from "@/lib/useThreadPresence";
 import {
+  assignedToOther,
   conversations,
   channels,
   formatPaise,
@@ -162,6 +164,13 @@ export default function ConversationsPage() {
   const [replyBody, setReplyBody] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
+  // Set when the server refuses a reply because a teammate owns this chat.
+  const [conflict, setConflict] = useState<{ id: string; name: string } | null>(null);
+  const [isTakingOver, setIsTakingOver] = useState(false);
+  const viewers = useThreadPresence(
+    activeThread?.customer_id ?? null,
+    isReplyOpen && replyBody.trim().length > 0,
+  );
 
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [isBookingToken, setIsBookingToken] = useState(false);
@@ -258,6 +267,8 @@ export default function ConversationsPage() {
       await channels.sendText(to, canned.body);
       setIsCannedPickerOpen(false);
     } catch (err) {
+      const other = assignedToOther(err);
+      if (other) setConflict(other);
       setCannedError(err instanceof Error ? err.message : "Could not send this reply.");
     } finally {
       setIsSendingCanned(false);
@@ -286,6 +297,8 @@ export default function ConversationsPage() {
       // "24-hour window closed, use a template" / Instagram: "never
       // messaged" | "over 7 days" | a real Meta rejection) - shown as-is
       // rather than re-derived.
+      const other = assignedToOther(err);
+      if (other) setConflict(other);
       setReplyError(err instanceof Error ? err.message : "Could not send this reply.");
     } finally {
       setIsSendingReply(false);
@@ -409,6 +422,10 @@ export default function ConversationsPage() {
     };
   }, [selectedCustomerId]);
 
+  useEffect(() => {
+    setConflict(null);
+  }, [selectedCustomerId]);
+
   const handleTogglePrivate = async () => {
     if (!activeThread) return;
     const nextPrivate = !activeThread.is_private;
@@ -422,6 +439,29 @@ export default function ConversationsPage() {
       );
     } catch (err) {
       setThreadError(err instanceof Error ? err.message : "Could not change privacy.");
+    }
+  };
+
+  const handleTakeOver = async () => {
+    if (!activeThread) return;
+    setIsTakingOver(true);
+    try {
+      const result = await conversations.takeOver(activeThread.customer_id);
+      setConflict(null);
+      setReplyError(null);
+      setCannedError(null);
+      setActiveThread((prev) => (prev ? { ...prev, assigned_to_user_id: result.assigned_to_user_id } : null));
+      setThreadList((prev) =>
+        prev.map((t) =>
+          t.customer_id === activeThread.customer_id
+            ? { ...t, assigned_to_user_id: result.assigned_to_user_id }
+            : t,
+        ),
+      );
+    } catch (err) {
+      setReplyError(err instanceof Error ? err.message : "Could not take over this chat.");
+    } finally {
+      setIsTakingOver(false);
     }
   };
 
@@ -748,6 +788,27 @@ export default function ConversationsPage() {
                       {phoneOf(activeThread.identities)}
                     </p>
                   )}
+                  {(viewers.length > 0 || (teamMembers.length > 1 && activeThread.assigned_to_user_id)) && (
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px]" aria-live="polite">
+                      {teamMembers.length > 1 && activeThread.assigned_to_user_id && (
+                        <span className="text-os-text-dim">
+                          With{" "}
+                          <span className="text-white font-semibold">
+                            {activeThread.assigned_to_user_id === myUserId
+                              ? "you"
+                              : teamMemberById(activeThread.assigned_to_user_id)?.full_name ||
+                                teamMemberById(activeThread.assigned_to_user_id)?.email ||
+                                "a teammate"}
+                          </span>
+                        </span>
+                      )}
+                      {viewers.map((v) => (
+                        <span key={v.user_id} className={v.typing ? "text-amber-300 font-semibold" : "text-os-text-dim"}>
+                          {v.name} {v.typing ? "is replying..." : "is viewing"}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -825,6 +886,16 @@ export default function ConversationsPage() {
                         {replyError && (
                           <p className="text-[11px] text-red-400">{replyError}</p>
                         )}
+                        {conflict && (
+                          <button
+                            type="button"
+                            onClick={handleTakeOver}
+                            disabled={isTakingOver}
+                            className="w-full px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-400/40 text-[11px] font-semibold text-amber-200 disabled:opacity-50 cursor-pointer"
+                          >
+                            {isTakingOver ? "Taking over..." : `Take over from ${conflict.name}`}
+                          </button>
+                        )}
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
@@ -886,6 +957,16 @@ export default function ConversationsPage() {
                           )}
                           {cannedError && (
                             <p className="px-2.5 py-1.5 text-[11px] text-red-400">{cannedError}</p>
+                          )}
+                          {conflict && cannedError && (
+                            <button
+                              type="button"
+                              onClick={handleTakeOver}
+                              disabled={isTakingOver}
+                              className="mx-2.5 mb-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-400/40 text-[11px] font-semibold text-amber-200 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isTakingOver ? "Taking over..." : `Take over from ${conflict.name}`}
+                            </button>
                           )}
                         </div>
                       </div>

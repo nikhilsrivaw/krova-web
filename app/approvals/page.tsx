@@ -31,6 +31,8 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 import {
+  assignedToOther,
+  conversations,
   approvals,
   type MessageDraft,
   type AutonomyLevel,
@@ -72,6 +74,8 @@ export default function ApprovalsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // A teammate owns the chat this draft belongs to; offer to take it over.
+  const [conflict, setConflict] = useState<{ customerId: string; name: string } | null>(null);
 
   // Edit Modal State
   // Drafts where the person turned off the carousel the AI suggested with the
@@ -155,14 +159,29 @@ export default function ApprovalsPage() {
   const handleApprove = async (draftId: string, customBody?: string) => {
     setIsSubmitting(true);
     setActionError(null);
+    setConflict(null);
     try {
       await approvals.approve(draftId, customBody, !carouselOff[draftId]);
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
       setEditingDraft(null);
     } catch (err) {
+      const other = assignedToOther(err);
+      const customerId = drafts.find((d) => d.id === draftId)?.customer_id;
+      if (other && customerId) setConflict({ customerId, name: other.name });
       setActionError(err instanceof Error ? err.message : "Could not send this reply.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleTakeOver = async () => {
+    if (!conflict) return;
+    try {
+      await conversations.takeOver(conflict.customerId);
+      setConflict(null);
+      setActionError("It is yours now - send or reject again.");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not take over this chat.");
     }
   };
 
@@ -175,6 +194,9 @@ export default function ApprovalsPage() {
       setRejectingDraft(null);
       setRejectReason("");
     } catch (err) {
+      const other = assignedToOther(err);
+      const customerId = drafts.find((d) => d.id === draftId)?.customer_id;
+      if (other && customerId) setConflict({ customerId, name: other.name });
       setActionError(err instanceof Error ? err.message : "Could not reject this draft.");
     } finally {
       setIsSubmitting(false);
@@ -386,6 +408,15 @@ export default function ApprovalsPage() {
         {actionError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {actionError}
+            {conflict && (
+              <button
+                type="button"
+                onClick={handleTakeOver}
+                className="ml-3 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/40 font-semibold text-amber-200 cursor-pointer"
+              >
+                Take over from {conflict.name}
+              </button>
+            )}
           </div>
         )}
 
