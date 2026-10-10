@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { postCallRules, type AutomationRule } from "@/lib/api";
+import { KeypadMenuCard } from "@/components/voice/KeypadMenuCard";
 
 /**
  * The /voice page's view of the call-triggered automations.
@@ -109,6 +110,7 @@ export function PostCallRulesTab() {
 
   return (
     <div className="space-y-6">
+      <KeypadMenuCard />
       <GlassCard className="p-6 space-y-4">
         <div className="workspace-card-heading justify-between">
           <div className="flex min-w-0 flex-1 basis-64 items-start gap-3">

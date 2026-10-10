@@ -1485,6 +1485,23 @@ export type CallLog = {
   summary: string | null;
 };
 
+export type KeypadOption = {
+  digit: string;
+  label: string;
+  action: "transfer" | "say" | "ai";
+  number?: string | null;
+  message?: string | null;
+};
+
+export type KeypadMenu = {
+  enabled: boolean;
+  /** Optional: the owner's own wording. Blank means it is built from the keys. */
+  intro: string;
+  options: KeypadOption[];
+  /** What callers will hear after the greeting. */
+  preview: string;
+};
+
 export const voice = {
   createSubaccount: () => api.post<Subaccount>("/voice-onboarding/subaccount"),
 
@@ -1551,6 +1568,11 @@ export const voice = {
   logs: () => api.get<CallLog[]>("/voice-onboarding/logs"),
 
   agentSettings: () => api.get<AgentSettings>("/voice-onboarding/agent-settings"),
+
+  /** The phone keypad menu ("press 1 for ..."). Needs a connected voice number. */
+  keypadMenu: () => api.get<KeypadMenu>("/voice-onboarding/keypad-menu"),
+  saveKeypadMenu: (menu: Omit<KeypadMenu, "preview">) =>
+    api.put<KeypadMenu>("/voice-onboarding/keypad-menu", menu),
 
   updateAgentSettings: (data: {
     greeting?: string;
