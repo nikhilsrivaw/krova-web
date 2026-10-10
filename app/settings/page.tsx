@@ -36,6 +36,7 @@ import { SettingsControls } from "@/components/commands/SettingsControls";
 import { WorkspaceSectionNav } from "@/components/shell/WorkspaceSectionNav";
 import { Badge } from "@/components/ui/Badge";
 import { CapabilityFold } from "@/components/settings/CapabilityFold";
+import { FeaturesCard } from "@/components/settings/FeaturesCard";
 import {
   account,
   approvals,
@@ -1145,6 +1146,9 @@ export default function SettingsPage() {
             </div>
           </GlassCard>
         </form>
+
+        {/* SECTION 1b: FEATURES - which optional modules this business uses */}
+        <FeaturesCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
 
         {/* SECTION 1a: LOGIN & SECURITY - linking a phone number for
             OTP-via-call login (lib/auth.ts's otpLogin), alongside the
@@ -2628,8 +2632,8 @@ export default function SettingsPage() {
                   <h3 className="text-sm font-bold text-white">Photo → Product Match</h3>
                   <p className="text-xs text-os-text-dim">
                     When a customer sends a photo, match it against your real Meta Commerce
-                    Catalog and reply with the actual product, price and availability. Stores
-                    (Online store vertical) only - your own catalog ID, from Meta Commerce Manager.
+                    Catalog and reply with the actual product, price and availability. Works
+                    with the Orders &amp; products feature - your own catalog ID, from Meta Commerce Manager.
                   </p>
                 </div>
               </div>

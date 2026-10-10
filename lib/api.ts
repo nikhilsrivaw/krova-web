@@ -2328,7 +2328,6 @@ export type TrustReport = {
 export type Capability =
   | "conversation_intelligence"
   | "scheduling"
-  | "voice_booking"
   | "case_tracking"
   | "order_sync"
   | "property_listings"
@@ -2778,6 +2777,32 @@ export type QueueEntry = {
   checked_in_at: string;
   called_at: string | null;
   completed_at: string | null;
+};
+
+// ── Features (optional modules a business has switched on) ─────────────────
+// A market type decides what a business starts with; this is where it chooses
+// what it actually uses. See services/api/routers/capabilities.py.
+
+export type FeatureInfo = {
+  key: Capability;
+  label: string;
+  description: string;
+  /** Concrete things that appear or start working when it is on. */
+  adds: string[];
+  /** What the owner still has to do once after switching it on, if anything. */
+  setup: string | null;
+  /** What the business has right now. */
+  enabled: boolean;
+  /** What its market type would give it with no changes of its own. */
+  default: boolean;
+  /** The business changed this one itself. */
+  overridden: boolean;
+};
+
+export const features = {
+  list: () => api.get<FeatureInfo[]>("/capabilities"),
+  set: (key: Capability, enabled: boolean) =>
+    api.put<FeatureInfo>(`/capabilities/${key}`, { enabled }),
 };
 
 export const queue = {
