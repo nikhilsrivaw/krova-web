@@ -84,6 +84,10 @@ import {
 } from "@/lib/api";
 
 
+// Hidden for now: Google has not verified the app, so only listed test users can connect.
+// The backend and the connection code stay in place; flip this to bring the card back.
+const SHOW_GOOGLE_CALENDAR = false;
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   // Real verticals from GET /auth/verticals (shared/verticals/templates/*.json)
@@ -1916,6 +1920,7 @@ export default function SettingsPage() {
           </p>
 
           <div className="space-y-3">
+            {SHOW_GOOGLE_CALENDAR && (
             <CapabilityFold have={profile?.capabilities} anyOf={["scheduling", "opd_queue"]} keepOpen={!!calendarStatus?.connected} label="Google Calendar">
             {/* Google Calendar */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
@@ -1954,6 +1959,7 @@ export default function SettingsPage() {
               )}
             </div>
             </CapabilityFold>
+            )}
 
             <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!githubConnection} label="GitHub">
             {/* GitHub - software-startup vertical's closed bug-lifecycle loop */}

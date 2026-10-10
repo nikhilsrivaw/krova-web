@@ -2829,8 +2829,9 @@ export type AvailabilityException = {
 
 export type Slot = { starts_at: string; ends_at: string };
 
-export type AppointmentStatus = "requested" | "confirmed" | "visited" | "no_show" | "cancelled";
-export type IntakeChannel = "voice" | "whatsapp" | "manual";
+export type AppointmentStatus =
+  | "requested" | "awaiting_deposit" | "confirmed" | "visited" | "no_show" | "cancelled";
+export type IntakeChannel = "voice" | "whatsapp" | "manual" | "web";
 
 export type Appointment = {
   id: string;
@@ -2914,6 +2915,10 @@ export const scheduling = {
 
   rescheduleAppointment: (id: string, starts_at: string) =>
     api.post<Appointment>(`/scheduling/appointments/${id}/reschedule`, { starts_at }),
+
+  /** Record that the person came, did not come, or (to undo) is simply booked again. */
+  setAppointmentStatus: (id: string, status: "confirmed" | "visited" | "no_show") =>
+    api.post<Appointment>(`/scheduling/appointments/${id}/status`, { status }),
 };
 
 // ── Case Tracking (Law Firms) ───────────────────────────────────────────────

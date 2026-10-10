@@ -37,6 +37,7 @@ import {
   ClipboardList,
   Wallet,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -181,6 +182,13 @@ export function AppSidebar({
     // Vertical-specific tools, only shown when the business's own
     // capabilities include them - never hardcoded per vertical key, always
     // read from what /auth/me actually declared.
+    {
+      label: "Calendar",
+      href: "/calendar",
+      icon: CalendarDays,
+      accent: "text-brass-bright",
+      requiresCapability: "scheduling",
+    },
     {
       label: "Scheduling",
       href: "/scheduling",

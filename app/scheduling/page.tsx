@@ -62,6 +62,7 @@ function todayInIST(): string {
 
 const APPOINTMENT_BADGE: Record<Appointment["status"], "emerald" | "amber" | "rose" | "default"> = {
   requested: "amber",
+  awaiting_deposit: "amber",
   confirmed: "emerald",
   visited: "default",
   no_show: "rose",
