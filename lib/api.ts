@@ -2797,12 +2797,43 @@ export type FeatureInfo = {
   default: boolean;
   /** The business changed this one itself. */
   overridden: boolean;
+  /**
+   * The WhatsApp templates this feature's messages go out as. Without an
+   * approved one the feature's sends are silently skipped.
+   */
+  templates: FeatureTemplate[];
+  /** WhatsApp is connected, so missing templates can be submitted from here. */
+  can_create_templates: boolean;
+};
+
+export type FeatureTemplate = {
+  name: string;
+  purpose: string;
+  category: "UTILITY" | "MARKETING";
+  /** What {{1}}, {{2}}, ... stand for, in order. */
+  variables: string[];
+  body: string;
+  status: "approved" | "pending" | "rejected" | "missing" | "other";
+  rejection_reason: string | null;
+  /** KROVA can submit this one; if not, `note` says why. */
+  one_click: boolean;
+  note: string | null;
+};
+
+export type CreateTemplatesResult = {
+  created: string[];
+  already_there: string[];
+  needs_manual: string[];
+  failed: { name: string; error: string }[];
 };
 
 export const features = {
   list: () => api.get<FeatureInfo[]>("/capabilities"),
   set: (key: Capability, enabled: boolean) =>
     api.put<FeatureInfo>(`/capabilities/${key}`, { enabled }),
+  /** Submit the feature's missing templates to Meta. Safe to repeat. */
+  createTemplates: (key: Capability) =>
+    api.post<CreateTemplatesResult>(`/capabilities/${key}/templates`),
 };
 
 export const queue = {

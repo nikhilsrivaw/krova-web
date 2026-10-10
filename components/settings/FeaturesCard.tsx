@@ -5,6 +5,7 @@ import { Blocks, Check } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { features, type FeatureInfo } from "@/lib/api";
+import { FeatureTemplates } from "@/components/settings/FeatureTemplates";
 
 /**
  * Which optional modules this business uses.
@@ -21,6 +22,12 @@ export function FeaturesCard({ canEdit = true }: { canEdit?: boolean }) {
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const reload = () =>
+    features
+      .list()
+      .then(setItems)
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load features."));
 
   useEffect(() => {
     let mounted = true;
@@ -131,6 +138,9 @@ export function FeaturesCard({ canEdit = true }: { canEdit?: boolean }) {
                   )}
                 </div>
               )}
+
+              {/* Only for what is saved as on - a switch not yet saved sends nothing. */}
+              {on && f.enabled && <FeatureTemplates feature={f} canEdit={canEdit} onChanged={reload} />}
             </div>
           );
         })}
