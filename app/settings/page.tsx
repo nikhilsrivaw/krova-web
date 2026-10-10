@@ -35,6 +35,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { SettingsControls } from "@/components/commands/SettingsControls";
 import { WorkspaceSectionNav } from "@/components/shell/WorkspaceSectionNav";
 import { Badge } from "@/components/ui/Badge";
+import { CapabilityFold } from "@/components/settings/CapabilityFold";
 import {
   account,
   approvals,
@@ -1904,6 +1905,7 @@ export default function SettingsPage() {
           </p>
 
           <div className="space-y-3">
+            <CapabilityFold have={profile?.capabilities} anyOf={["scheduling", "opd_queue"]} keepOpen={!!calendarStatus?.connected} label="Google Calendar">
             {/* Google Calendar */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1940,7 +1942,9 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
+            </CapabilityFold>
 
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!githubConnection} label="GitHub">
             {/* GitHub - software-startup vertical's closed bug-lifecycle loop */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">
@@ -2002,7 +2006,9 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            </CapabilityFold>
 
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!emailSendConnection} label="Outbound email address">
             {/* Outbound email (Postmark sender signature) - software-startup vertical */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">
@@ -2047,7 +2053,9 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            </CapabilityFold>
 
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!stripeConnection} label="Stripe billing dunning">
             {/* Stripe billing dunning - software-startup vertical */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">
@@ -2108,6 +2116,7 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
+            </CapabilityFold>
 
             {/* Webhooks */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
@@ -2608,6 +2617,7 @@ export default function SettingsPage() {
 
         {/* SECTION 2e: PHOTO -> PRODUCT MATCH (stores only) */}
         {waConnection && (
+          <CapabilityFold have={profile?.capabilities} anyOf={["photo_product_match"]} keepOpen={!!catalogId.trim()} label="Photo → Product Match">
           <form onSubmit={handleSaveCatalogId}>
             <GlassCard className="p-6 space-y-3">
               <div className="flex items-center gap-3 pb-2">
@@ -2638,6 +2648,7 @@ export default function SettingsPage() {
               </div>
             </GlassCard>
           </form>
+          </CapabilityFold>
         )}
 
         {/* SECTION 3: METERED USAGE & BILLING (STUBBED PER UI_SPEC) */}
