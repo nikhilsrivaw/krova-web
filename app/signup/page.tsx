@@ -28,6 +28,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, AlertCircle, Mail, PhoneCall, Pencil } from "lucide-react";
 import { googleStart, requestOtp, otpRegister } from "@/lib/auth";
 import { fetchVerticals, type Vertical } from "@/lib/api";
+import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -185,6 +186,12 @@ function SignupForm() {
             </option>
           ))}
         </select>
+        {verticals.find((v) => v.key === vertical)?.summary && (
+          <p className="text-[11px] text-os-text-dim leading-relaxed">
+            {verticals.find((v) => v.key === vertical)?.summary}
+          </p>
+        )}
+        <VerticalFeatures features={verticals.find((v) => v.key === vertical)?.features} />
         <p className="text-[11px] text-os-text-dim">
           Krova uses this to set up your agent before your first conversation. You can change
           it later.
