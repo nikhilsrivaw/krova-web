@@ -30,13 +30,14 @@ import { KeypadMenuCard } from "@/components/voice/KeypadMenuCard";
 
 // The three call outcomes that actually exist as triggers - see
 // WebhookEventType's own comment on where each one fires from.
-const VOICE_TRIGGERS = ["call.completed", "call.voicemail", "call.no_answer"] as const;
+const VOICE_TRIGGERS = ["call.completed", "call.voicemail", "call.no_answer", "keypad.pressed"] as const;
 type VoiceTrigger = (typeof VOICE_TRIGGERS)[number];
 
 const TRIGGER_LABEL: Record<VoiceTrigger, string> = {
   "call.completed": "a call finishes",
   "call.voicemail": "a call goes to voicemail",
   "call.no_answer": "a call goes unanswered",
+  "keypad.pressed": "a caller presses a key on the phone menu",
 };
 
 // Full action vocabulary, not the two this tab used to know about - a
@@ -53,6 +54,9 @@ const ACTION_LABEL: Record<string, string> = {
   instagram_followup: "send an Instagram reply",
   instagram_comment_reply: "reply privately to a comment",
   send_carousel: "send a carousel",
+  notify_team: "alert the team",
+  assign_to_agent: "assign the chat to someone",
+  set_stage: "move to a pipeline stage",
 };
 
 function formatDelay(seconds: number): string {

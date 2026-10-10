@@ -1698,7 +1698,11 @@ export type AutomationTrigger =
   | "customer.stage_changed"
   // Daily, for every date the business set on a customer (renewal, AMC
   // expiry, package end...) - from 60 days before to 30 days after.
-  | "customer.date_approaching";
+  | "customer.date_approaching"
+  // A chat's newest customer message has waited past the reply-time target set under Team.
+  | "reply.overdue"
+  // A caller pressed a key on the phone keypad menu.
+  | "keypad.pressed";
 // escalation_rate.detected / account_health.detected deliberately absent -
 // business-level signals with no customer_id, so a rule on either could
 // never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
@@ -1713,7 +1717,11 @@ export type AutomationAction =
   | "send_email"
   | "instagram_followup"
   | "instagram_comment_reply"
-  | "send_carousel";
+  | "send_carousel"
+  // Inside the business: alert people, hand the chat to someone, move the pipeline.
+  | "notify_team"
+  | "assign_to_agent"
+  | "set_stage";
 
 // The real channels a trigger can actually come from - matches the
 // backend's own Channel enum (shared/db/models/channel.py). Kept here
@@ -1750,6 +1758,8 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "appointment.cancelled": ["starts_at", "intake_channel", "reason"],
   "appointment.rescheduled": ["starts_at", "intake_channel"],
   "escalation.raised": ["reason"],
+  "reply.overdue": ["minutes_waiting", "assigned"],
+  "keypad.pressed": ["digit", "key_name", "action"],
   "lead.received": ["source", "name", "query"],
   "queue_token.issued": ["shift", "queue_number"],
   "competitor.mentioned": ["severity", "title", "body"],

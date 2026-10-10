@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail, Instagram,
-  Filter, Clock, TrendingDown, History, GalleryHorizontal,
+  Filter, Clock, TrendingDown, History, GalleryHorizontal, BellRing, UserPlus, ArrowRightCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -21,7 +21,9 @@ import {
   account,
   channels as channelsApi,
   templates as templatesApi,
+  team as teamApi,
   CONDITION_FIELDS,
+  type TeamMember,
   type SavedInstagramCarousel,
   type Template,
   type AutomationRule,
@@ -52,6 +54,7 @@ const CHANNEL_LABEL: Record<AutomationChannel, string> = {
 // what makes the picker necessary there.
 const CHANNEL_AMBIGUOUS_TRIGGERS = new Set<AutomationTrigger>([
   "message.received",
+  "reply.overdue",
   "appointment.booked",
   "appointment.cancelled",
   "appointment.rescheduled",
@@ -127,6 +130,8 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "quotation.aging": "Every day while a quote is still open (set the day with a condition)",
   "customer.inactive": "Every day while a customer has gone quiet (set how quiet with a condition)",
   "customer.stage_changed": "A customer is moved to another pipeline stage",
+  "reply.overdue": "A customer has waited too long for a reply (target set under Team)",
+  "keypad.pressed": "A caller presses a key on your phone menu",
   "customer.date_approaching": "Every day around a date set on a customer — renewal, AMC expiry… (set the day with a condition)",
 };
 
@@ -172,6 +177,9 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   instagram_followup: "Send an Instagram reply",
   instagram_comment_reply: "Reply privately to a comment",
   send_carousel: "Send a carousel",
+  notify_team: "Alert the team",
+  assign_to_agent: "Assign the chat to someone",
+  set_stage: "Move to a pipeline stage",
 };
 
 // Offered when building a NEW rule. send_sms and send_email stay out of this
@@ -198,6 +206,9 @@ const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   instagram_followup: Instagram,
   instagram_comment_reply: Instagram,
   send_carousel: GalleryHorizontal,
+  notify_team: BellRing,
+  assign_to_agent: UserPlus,
+  set_stage: ArrowRightCircle,
 };
 
 // Human labels for the real, per-trigger_type condition fields
@@ -247,6 +258,12 @@ const FIELD_LABEL: Record<string, string> = {
   date: "The date",
   note: "Date note",
   to_stage: "Moved to stage",
+  // reply.overdue / keypad.pressed
+  minutes_waiting: "Minutes the customer has waited",
+  assigned: "Chat already has an owner",
+  digit: "Key pressed",
+  key_name: "Name of the key (as you set it)",
+  action: "What the key does (transfer / say / ai)",
 };
 
 // How to render/parse each field's value - most conditions compare plain
@@ -266,6 +283,8 @@ const FIELD_TYPE: Record<string, "text" | "number" | "boolean"> = {
   days_since_any_message: "number",
   days_since_last_visit: "number",
   has_upcoming_visit: "boolean",
+  minutes_waiting: "number",
+  assigned: "boolean",
 };
 
 const OPERATOR_LABEL: Record<AutomationOperator, string> = {
@@ -333,7 +352,13 @@ const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[])
     const via = step.action_config.kind === "whatsapp" ? "WhatsApp" : "Instagram";
     return `${via} carousel: ${step.action_config.carousel_name || step.action_config.template_name || ""}`;
   }
-  return step.action_config.message || step.action_config.reason || step.action_config.tag || "";
+  if (step.action_type === "assign_to_agent") {
+    return step.action_config.to === "round_robin" ? "next available agent" : "a chosen team member";
+  }
+  return (
+    step.action_config.message || step.action_config.reason || step.action_config.tag
+    || step.action_config.stage || ""
+  );
 };
 
 export default function AutomationsPage() {
@@ -410,6 +435,10 @@ export default function AutomationsPage() {
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
   const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
   const [sendTo, setSendTo] = useState<"customer" | "payer">("customer");
+  // notify_team / assign_to_agent
+  const [notifyTo, setNotifyTo] = useState<"owner" | "admins" | "assigned" | "everyone">("admins");
+  const [assignTo, setAssignTo] = useState("round_robin");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [flowId, setFlowId] = useState("");
   const [flowBody, setFlowBody] = useState("Please fill this in:");
   const [flowCta, setFlowCta] = useState("Open");
@@ -427,10 +456,12 @@ export default function AutomationsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [rulesRes, flowsRes, profileRes, carouselsRes, templatesRes] = await Promise.allSettled([
+    const [rulesRes, flowsRes, profileRes, carouselsRes, templatesRes, teamRes] = await Promise.allSettled([
       postCallRules.list(), flowsApi.list(), account.profile(),
-      channelsApi.listSavedInstagramCarousels(), templatesApi.list(),
+      channelsApi.listSavedInstagramCarousels(), templatesApi.list(), teamApi.list(),
     ]);
+    // Best-effort: without the list the "assign to" picker offers round-robin only.
+    if (teamRes.status === "fulfilled") setTeamMembers(teamRes.value);
     // Both best-effort: a business with no Instagram or no templates just sees
     // an empty picker for that kind, never a broken page.
     // A saved carousel with {{placeholders}} is for the AI to fill from a chat; a
@@ -533,7 +564,9 @@ export default function AutomationsPage() {
   const loadDraft = (step: AutomationStepConfig | undefined) => {
     const config = step?.action_config ?? {};
     setAction(step?.action_type ?? "whatsapp_followup");
-    setTextConfig(config.message || config.reason || config.tag || config.body || "");
+    setTextConfig(config.message || config.reason || config.tag || config.stage || config.body || "");
+    setNotifyTo(step?.action_type === "notify_team" && config.to ? (config.to as typeof notifyTo) : "admins");
+    setAssignTo(step?.action_type === "assign_to_agent" && config.to ? config.to : "round_robin");
     setEmailSubject(config.subject || "");
     setFlowId(step?.action_type === "send_flow" ? config.flow_id || "" : "");
     setFlowBody(step?.action_type === "send_flow" ? config.body || "Please fill this in:" : "Please fill this in:");
@@ -694,6 +727,15 @@ export default function AutomationsPage() {
     }
     if (action === "add_tag") {
       return textConfig.trim() ? { tag: textConfig.trim() } : null;
+    }
+    if (action === "notify_team") {
+      return textConfig.trim() ? { to: notifyTo, message: textConfig.trim() } : null;
+    }
+    if (action === "assign_to_agent") {
+      return { to: assignTo };
+    }
+    if (action === "set_stage") {
+      return textConfig.trim() ? { stage: textConfig.trim() } : null;
     }
     if (action === "send_flow") {
       if (!selectedFlow || !flowBody.trim() || !flowScreen) return null;
@@ -1196,6 +1238,78 @@ export default function AutomationsPage() {
             placeholder="Follow up with this customer."
             className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
           />
+        </div>
+      )}
+
+      {action === "notify_team" && (
+        <div className="space-y-2.5">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Who to alert</label>
+            <select
+              value={notifyTo}
+              onChange={(e) => setNotifyTo(e.target.value as typeof notifyTo)}
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="owner">The owner</option>
+              <option value="admins">Owner and admins</option>
+              <option value="assigned">Whoever owns this chat (admins if nobody does)</option>
+              <option value="everyone">Everyone on the team</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message</label>
+            <textarea
+              value={textConfig}
+              onChange={(e) => setTextConfig(e.target.value)}
+              rows={2}
+              placeholder="New lead from {{source}} - call them first."
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+            />
+            <p className="text-[11px] text-os-text-dim mt-1.5">
+              Sent as a notification to the installed app (Install it from the PWA page). People without the
+              app installed will not see it.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {action === "assign_to_agent" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Assign to</label>
+          <select
+            value={assignTo}
+            onChange={(e) => setAssignTo(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          >
+            <option value="round_robin">Next available agent (round-robin)</option>
+            {teamMembers.map((m) => (
+              <option key={m.user_id} value={m.user_id}>
+                {m.full_name || m.email || m.user_id} ({m.role})
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-os-text-dim mt-1.5">
+            Only a chat nobody owns yet is assigned - it never takes a chat from someone. People marked Away
+            are skipped.
+          </p>
+        </div>
+      )}
+
+      {action === "set_stage" && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Pipeline stage</label>
+          <input
+            type="text"
+            value={textConfig}
+            onChange={(e) => setTextConfig(e.target.value)}
+            placeholder="e.g. Contacted"
+            maxLength={60}
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          />
+          <p className="text-[11px] text-os-text-dim mt-1.5">
+            Use the exact word from your pipeline. Moving a customer this way does not start other
+            &quot;stage changed&quot; rules, so two rules can never loop.
+          </p>
         </div>
       )}
 
