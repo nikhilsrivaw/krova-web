@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/EmptyState";
-import { account, team, type TeamCredentials, type TeamMember } from "@/lib/api";
+import { account, team, teamSettings, type TeamCredentials, type TeamMember, type TeamSettings } from "@/lib/api";
 import { getUserId } from "@/lib/auth";
 
 function relative(iso: string | null | undefined): string {
@@ -48,6 +48,7 @@ export function MembersCard() {
   const [businessName, setBusinessName] = useState("your business");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<TeamSettings | null>(null);
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -69,6 +70,7 @@ export function MembersCard() {
       const [list, profile] = await Promise.all([team.list(), account.profile()]);
       setMembers(list);
       setMyRole(profile.role);
+      teamSettings.get().then(setPrefs).catch(() => {});
       if (profile.business_name) setBusinessName(profile.business_name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load the team.");
@@ -135,6 +137,16 @@ export function MembersCard() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not change the role.");
+    }
+  };
+
+  const savePrefs = async (next: TeamSettings) => {
+    setPrefs(next);
+    try {
+      setPrefs(await teamSettings.save(next));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save.");
+      teamSettings.get().then(setPrefs).catch(() => {});
     }
   };
 
@@ -225,6 +237,34 @@ export function MembersCard() {
               </div>
             </div>
           ))}
+        </GlassCard>
+      )}
+      {prefs && (isOwner || myRole === "admin") && (
+        <GlassCard className="mt-3 p-4 space-y-3">
+          <label className="flex items-start gap-2.5 text-xs text-white cursor-pointer">
+            <input
+              type="checkbox" className="mt-0.5 accent-teal" checked={prefs.auto_assign_on_reply}
+              onChange={(e) => savePrefs({ ...prefs, auto_assign_on_reply: e.target.checked })}
+            />
+            <span>
+              The first agent to reply owns the chat
+              <span className="block text-[11px] text-os-text-dim">Other agents must take it over to answer. Turn off if you assign chats by hand only.</span>
+            </span>
+          </label>
+          <label className="flex items-center justify-between gap-3 text-xs text-white">
+            <span>
+              What agents can see
+              <span className="block text-[11px] text-os-text-dim">Owners and admins always see every chat.</span>
+            </span>
+            <select
+              value={prefs.agent_visibility}
+              onChange={(e) => savePrefs({ ...prefs, agent_visibility: e.target.value as "all" | "assigned" })}
+              className="px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-teal focus:outline-none"
+            >
+              <option value="all">Every chat</option>
+              <option value="assigned">Their own and unowned chats</option>
+            </select>
+          </label>
         </GlassCard>
       )}
       <p className="mt-2 text-[11px] text-os-text-dim">

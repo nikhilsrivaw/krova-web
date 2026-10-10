@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, Siren, Wallet, ArrowRight, Inbox as InboxIcon } from "lucide-react";
-import { approvals, escalations, ledger, type LedgerSummary } from "@/lib/api";
+import { approvals, escalations, ledger, teamSettings, type LedgerSummary, type MyWork } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 
 function formatPaise(paise: number): string {
@@ -22,19 +22,22 @@ export default function TodayPage() {
   const [openEscalations, setOpenEscalations] = useState<number | null>(null);
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mine, setMine] = useState<MyWork | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [a, e, s] = await Promise.allSettled([
+      const [a, e, s, w] = await Promise.allSettled([
         approvals.count(),
         escalations.count(),
         ledger.summary(),
+        teamSettings.myWork(),
       ]);
       if (!mounted) return;
       if (a.status === "fulfilled") setPending(a.value.pending);
       if (e.status === "fulfilled") setOpenEscalations(e.value.open);
       if (s.status === "fulfilled") setSummary(s.value);
+      if (w.status === "fulfilled") setMine(w.value);
       setIsLoading(false);
     })();
     return () => {
@@ -66,6 +69,17 @@ export default function TodayPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {mine && mine.chats + mine.escalations + mine.cases > 0 && (
+            <Link href={appPath("/inbox")} className="block rounded-2xl bg-os-card border border-os-border p-4">
+              <p className="text-[10px] font-mono uppercase tracking-wide text-os-text-dim mb-2">Mine right now</p>
+              <p className="text-sm text-os-ink">
+                {mine.chats} {mine.chats === 1 ? "chat" : "chats"}
+                {mine.drafts_waiting > 0 && ` - ${mine.drafts_waiting} AI ${mine.drafts_waiting === 1 ? "reply" : "replies"} waiting`}
+                {mine.escalations > 0 && ` - ${mine.escalations} escalation${mine.escalations === 1 ? "" : "s"}`}
+                {mine.cases > 0 && ` - ${mine.cases} open case${mine.cases === 1 ? "" : "s"}`}
+              </p>
+            </Link>
+          )}
           {/* Escalations - most urgent first */}
           {openEscalations !== null && openEscalations > 0 && (
             <Link

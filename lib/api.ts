@@ -921,6 +921,15 @@ export const team = {
     ),
 };
 
+export type TeamSettings = { auto_assign_on_reply: boolean; agent_visibility: "all" | "assigned" };
+export type MyWork = { chats: number; drafts_waiting: number; escalations: number; cases: number };
+
+export const teamSettings = {
+  get: () => api.get<TeamSettings>("/team/settings"),
+  save: (body: TeamSettings) => api.put<TeamSettings>("/team/settings", body),
+  myWork: () => api.get<MyWork>("/team/my-work"),
+};
+
 export type ThreadViewer = { user_id: string; name: string; typing: boolean };
 
 export type TeamCredentials = {
