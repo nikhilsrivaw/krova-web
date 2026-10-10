@@ -1132,8 +1132,28 @@ export type SavedInstagramCarousel = {
   elements: InstagramCarouselElement[];
 };
 
+/** A ready-made template to start the builder from - see GET /templates/examples. */
+export type TemplateExample = {
+  name: string;
+  category: "UTILITY" | "MARKETING";
+  body: string;
+  /** Sample value for each {{number}}. */
+  examples: Record<string, string>;
+  /** What each {{number}} stands for, in order. */
+  variables: string[];
+  /** Quick-reply button labels, in order. */
+  buttons: string[];
+  purpose: string;
+  note: string | null;
+  /** Which feature's messages go out as this template. */
+  feature: string;
+};
+
 export const templates = {
   list: () => api.get<Template[]>("/templates"),
+
+  /** Templates KROVA's own features send under fixed names, written to fit their values. */
+  examples: () => api.get<TemplateExample[]>("/templates/examples"),
 
   create: (data: {
     name: string;

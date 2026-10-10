@@ -92,8 +92,11 @@ export function FeatureTemplates({
               {t.status === "rejected" && t.rejection_reason && (
                 <p className="text-[11px] text-red-300/90 mt-1">Meta said: {t.rejection_reason}</p>
               )}
-              {!t.one_click && t.status !== "approved" && t.note && (
-                <p className="text-[11px] text-amber-300/90 mt-1">Create this one yourself in WhatsApp Manager. {t.note}</p>
+              {t.status !== "approved" && t.note && (
+                <p className="text-[11px] text-amber-300/90 mt-1">
+                  {t.one_click ? "" : "Create this one yourself in WhatsApp Manager. "}
+                  {t.note}
+                </p>
               )}
               {t.status !== "approved" && (
                 <details className="mt-1">

@@ -43,6 +43,7 @@ import {
   type MigrationReadiness,
   type Template,
   type TemplateButton,
+  type TemplateExample,
   type WhatsAppWindow,
 } from "@/lib/api";
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
@@ -88,6 +89,9 @@ export default function WhatsAppPage() {
   // own _sample() fallback, but surfaced to the person writing it instead
   // of silently substituted.
   const [newTemplateExamples, setNewTemplateExamples] = useState<Record<string, string>>({});
+  // Ready-made starting points (GET /templates/examples), loaded the first time the builder opens.
+  const [exampleList, setExampleList] = useState<TemplateExample[]>([]);
+  const [pickedExample, setPickedExample] = useState<TemplateExample | null>(null);
   // A transient confirmation after a real Meta submission succeeds - the
   // modal closing on its own previously looked identical to the modal
   // closing for any other reason, so submitting read as if nothing happened.
@@ -431,7 +435,28 @@ export default function WhatsAppPage() {
     }
   };
 
+  useEffect(() => {
+    if (!isCreateModalOpen || exampleList.length > 0) return;
+    templates.examples().then(setExampleList).catch(() => {
+      // A convenience, not load-bearing: the builder works without it.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreateModalOpen]);
+
+  const applyExample = (example: TemplateExample | null) => {
+    setPickedExample(example);
+    if (!example) return;
+    setNewTemplateName(example.name);
+    setNewTemplateCategory(example.category);
+    setNewTemplateBody(example.body);
+    setNewTemplateHeader("");
+    setNewTemplateFooter("");
+    setNewTemplateButtons(example.buttons.map((text): TemplateButton => ({ type: "QUICK_REPLY", text })));
+    setNewTemplateExamples(example.examples);
+  };
+
   const resetTemplateForm = () => {
+    setPickedExample(null);
     setNewTemplateName("");
     setNewTemplateCategory("UTILITY");
     setNewTemplateBody("");
@@ -1194,6 +1219,39 @@ export default function WhatsAppPage() {
           maxWidth="xl"
         >
           <form onSubmit={handleCreateTemplate} className="space-y-5">
+            {exampleList.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-teal/[0.05] border border-teal/20 space-y-2">
+                <label className="block text-xs font-mono uppercase text-teal-bright">
+                  Start from an example (optional)
+                </label>
+                <select
+                  value={pickedExample?.name ?? ""}
+                  onChange={(e) => applyExample(exampleList.find((x) => x.name === e.target.value) ?? null)}
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-teal focus:outline-none"
+                >
+                  <option value="">Write my own from scratch</option>
+                  {exampleList.map((x) => (
+                    <option key={x.name} value={x.name}>
+                      {x.feature} - {x.name}
+                    </option>
+                  ))}
+                </select>
+                {pickedExample && (
+                  <div className="text-[11px] text-os-text-dim space-y-1">
+                    <p>{pickedExample.purpose}</p>
+                    <p className="font-mono">
+                      {pickedExample.variables.map((v, i) => `{{${i + 1}}} = ${v}`).join("  ·  ")}
+                    </p>
+                    <p>
+                      KROVA fills these numbers in itself, in this order - keep the numbering if you change
+                      the wording, and keep the same name so the feature finds it.
+                    </p>
+                    {pickedExample.note && <p className="text-amber-300/90">{pickedExample.note}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Category - the single most common cause of a template being
                 rejected is picking the wrong one, so this gets real estate
                 and real definitions, not a one-line <option>. */}
