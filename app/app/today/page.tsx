@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, Siren, Wallet, ArrowRight, Inbox as InboxIcon } from "lucide-react";
-import { approvals, escalations, ledger, teamSettings, type LedgerSummary, type MyWork } from "@/lib/api";
+import { approvals, escalations, ledger, team, teamSettings, type LedgerSummary, type MyWork } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
+import { getUserId } from "@/lib/auth";
 
 function formatPaise(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -23,6 +24,7 @@ export default function TodayPage() {
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mine, setMine] = useState<MyWork | null>(null);
+  const [away, setAway] = useState<boolean | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -38,6 +40,10 @@ export default function TodayPage() {
       if (e.status === "fulfilled") setOpenEscalations(e.value.open);
       if (s.status === "fulfilled") setSummary(s.value);
       if (w.status === "fulfilled") setMine(w.value);
+      team.list().then((list) => {
+        const me = list.find((m) => m.user_id === getUserId());
+        if (mounted && me && me.role === "agent") setAway(me.available === false);
+      }).catch(() => {});
       setIsLoading(false);
     })();
     return () => {
@@ -69,6 +75,19 @@ export default function TodayPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {away !== null && (
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !away;
+                setAway(next);
+                try { await teamSettings.setAvailable(!next); } catch { setAway(!next); }
+              }}
+              className={`w-full rounded-2xl border p-3.5 text-left text-sm ${away ? "bg-amber-500/10 border-amber-400/30 text-amber-100" : "bg-os-card border-os-border text-os-ink"}`}
+            >
+              {away ? "You are Away - no new chats come to you. Tap to go available." : "You are available for new chats. Tap to go Away."}
+            </button>
+          )}
           {mine && mine.chats + mine.escalations + mine.cases > 0 && (
             <Link href={appPath("/inbox")} className="block rounded-2xl bg-os-card border border-os-border p-4">
               <p className="text-[10px] font-mono uppercase tracking-wide text-os-text-dim mb-2">Mine right now</p>

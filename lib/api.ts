@@ -904,6 +904,8 @@ export type TeamMember = {
   last_login_at?: string | null;
   must_change_password?: boolean | null;
   locked?: boolean | null;
+  /** False = Away: new chats are not routed to them. */
+  available?: boolean;
 };
 
 export const team = {
@@ -921,13 +923,22 @@ export const team = {
     ),
 };
 
-export type TeamSettings = { auto_assign_on_reply: boolean; agent_visibility: "all" | "assigned" };
+export type TeamSettings = {
+  auto_assign_on_reply: boolean;
+  agent_visibility: "all" | "assigned";
+  routing: "manual" | "round_robin";
+  /** First-reply target in minutes; null = no reminders. */
+  sla_minutes: number | null;
+};
 export type MyWork = { chats: number; drafts_waiting: number; escalations: number; cases: number };
 
 export const teamSettings = {
   get: () => api.get<TeamSettings>("/team/settings"),
   save: (body: TeamSettings) => api.put<TeamSettings>("/team/settings", body),
   myWork: () => api.get<MyWork>("/team/my-work"),
+  setAvailable: (available: boolean) => api.put<{ available: boolean }>("/team/me/availability", { available }),
+  transferOwnership: (userId: string, password: string) =>
+    api.post<{ new_owner: string }>("/team/transfer-ownership", { user_id: userId, password }),
 };
 
 export type ThreadViewer = { user_id: string; name: string; typing: boolean };

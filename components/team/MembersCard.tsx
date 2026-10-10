@@ -60,6 +60,8 @@ export function MembersCard() {
   const [credentials, setCredentials] = useState<TeamCredentials | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "reset" | "remove"; member: TeamMember } | null>(null);
+  const [transferTo, setTransferTo] = useState<TeamMember | null>(null);
+  const [transferPassword, setTransferPassword] = useState("");
 
   const me = getUserId();
   const isOwner = myRole === "owner";
@@ -140,6 +142,23 @@ export function MembersCard() {
     }
   };
 
+  const runTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferTo) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await teamSettings.transferOwnership(transferTo.user_id, transferPassword);
+      setTransferTo(null);
+      setTransferPassword("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not transfer ownership.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const savePrefs = async (next: TeamSettings) => {
     setPrefs(next);
     try {
@@ -199,6 +218,7 @@ export function MembersCard() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {m.role === "agent" && m.available === false && <Badge variant="amber" size="sm">Away</Badge>}
                 {m.locked && <Badge variant="rose" size="sm">Locked - reset password</Badge>}
                 {m.must_change_password && !m.locked && <Badge variant="amber" size="sm">Hasn&apos;t set own password</Badge>}
                 {isOwner && canManage(m) ? (
@@ -223,6 +243,15 @@ export function MembersCard() {
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-[11px] text-os-text-dim hover:text-white cursor-pointer"
                       >
                         <KeyRound className="w-3 h-3" /> Reset password
+                      </button>
+                    )}
+                    {isOwner && m.role === "admin" && (
+                      <button
+                        type="button"
+                        onClick={() => { setTransferTo(m); setTransferPassword(""); }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-[11px] text-os-text-dim hover:text-white cursor-pointer"
+                      >
+                        Make owner
                       </button>
                     )}
                     <button
@@ -250,6 +279,34 @@ export function MembersCard() {
               The first agent to reply owns the chat
               <span className="block text-[11px] text-os-text-dim">Other agents must take it over to answer. Turn off if you assign chats by hand only.</span>
             </span>
+          </label>
+          <label className="flex items-center justify-between gap-3 text-xs text-white">
+            <span>
+              New chats
+              <span className="block text-[11px] text-os-text-dim">Round-robin gives each new chat to the available agent who got one longest ago. Away agents get none.</span>
+            </span>
+            <select
+              value={prefs.routing}
+              onChange={(e) => savePrefs({ ...prefs, routing: e.target.value as "manual" | "round_robin" })}
+              className="px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-teal focus:outline-none"
+            >
+              <option value="manual">I assign them</option>
+              <option value="round_robin">Round-robin</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 text-xs text-white">
+            <span>
+              Reply-time target
+              <span className="block text-[11px] text-os-text-dim">If a customer waits this long, the owner of the chat is pinged; at double, admins too.</span>
+            </span>
+            <select
+              value={prefs.sla_minutes ?? ""}
+              onChange={(e) => savePrefs({ ...prefs, sla_minutes: e.target.value ? Number(e.target.value) : null })}
+              className="px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-teal focus:outline-none"
+            >
+              <option value="">No reminders</option>
+              {[5, 10, 15, 30, 60, 120].map((n) => <option key={n} value={n}>{n} min</option>)}
+            </select>
           </label>
           <label className="flex items-center justify-between gap-3 text-xs text-white">
             <span>
@@ -347,6 +404,21 @@ export function MembersCard() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal isOpen={transferTo !== null} onClose={() => setTransferTo(null)} title="Make this person the owner?" subtitle="You become an admin">
+        <form onSubmit={runTransfer} className="space-y-4">
+          <p className="text-sm text-os-text-dim leading-relaxed">
+            {transferTo?.full_name ?? "This person"} will own the business, including removing people. You stay as an admin. Enter your password to confirm.
+          </p>
+          <input
+            type="password" required autoComplete="current-password" value={transferPassword}
+            onChange={(e) => setTransferPassword(e.target.value)} aria-label="Your password" className={input}
+          />
+          <button type="submit" disabled={busy} className="w-full px-4 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-bold disabled:opacity-50 cursor-pointer">
+            {busy ? "Transferring..." : "Transfer ownership"}
+          </button>
+        </form>
       </Modal>
 
       <Modal
