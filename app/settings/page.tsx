@@ -37,6 +37,7 @@ import { WorkspaceSectionNav } from "@/components/shell/WorkspaceSectionNav";
 import { Badge } from "@/components/ui/Badge";
 import { CapabilityFold } from "@/components/settings/CapabilityFold";
 import { FeaturesCard } from "@/components/settings/FeaturesCard";
+import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 import {
   account,
   approvals,
@@ -1087,8 +1088,13 @@ export default function SettingsPage() {
             {/* Vertical Selector */}
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
-                Select Industry Vertical:
+                What kind of business is this?
               </label>
+              <p className="text-[11px] text-os-text-dim -mt-1 mb-2.5">
+                This decides which modules you start with and how the AI talks and what it must never
+                promise. Changing it updates your menu and the AI&apos;s rules. Features you added yourself
+                (see Features below) stay as they are.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {verticals.map((v) => (
                   <div
@@ -1102,6 +1108,7 @@ export default function SettingsPage() {
                   >
                     <p className="text-xs font-bold text-white mb-0.5">{v.label}</p>
                     <p className="text-[11px] leading-relaxed opacity-80">{v.summary}</p>
+                    <VerticalFeatures features={v.features} />
                   </div>
                 ))}
               </div>

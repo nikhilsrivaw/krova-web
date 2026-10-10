@@ -3095,7 +3095,13 @@ export function formatPaise(
 
 // ── Verticals ────────────────────────────────────────────────────────────────
 
-export type Vertical = { key: string; label: string; summary: string };
+export type Vertical = {
+  key: string;
+  label: string;
+  summary: string;
+  /** The optional modules this type switches on, in plain words (e.g. "Quotations"). */
+  features?: string[];
+};
 
 export async function fetchVerticals(): Promise<Vertical[]> {
   try {

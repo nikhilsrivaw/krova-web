@@ -17,6 +17,7 @@ import {
   FileText,
 } from "lucide-react";
 import { fetchVerticals, type Vertical } from "@/lib/api";
+import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { account, approvals, channels, type AutonomyLevel } from "@/lib/api";
@@ -149,6 +150,7 @@ export default function OnboardingPage() {
                         {vertical === v.key && <Check className="w-4 h-4 text-brass" />}
                       </div>
                       <p className="text-[11px] opacity-80 mt-0.5">{v.summary}</p>
+                      <VerticalFeatures features={v.features} />
                     </div>
                   ))}
                 </div>
