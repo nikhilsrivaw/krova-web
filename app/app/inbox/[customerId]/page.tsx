@@ -29,6 +29,7 @@ import {
 import { appPath } from "@/lib/app-nav";
 import { useThreadPresence } from "@/lib/useThreadPresence";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
+import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -59,6 +60,7 @@ export default function AppConversationThreadPage() {
 
   const [thread, setThread] = useState<ConversationThread | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showBriefing, setShowBriefing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [pendingDrafts, setPendingDrafts] = useState<MessageDraft[]>([]);
@@ -241,6 +243,24 @@ export default function AppConversationThreadPage() {
           </button>
         )}
       </div>
+
+      {thread && (
+        <div className="px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowBriefing((v) => !v)}
+            aria-expanded={showBriefing}
+            className="w-full rounded-xl border border-os-border bg-os-card px-3 py-2 text-left text-xs font-semibold text-os-ink"
+          >
+            {showBriefing ? "Hide briefing" : "Show briefing - who they are, what is open"}
+          </button>
+          {showBriefing && (
+            <div className="mt-2">
+              <CustomerBriefing customerId={thread.customer_id} tone="light" />
+            </div>
+          )}
+        </div>
+      )}
 
       {(conflict || actionError) && (
         <div role="alert" className="mx-3 mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-100 space-y-2">

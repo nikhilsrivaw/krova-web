@@ -63,6 +63,7 @@ import {
   type CannedResponse,
   type CustomerSummary,
 } from "@/lib/api";
+import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 
 /** SLA-style countdown for the WhatsApp 24h free-form reply window - same
  * "don't let a deadline pass silently" pattern as the dashboard's pending-
@@ -135,7 +136,7 @@ export default function ConversationsPage() {
   // already real, working CRM features (same data the /customers page
   // shows), just never pulled into the inbox where an agent mid-thread
   // would actually want them, without tab-switching.
-  const [drawerTab, setDrawerTab] = useState<"overview" | "notes" | "tags">("overview");
+  const [drawerTab, setDrawerTab] = useState<"briefing" | "overview" | "notes" | "tags">("briefing");
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null);
   const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [tags, setTags] = useState<CustomerTag[]>([]);
@@ -200,7 +201,7 @@ export default function ConversationsPage() {
     let mounted = true;
     const customerId = activeThread.customer_id;
     setIsLoadingDrawerExtras(true);
-    setDrawerTab("overview");
+    setDrawerTab("briefing");
     Promise.allSettled([
       crm.notes(customerId),
       crm.tags(customerId, true),
@@ -1095,6 +1096,7 @@ export default function ConversationsPage() {
             {/* Tabs */}
             <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-2">
               {([
+                ["briefing", "Briefing"],
                 ["overview", "Overview"],
                 ["notes", `Notes${notes.length ? ` (${notes.length})` : ""}`],
                 ["tags", `Tags${tags.length ? ` (${tags.length})` : ""}`],
@@ -1113,6 +1115,10 @@ export default function ConversationsPage() {
                 </button>
               ))}
             </div>
+
+            {drawerTab === "briefing" && activeThread && (
+              <CustomerBriefing customerId={activeThread.customer_id} />
+            )}
 
             {drawerTab === "overview" && (
               <div className="space-y-6">

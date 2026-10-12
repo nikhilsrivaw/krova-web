@@ -910,8 +910,36 @@ export type TeamMember = {
   phone?: string | null;
 };
 
+export type CustomerBriefingData = {
+  customer_id: string;
+  name: string;
+  private: boolean;
+  phones: string[];
+  language: string | null;
+  stage: string | null;
+  tags: string[];
+  owner: { user_id: string; name: string | null } | null;
+  lead: { source: string; query: string; received_at: string } | null;
+  summary: string | null;
+  last_said: string | null;
+  messages: { who: "customer" | "us"; channel: string; text: string; at: string }[];
+  escalation: { reason: string; status: string; at: string } | null;
+  promises: {
+    id: string; direction: "we_owe" | "they_owe"; kind: string; description: string;
+    due_at: string | null; amount_paise: number | null; outstanding_paise: number | null; overdue: boolean;
+  }[];
+  owed_to_us_paise: number;
+  owed_by_us_paise: number;
+  next_visit: { at: string; with: string } | null;
+  last_call: { at: string; outcome: string | null; summary: string | null; by: string | null } | null;
+  notes: { body: string; at: string }[];
+  headline: string;
+};
+
 export const team = {
   list: () => api.get<TeamMember[]>("/team"),
+  /** Who this customer is and what is open with them. */
+  briefing: (customerId: string) => api.get<CustomerBriefingData>(`/team/briefing/${customerId}`),
   /** Owner / admin: set where calls for a member ring. Empty clears it. */
   setMemberPhone: (userId: string, phone: string) =>
     api.patch<{ phone: string | null }>(`/team/members/${userId}/phone`, { phone }),
