@@ -88,6 +88,7 @@ function BillingInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [amount, setAmount] = useState(1000);
+  const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState<{ credit: string; gst: string; fee: string; total: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -222,6 +223,17 @@ function BillingInner() {
 
               {data.usage && <UsageCard u={data.usage} />}
 
+              {isOwner && !sub && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text" value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Coupon code (optional)"
+                    aria-label="Coupon code" maxLength={64}
+                    className="w-56 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-teal focus:outline-none"
+                  />
+                  <p className="text-[11px] text-os-text-dim">Applied when you choose a plan below.</p>
+                </div>
+              )}
+
               {isOwner ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {data.plans.map((p) => {
@@ -246,7 +258,7 @@ function BillingInner() {
                           <button
                             type="button"
                             disabled={busy !== null || !data.payments_enabled}
-                            onClick={() => pay(`plan-${p.key}`, () => billing.subscribe(p.key))}
+                            onClick={() => pay(`plan-${p.key}`, () => billing.subscribe(p.key, coupon.trim() || undefined))}
                             className="w-full px-3 py-2 rounded-lg bg-teal hover:bg-teal-dim text-os-bg text-xs font-bold cursor-pointer disabled:opacity-50"
                           >
                             {busy === `plan-${p.key}` ? "Opening payment..." : sub && sub.status !== "cancelled" && sub.status !== "suspended" ? `Switch to ${p.label}` : `Choose ${p.label}`}
@@ -305,7 +317,6 @@ function BillingInner() {
                   {quote ? (
                     <dl className="text-xs text-white max-w-xs space-y-0.5">
                       <div className="flex justify-between"><dt className="text-os-text-dim">Goes into your wallet</dt><dd>{inr(quote.credit)}</dd></div>
-                      <div className="flex justify-between"><dt className="text-os-text-dim">GST (18%)</dt><dd>{inr(quote.gst)}</dd></div>
                       <div className="flex justify-between"><dt className="text-os-text-dim">Payment gateway fee</dt><dd>{inr(quote.fee)}</dd></div>
                       <div className="flex justify-between border-t border-white/[0.1] pt-1 font-bold"><dt>You pay</dt><dd>{inr(quote.total)}</dd></div>
                     </dl>

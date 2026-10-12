@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: "How is voice paid for?",
-    a: "Voice runs on a prepaid wallet in rupees. Each call is charged at what it actually costs us plus 25%, shown as a breakdown, and each phone number is Rs 220 a month. There is no free voice trial because a number has to be bought for you first. When you add money, the payment gateway fee and GST are added on top so your wallet receives the full amount.",
+    a: "Voice runs on a prepaid wallet in rupees. Each call is charged at what it actually costs us plus 25%, shown as a breakdown, and each phone number is Rs 220 a month. There is no free voice trial because a number has to be bought for you first. When you add money, the payment gateway fee is added on top so your wallet receives the full amount.",
   },
   {
     q: "How do I know which plan I need?",
@@ -242,7 +242,7 @@ export default function PricingPage() {
             <h3 className="font-semibold text-base text-os-ink mb-1">Voice: pay for what you use</h3>
             <p className="text-os-text-dim text-sm leading-relaxed">
               Recharge a rupee wallet. Each call costs what it really costs us plus 25%, with the breakdown shown.
-              A phone number is ₹220 a month. When you recharge, GST and the payment gateway fee are added on top,
+              A phone number is ₹220 a month. When you recharge, the payment gateway fee is added on top,
               so the wallet receives exactly the amount you chose.
             </p>
           </div>
