@@ -1,5 +1,7 @@
 "use client";
 
+import { NumbersPanel } from "@/components/voice/NumbersPanel";
+import { NumberPicker } from "@/components/voice/NumberPicker";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -38,6 +40,7 @@ import {
   type ComplianceRequirement,
   type VoiceApplication,
   type VoiceNumber,
+  type VoiceNumberInfo,
   type OwnedNumber,
   type CallLog,
   type ChannelConnection,
@@ -89,6 +92,11 @@ function VoicePageContent() {
   const [voiceConnections, setVoiceConnections] = useState<ChannelConnection[]>([]);
   const [ownedNumbers, setOwnedNumbers] = useState<OwnedNumber[]>([]);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  // Every connected number with its name, use, rent and recent calls; and which one the
+  // Settings and Call Logs tabs are looking at.
+  const [myNumbers, setMyNumbers] = useState<VoiceNumberInfo[]>([]);
+  const [settingsNumberId, setSettingsNumberId] = useState<string | null>(null);
+  const [logsNumberId, setLogsNumberId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -124,17 +132,19 @@ function VoicePageContent() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [appRes, chRes, logsRes, agentRes, profileRes, stateRes, reqRes, ownedRes] =
+    const [appRes, chRes, logsRes, agentRes, profileRes, stateRes, reqRes, ownedRes, numbersRes] =
       await Promise.allSettled([
         voice.applicationStatus(),
         channels.list(),
-        voice.logs(),
-        voice.agentSettings(),
+        voice.logs(logsNumberId),
+        voice.agentSettings(settingsNumberId),
         account.profile(),
         voice.complianceState(),
         voice.requirements(),
         voice.ownedNumbers(),
+        voice.myNumbers(),
       ]);
+    if (numbersRes.status === "fulfilled") setMyNumbers(numbersRes.value);
     if (profileRes.status === "fulfilled") setBusinessName(profileRes.value.business_name);
     if (ownedRes.status === "fulfilled") setOwnedNumbers(ownedRes.value);
 
@@ -159,6 +169,7 @@ function VoicePageContent() {
     }
     if (logsRes.status === "fulfilled") setCallLogs(logsRes.value);
     if (agentRes.status === "fulfilled") {
+      setSettingsNumberId(agentRes.value.connection_id);
       setAgentSettings(agentRes.value);
       setGreetingDraft(agentRes.value.greeting);
       setLanguageModeDraft(agentRes.value.language_mode);
@@ -248,7 +259,7 @@ function VoicePageContent() {
         copilot_live_suggestions: copilotLiveSuggestionsDraft,
         owner_phone: ownerNumberDraft,
         public_trust_page_enabled: publicTrustPageDraft,
-      });
+      }, settingsNumberId);
       setAgentSettings(updated);
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 3000);
@@ -562,6 +573,15 @@ function VoicePageContent() {
                       No numbers connected yet. Complete compliance, then search below.
                     </p>
                   ) : (
+                    <>
+                    {myNumbers.length > 0 ? (
+                      <NumbersPanel
+                        numbers={myNumbers}
+                        onChanged={() => void loadData()}
+                        onRelease={(n) => void handleReleaseNumber(n)}
+                        releasing={busy?.startsWith("release-") ? busy.slice("release-".length) : null}
+                      />
+                    ) : (
                     <div className="space-y-3">
                       {voiceConnections.map((conn) => (
                         <div
@@ -594,6 +614,8 @@ function VoicePageContent() {
                         </div>
                       ))}
                     </div>
+                    )}
+                    </>
                   )}
                 </GlassCard>
 
@@ -715,6 +737,16 @@ function VoicePageContent() {
                         Per-call telemetry with speech-to-text and text-to-speech cost breakdown.
                       </p>
                     </div>
+                    <NumberPicker
+                      numbers={myNumbers}
+                      value={logsNumberId}
+                      allLabel="All numbers"
+                      label="Show"
+                      onChange={(id) => {
+                        setLogsNumberId(id);
+                        void voice.logs(id).then(setCallLogs).catch(() => undefined);
+                      }}
+                    />
                   </div>
 
                   {callLogs.length === 0 ? (
@@ -747,6 +779,9 @@ function VoicePageContent() {
                                 <p className="font-mono text-[10px] text-os-text-dim">
                                   {log.customer_phone || "—"}
                                 </p>
+                                {myNumbers.length > 1 && log.number_label && (
+                                  <p className="text-[10px] text-cyan-300/80">on {log.number_label}</p>
+                                )}
                               </td>
                               <td className="py-3 px-3">
                                 {log.outcome ? (
@@ -824,10 +859,31 @@ function VoicePageContent() {
                       <div>
                         <h3 className="text-sm font-bold text-white">Agent Speech & Greeting</h3>
                         <p className="text-xs text-os-text-dim mt-0.5">
-                          What callers hear on this connected number.
+                          What callers hear on {agentSettings && myNumbers.length > 1 ? `${agentSettings.label === agentSettings.number ? agentSettings.number : agentSettings.label}` : "this connected number"}.
                         </p>
                       </div>
                     </div>
+
+                    <NumberPicker
+                      numbers={myNumbers}
+                      value={settingsNumberId}
+                      label="Settings for"
+                      onChange={(id) => {
+                        setSettingsNumberId(id);
+                        void voice.agentSettings(id).then((a) => {
+                          setAgentSettings(a);
+                          setGreetingDraft(a.greeting);
+                          setLanguageModeDraft(a.language_mode);
+                          setLanguageDraft(a.language);
+                          setSpeakerDraft(a.speaker);
+                          setStaffNumberDraft(a.staff_phone_number || "");
+                          setCopilotModeDraft(a.copilot_mode);
+                          setCopilotLiveSuggestionsDraft(a.copilot_live_suggestions);
+                          setOwnerNumberDraft(a.owner_phone || "");
+                          setPublicTrustPageDraft(a.public_trust_page_enabled);
+                        }).catch(() => undefined);
+                      }}
+                    />
 
                     {/* Greeting */}
                     <div>

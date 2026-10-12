@@ -5,7 +5,8 @@ import { Phone, Plus, Trash2, Volume2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Skeleton } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { voice, type KeypadMenu, type KeypadOption } from "@/lib/api";
+import { voice, type KeypadMenu, type KeypadOption, type VoiceNumberInfo } from "@/lib/api";
+import { NumberPicker } from "@/components/voice/NumberPicker";
 
 /**
  * The phone keypad menu: "press 1 to talk to our team, press 2 for our address,
@@ -29,13 +30,26 @@ export function KeypadMenuCard() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Each number has its own menu.
+  const [numbers, setNumbers] = useState<VoiceNumberInfo[]>([]);
+  const [numberId, setNumberId] = useState<string | null>(null);
 
   useEffect(() => {
+    voice.myNumbers().then((list) => {
+      setNumbers(list);
+      setNumberId((current) => current ?? list.find((n) => n.default_outbound)?.connection_id ?? list[0]?.connection_id ?? null);
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    setMenu(null);
+    setError(null);
+    setSaved(false);
     voice
-      .keypadMenu()
+      .keypadMenu(numberId)
       .then(setMenu)
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load the menu."));
-  }, []);
+  }, [numberId]);
 
   if (error && !menu) {
     return (
@@ -70,7 +84,7 @@ export function KeypadMenuCard() {
     try {
       const { preview: _preview, ...body } = menu;
       void _preview;
-      setMenu(await voice.saveKeypadMenu(body));
+      setMenu(await voice.saveKeypadMenu(body, numberId));
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the menu.");
@@ -103,6 +117,8 @@ export function KeypadMenuCard() {
           {menu.enabled ? <Badge variant="emerald" dot>On</Badge> : <Badge variant="amber" dot>Off</Badge>}
         </label>
       </div>
+
+      <NumberPicker numbers={numbers} value={numberId} onChange={setNumberId} label="Menu for number" />
 
       <div className="space-y-2">
         {menu.options.length === 0 && (

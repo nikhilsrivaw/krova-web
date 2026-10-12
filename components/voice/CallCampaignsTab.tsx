@@ -10,6 +10,8 @@ import {
   parseNumberList,
   callCampaigns,
   callScripts,
+  voice,
+  type VoiceNumberInfo,
   type AudienceSegment,
   type AudienceKey,
   type CallCampaignPreview,
@@ -41,6 +43,13 @@ export function CallCampaignsTab() {
   const [scripts, setScripts] = useState<CallScript[]>([]);
   const [callScriptId, setCallScriptId] = useState<string | null>(null);
   const [purpose, setPurpose] = useState<CallCampaignPurpose | "">("");
+  // "" = choose automatically (the number whose series suits the purpose)
+  const [fromNumber, setFromNumber] = useState("");
+  const [myNumbers, setMyNumbers] = useState<VoiceNumberInfo[]>([]);
+
+  useEffect(() => {
+    voice.myNumbers().then(setMyNumbers).catch(() => undefined);
+  }, []);
 
   const [previewData, setPreviewData] = useState<CallCampaignPreview | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -130,6 +139,7 @@ export function CallCampaignsTab() {
         objective: objective.trim(),
         call_script_id: callScriptId ?? undefined,
         purpose,
+        connection_id: fromNumber || undefined,
       });
       await callCampaigns.send(created.id);
       setIsConfirmOpen(false);
@@ -265,9 +275,28 @@ export function CallCampaignsTab() {
               <option value="promotional">Promotional call (140 series)</option>
             </select>
             <p className="text-[11px] text-os-text-dim mt-1.5">
-              Indian rules require the number series to match the purpose. Set your series in Settings.
+              Indian rules require the number series to match the purpose.
             </p>
           </div>
+
+          {myNumbers.filter((n) => n.use !== "inbound").length > 1 && (
+            <div>
+              <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">Call from</label>
+              <select
+                value={fromNumber}
+                onChange={(e) => setFromNumber(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+              >
+                <option value="">Choose automatically (the number that suits the purpose)</option>
+                {myNumbers.filter((n) => n.use !== "inbound").map((n) => (
+                  <option key={n.connection_id} value={n.connection_id}>
+                    {n.label === n.number ? n.number : `${n.label} - ${n.number}`}
+                    {n.series_label ? ` (${n.series_label})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">

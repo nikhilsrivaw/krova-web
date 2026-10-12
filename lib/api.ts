@@ -1544,6 +1544,9 @@ export type CallLog = {
     plivo_voice_paise?: number;
     plivo_cost_source?: string;
   };
+  /** Which of the business's numbers this call used. */
+  number?: string | null;
+  number_label?: string | null;
   hangup_cause: string | null;
   started_at: string;
   escalated: boolean;
@@ -1634,16 +1637,30 @@ export const voice = {
   /** Every number Plivo says this subaccount owns, not just the ones Krova's own ChannelConnection rows know about - see the backend endpoint's own docstring. */
   ownedNumbers: () => api.get<OwnedNumber[]>("/voice-onboarding/numbers/owned"),
 
-  logs: () => api.get<CallLog[]>("/voice-onboarding/logs"),
+  /** Pass a connection id to see one number's calls only. */
+  logs: (connectionId?: string | null) =>
+    api.get<CallLog[]>(`/voice-onboarding/logs${connectionId ? `?connection_id=${connectionId}` : ""}`),
 
-  agentSettings: () => api.get<AgentSettings>("/voice-onboarding/agent-settings"),
+  /** Every connected number with its name, use, rent and the last 30 days. */
+  myNumbers: () => api.get<VoiceNumberInfo[]>("/voice-onboarding/numbers/mine"),
 
-  /** The phone keypad menu ("press 1 for ..."). Needs a connected voice number. */
-  keypadMenu: () => api.get<KeypadMenu>("/voice-onboarding/keypad-menu"),
-  saveKeypadMenu: (menu: Omit<KeypadMenu, "preview">) =>
-    api.put<KeypadMenu>("/voice-onboarding/keypad-menu", menu),
+  /** Settings of one number (the default one if none is named). */
+  agentSettings: (connectionId?: string | null) =>
+    api.get<AgentSettings>(`/voice-onboarding/agent-settings${connectionId ? `?connection_id=${connectionId}` : ""}`),
+
+  /** The phone keypad menu ("press 1 for ...") of one number. Needs a connected voice number. */
+  keypadMenu: (connectionId?: string | null) =>
+    api.get<KeypadMenu>(`/voice-onboarding/keypad-menu${connectionId ? `?connection_id=${connectionId}` : ""}`),
+  saveKeypadMenu: (menu: Omit<KeypadMenu, "preview">, connectionId?: string | null) =>
+    api.put<KeypadMenu>(`/voice-onboarding/keypad-menu${connectionId ? `?connection_id=${connectionId}` : ""}`, menu),
 
   updateAgentSettings: (data: {
+    /** This number's own name, e.g. "Sales". */
+    label?: string;
+    /** What this number is for. An incoming-only number is never used for outgoing calls. */
+    use?: "both" | "inbound" | "outbound";
+    /** Make outgoing calls go out from this number unless something more specific applies. */
+    default_outbound?: boolean;
     greeting?: string;
     /** One of the codes from agentSettings().languages - not a fixed union, the real list comes from the server. */
     language?: string;
@@ -1659,7 +1676,8 @@ export const voice = {
     owner_phone?: string;
     /** Publish a public, no-login page of real call-answering stats at /trust/voice/{business_id}. Off by default. */
     public_trust_page_enabled?: boolean;
-  }) => api.patch<AgentSettings>("/voice-onboarding/agent-settings", data),
+  }, connectionId?: string | null) =>
+    api.patch<AgentSettings>(`/voice-onboarding/agent-settings${connectionId ? `?connection_id=${connectionId}` : ""}`, data),
 
   previewVoice: (speaker: string, language: string) =>
     api.post<{ audio_base64: string; format: string }>("/voice-onboarding/preview-voice", {
@@ -1669,7 +1687,29 @@ export const voice = {
 
 export type LanguageOption = { code: string; label: string };
 
+export type VoiceNumberInfo = {
+  connection_id: string;
+  number: string;
+  /** What the owner calls it; the number itself if unnamed. */
+  label: string;
+  use: "both" | "inbound" | "outbound";
+  /** Outgoing calls go out from here unless a campaign or purpose says otherwise. */
+  default_outbound: boolean;
+  series: string | null;
+  series_label: string | null;
+  rent_paise: number;
+  calls_30d: number;
+  cost_paise_30d: number;
+};
+
 export type AgentSettings = {
+  /** Which number these settings belong to. */
+  connection_id: string;
+  number: string;
+  label: string;
+  use: "both" | "inbound" | "outbound";
+  default_outbound: boolean;
+  series: string | null;
   greeting: string;
   /** A Sarvam bulbul:v3 language code - see `languages` for the real, current list. Never hardcode one here. */
   language: string;
@@ -2243,8 +2283,10 @@ export type CallCampaignRequest = {
   objective: string;
   /** Set to run a fixed CallScript instead of an improvised call. */
   call_script_id?: string;
-  /** Must match the business's outbound number series (service = 080/022, promotional = 140). */
+  /** Must match the series of the number used (service = 080/022, promotional = 140). */
   purpose?: CallCampaignPurpose;
+  /** The number to call from. Leave out to use the one whose series suits the purpose. */
+  connection_id?: string;
 };
 
 export type CallCampaignPurpose = "service" | "promotional";
@@ -2272,6 +2314,7 @@ export type CallCampaign = {
   objective: string;
   call_script_id: string | null;
   purpose?: CallCampaignPurpose | null;
+  connection_id?: string | null;
   status: "draft" | "sending" | "sent" | "paused" | "cancelled" | "failed";
   recipients: number;
   /** Calls actually placed (jobs enqueued), not calls that were answered. */
