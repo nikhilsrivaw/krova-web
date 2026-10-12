@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { account } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 
 /**
  * Who is signed in, as far as what they may change. `supervisor` is the owner and the admins;
@@ -9,17 +10,22 @@ import { account } from "@/lib/api";
  * supervisor, so a setup control never flashes up for someone who may not use it.
  *
  * Hiding a button is only courtesy - the API refuses an agent regardless.
+ *
+ * The answer is remembered per sign-in (keyed on the access token), so signing out and in as
+ * someone else in the same tab never shows the next person the last person's role.
  */
-let cached: Promise<string | null> | null = null;
+let cached: { token: string | null; promise: Promise<string | null> } | null = null;
 
 function loadRole(): Promise<string | null> {
-  if (!cached) {
-    cached = account.profile().then((p) => p.role ?? null).catch(() => {
+  const token = getAccessToken();
+  if (!cached || cached.token !== token) {
+    const promise = account.profile().then((p) => p.role ?? null).catch(() => {
       cached = null;
       return null;
     });
+    cached = { token, promise };
   }
-  return cached;
+  return cached.promise;
 }
 
 export function useRole(): { role: string | null; supervisor: boolean; ready: boolean } {

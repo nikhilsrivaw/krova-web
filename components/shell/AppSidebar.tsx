@@ -462,7 +462,7 @@ export function AppSidebar({
                 {businessName}
               </p>
               <p className="text-[10px] font-mono text-os-text-dim capitalize truncate">
-                {vertical} Vertical
+                {role === "agent" ? "Team member" : role ?? "Signing in"} · {vertical}
               </p>
             </div>
           </div>
