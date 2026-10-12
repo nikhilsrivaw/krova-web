@@ -153,6 +153,7 @@ export function AppSidebar({
     },
     {
       label: "WhatsApp",
+      requiresRole: ["owner", "admin"],
       href: "/whatsapp",
       icon: MessageSquare,
       accent: "text-seal-bright",
@@ -160,6 +161,7 @@ export function AppSidebar({
     },
     {
       label: "Instagram",
+      requiresRole: ["owner", "admin"],
       href: "/instagram",
       icon: Instagram,
       accent: "text-pink-400",
@@ -167,6 +169,7 @@ export function AppSidebar({
     },
     {
       label: "Voice Agent",
+      requiresRole: ["owner", "admin"],
       href: "/voice",
       icon: PhoneCall,
       accent: "text-cyan-400",

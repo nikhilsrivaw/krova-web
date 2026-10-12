@@ -21,6 +21,7 @@ import {
   Headset,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { OwnerAdminOnly } from "@/components/shell/OwnerAdminOnly";
 import { PostCallRulesTab } from "@/components/voice/PostCallRulesTab";
 import { CallScriptsTab } from "@/components/voice/CallScriptsTab";
 import { NumberRequestForm } from "@/components/voice/NumberRequestForm";
@@ -78,7 +79,7 @@ const SENTIMENT_VARIANT: Record<NonNullable<CallLog["sentiment"]>, "emerald" | "
   neutral: "default",
 };
 
-export default function VoicePage() {
+function VoicePageContent() {
   const [activeTab, setActiveTab] = useState<"compliance" | "numbers" | "logs" | "settings" | "automations" | "scripts">("compliance");
   const [subaccount, setSubaccount] = useState<Subaccount | null>(null);
   const [requirement, setRequirement] = useState<ComplianceRequirement | null>(null);
@@ -1183,5 +1184,13 @@ export default function VoicePage() {
         </Drawer>
       </div>
     </AppLayout>
+  );
+}
+
+export default function VoicePage() {
+  return (
+    <OwnerAdminOnly title="Voice Agent">
+      <VoicePageContent />
+    </OwnerAdminOnly>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Instagram, RefreshCw, ImagePlus, GalleryHorizontal, Plus, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { OwnerAdminOnly } from "@/components/shell/OwnerAdminOnly";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -45,7 +46,7 @@ const INSTAGRAM_METRIC_LABELS: Record<string, string> = {
   website_clicks: "Website Clicks",
 };
 
-export default function InstagramPage() {
+function InstagramPageContent() {
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -918,5 +919,13 @@ export default function InstagramPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+export default function InstagramPage() {
+  return (
+    <OwnerAdminOnly title="Instagram">
+      <InstagramPageContent />
+    </OwnerAdminOnly>
   );
 }

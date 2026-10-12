@@ -28,6 +28,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { OwnerAdminOnly } from "@/components/shell/OwnerAdminOnly";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -56,7 +57,7 @@ const TIER_LABELS: Record<string, string> = {
   TIER_10K: "10,000/day",
 };
 
-export default function WhatsAppPage() {
+function WhatsAppPageContent() {
   const [activeTab, setActiveTab] = useState<"overview" | "templates" | "compose" | "flows">("overview");
 
   // Read once on mount so another page can deep-link straight to a tab
@@ -1783,5 +1784,13 @@ export default function WhatsAppPage() {
         </Modal>
       </div>
     </AppLayout>
+  );
+}
+
+export default function WhatsAppPage() {
+  return (
+    <OwnerAdminOnly title="WhatsApp">
+      <WhatsAppPageContent />
+    </OwnerAdminOnly>
   );
 }
