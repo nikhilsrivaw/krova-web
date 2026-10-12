@@ -262,6 +262,7 @@ export function AppSidebar({
     },
     {
       label: "Catalogue",
+      requiresRole: ["owner", "admin"],
       href: "/products",
       icon: Boxes,
       accent: "text-brass-bright",
@@ -290,6 +291,7 @@ export function AppSidebar({
     },
     {
       label: "Forms",
+      requiresRole: ["owner", "admin"],
       href: "/forms",
       icon: ClipboardList,
       accent: "text-brass-bright",
@@ -334,6 +336,7 @@ export function AppSidebar({
     },
     {
       label: "Settings",
+      requiresRole: ["owner", "admin"],
       href: "/settings",
       icon: Settings,
       shortcut: "G S",

@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { PendingWrapups } from "@/components/team/PendingWrapups";
 import {
+  account,
   ledger,
   approvals,
   analytics,
@@ -67,12 +68,16 @@ export default function DashboardPage() {
       // waAccount.readiness() is intentionally outside the error-reporting
       // group below - it 409s for any business that simply hasn't connected
       // WhatsApp yet, which is a normal state, not a dashboard load failure.
+      // Business-wide analytics and the WhatsApp set-up check are for the owner and admins; asking
+      // for them as a team member would only put an error banner on their home screen.
+      const me = await account.profile().catch(() => null);
+      const supervisor = me?.role === "owner" || me?.role === "admin";
       const [sumRes, draftsRes, overdueRes, overRes, readinessRes] = await Promise.allSettled([
         ledger.summary(),
         approvals.list("pending"),
         ledger.commitments({ overdue_only: true, direction: "they_owe", limit: 5 }),
-        analytics.overview(),
-        waAccount.readiness(),
+        supervisor ? analytics.overview() : Promise.reject(new Error("skipped")),
+        supervisor ? waAccount.readiness() : Promise.reject(new Error("skipped")),
       ]);
       if (!mounted) return;
 
@@ -82,7 +87,7 @@ export default function DashboardPage() {
       if (overRes.status === "fulfilled") setOverview(overRes.value);
       if (readinessRes.status === "fulfilled") setWaReadiness(readinessRes.value);
 
-      const failed = [sumRes, draftsRes, overdueRes, overRes].find(
+      const failed = [sumRes, draftsRes, overdueRes, ...(supervisor ? [overRes] : [])].find(
         (r) => r.status === "rejected",
       );
       if (failed && failed.status === "rejected") {

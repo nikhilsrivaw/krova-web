@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/lib/useRole";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Clock, UserPlus, Check, SkipForward, PhoneCall, Sun, Moon, Siren, Lock, LockOpen, Tablet, Copy, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -45,6 +46,7 @@ const SHIFT_ICON: Record<Shift, typeof Sun> = {
 const POLL_MS = 10000;
 
 export default function QueuePage() {
+  const { supervisor } = useRole();
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [shifts, setShifts] = useState<ShiftSession[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -293,6 +295,7 @@ export default function QueuePage() {
           })}
         </div>
 
+        {supervisor && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <Tablet className="w-4 h-4 text-brass" />
@@ -346,6 +349,7 @@ export default function QueuePage() {
             </button>
           )}
         </GlassCard>
+        )}
 
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">

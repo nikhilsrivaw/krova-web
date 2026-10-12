@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/lib/useRole";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -73,6 +74,7 @@ function parseContactsCsv(text: string): { phone: string; name?: string }[] {
 }
 
 export default function CustomersPage() {
+  const { supervisor } = useRole();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -534,26 +536,30 @@ export default function CustomersPage() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={exportCustomersCsv}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setImportError(null);
-              setImportResult(null);
-              setIsImportModalOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            Import Contacts
-          </button>
+          {supervisor && (
+            <>
+              <button
+                type="button"
+                onClick={exportCustomersCsv}
+                className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportError(null);
+                  setImportResult(null);
+                  setIsImportModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Import Contacts
+              </button>
+            </>
+          )}
         </div>
       }
     >

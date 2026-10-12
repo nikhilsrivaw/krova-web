@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/lib/useRole";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -70,6 +71,7 @@ const APPOINTMENT_BADGE: Record<Appointment["status"], "emerald" | "amber" | "ro
 };
 
 export default function SchedulingPage() {
+  const { supervisor } = useRole();
   const [vertical, setVertical] = useState<string | null>(null);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [labels, setLabels] = useState<SchedulingLabels>(DEFAULT_LABELS);
@@ -392,14 +394,16 @@ export default function SchedulingPage() {
               Book {capitalize(labels.booking_noun)}
             </button>
           )}
-          <button
-            type="button"
-            onClick={openProviderModal}
-            className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add {providerLabel}
-          </button>
+          {supervisor && (
+            <button
+              type="button"
+              onClick={openProviderModal}
+              className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add {providerLabel}
+            </button>
+          )}
         </div>
       }
     >
@@ -447,7 +451,7 @@ export default function SchedulingPage() {
                 icon={User}
                 title={`No ${providerLabelPlural.toLowerCase()} yet`}
                 description={`Add a ${providerLabel.toLowerCase()} and their weekly hours so customers can actually book a real slot.`}
-                action={{ label: `Add ${providerLabel}`, onClick: openProviderModal }}
+                action={supervisor ? { label: `Add ${providerLabel}`, onClick: openProviderModal } : undefined}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -476,9 +480,9 @@ export default function SchedulingPage() {
                         className="text-xs font-semibold text-brass-bright hover:text-brass flex items-center gap-1.5 cursor-pointer"
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        Manage Hours
+                        {supervisor ? "Manage Hours" : "Days off"}
                       </button>
-                      {d.active && (
+                      {supervisor && d.active && (
                         <button
                           type="button"
                           onClick={() => handleDeactivateProvider(d.id)}
@@ -624,12 +628,14 @@ export default function SchedulingPage() {
         <Modal
           isOpen={!!hoursDoctor}
           onClose={() => setHoursDoctor(null)}
-          title={`${hoursDoctor?.name || ""}'s weekly hours`}
-          subtitle="Every real slot a customer can book comes from these rows - nothing else."
+          title={supervisor ? `${hoursDoctor?.name || ""}'s weekly hours` : `${hoursDoctor?.name || ""} - days off`}
+          subtitle={supervisor
+            ? "Every real slot a customer can book comes from these rows - nothing else."
+            : "Mark a day off here and no one can book that day. Weekly hours are set by the owner."}
           maxWidth="lg"
         >
           <div className="space-y-4">
-            {rules.length === 0 ? (
+            {!supervisor ? null : rules.length === 0 ? (
               <p className="text-xs text-os-text-dim">No hours set yet - add at least one below.</p>
             ) : (
               <div className="space-y-2">
@@ -652,6 +658,7 @@ export default function SchedulingPage() {
               </div>
             )}
 
+            {supervisor && (
             <form onSubmit={handleAddRule} className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/[0.06]">
               <div>
                 <label className="block text-[10px] font-mono uppercase text-os-text-dim mb-1">Day</label>
@@ -677,6 +684,7 @@ export default function SchedulingPage() {
                 </button>
               </div>
             </form>
+            )}
 
             <div className="pt-4 border-t border-white/[0.06] space-y-3">
               <div className="flex items-center gap-2">
