@@ -7,6 +7,7 @@ import { approvals, escalations, ledger, team, teamSettings, type LedgerSummary,
 import { appPath } from "@/lib/app-nav";
 import { getUserId } from "@/lib/auth";
 import { PhoneField } from "@/components/team/PhoneField";
+import { PendingWrapups } from "@/components/team/PendingWrapups";
 
 function formatPaise(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -110,6 +111,7 @@ export default function TodayPage() {
               )}
             </div>
           )}
+          <PendingWrapups tone="light" />
           {mine && mine.chats + mine.escalations + mine.cases > 0 && (
             <Link href={appPath("/inbox")} className="block rounded-2xl bg-os-card border border-os-border p-4">
               <p className="text-[10px] font-mono uppercase tracking-wide text-os-text-dim mb-2">Mine right now</p>

@@ -64,6 +64,7 @@ import {
   type CustomerSummary,
 } from "@/lib/api";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
+import { CallCustomer } from "@/components/team/CallCustomer";
 
 /** SLA-style countdown for the WhatsApp 24h free-form reply window - same
  * "don't let a deadline pass silently" pattern as the dashboard's pending-
@@ -1117,7 +1118,12 @@ export default function ConversationsPage() {
             </div>
 
             {drawerTab === "briefing" && activeThread && (
-              <CustomerBriefing customerId={activeThread.customer_id} />
+              <div className="space-y-3">
+                {activeThread.identities.some((i) => i.kind === "phone") && (
+                  <CallCustomer customerId={activeThread.customer_id} customerName={activeThread.name} />
+                )}
+                <CustomerBriefing customerId={activeThread.customer_id} />
+              </div>
             )}
 
             {drawerTab === "overview" && (

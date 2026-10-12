@@ -495,6 +495,9 @@ export type LeadRow = {
   status: "received" | "duplicate" | "no_phone";
   customer_id: string | null;
   received_at: string;
+  /** When a person first answered by message or call. null = nobody yet. */
+  first_touch_at?: string | null;
+  assigned_to_name?: string | null;
 };
 
 export type LeadListResult = {
@@ -965,7 +968,38 @@ export type TeamSettings = {
   /** First-reply target in minutes; null = no reminders. */
   sla_minutes: number | null;
 };
-export type MyWork = { chats: number; drafts_waiting: number; escalations: number; cases: number };
+export type MyWork = {
+  chats: number; drafts_waiting: number; escalations: number; cases: number;
+  /** Calls I spoke on and have not written up. */
+  calls_to_write_up?: number;
+};
+
+export type CallState = {
+  id: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  /** ringing_you -> talking -> ended */
+  state: "ringing_you" | "talking" | "ended";
+  direction: "placed" | "received";
+  started_at: string;
+  answered_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  reached_customer: boolean | null;
+  wrapped_up: boolean;
+};
+
+export type WrapUpPromise = { description: string; due_on?: string | null; kind?: string };
+
+export const calls = {
+  /** Rings my phone; the customer is dialled when I pick up. */
+  start: (customerId: string) => api.post<CallState>("/calls/start", { customer_id: customerId }),
+  get: (id: string) => api.get<CallState>(`/calls/${id}`),
+  /** Calls I spoke on and have not written up. */
+  pendingWrapups: () => api.get<CallState[]>("/calls/pending/wrapup"),
+  wrapUp: (id: string, body: { note: string; promises: WrapUpPromise[] }) =>
+    api.post<{ ok: boolean; promises_filed: number }>(`/calls/${id}/wrapup`, body),
+};
 
 export const teamSettings = {
   get: () => api.get<TeamSettings>("/team/settings"),

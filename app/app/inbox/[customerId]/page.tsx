@@ -30,6 +30,7 @@ import { appPath } from "@/lib/app-nav";
 import { useThreadPresence } from "@/lib/useThreadPresence";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
+import { CallCustomer } from "@/components/team/CallCustomer";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -243,6 +244,12 @@ export default function AppConversationThreadPage() {
           </button>
         )}
       </div>
+
+      {thread && phoneOf(thread.identities) && (
+        <div className="px-3 pt-3">
+          <CallCustomer customerId={thread.customer_id} customerName={thread.name} tone="light" />
+        </div>
+      )}
 
       {thread && (
         <div className="px-3 pt-3">

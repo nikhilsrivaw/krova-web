@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { MessageSquare, PhoneCall, Mail, Instagram, Globe } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
+import { PendingWrapups } from "@/components/team/PendingWrapups";
 import {
   ledger,
   approvals,
@@ -110,6 +111,9 @@ export default function DashboardPage() {
 
   return (
     <AppLayout title="Command Center" subtitle="Your business overview" appearance="refined" showPageIntro={false}>
+      <div className="mb-4 empty:hidden">
+        <PendingWrapups />
+      </div>
       <DashboardOverview
         owedToUs={owedToUs}
         overduePaise={overduePaise}

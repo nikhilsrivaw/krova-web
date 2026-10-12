@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { leads, type LeadRow, type LeadSourceCount } from "@/lib/api";
+import { CallCustomer } from "@/components/team/CallCustomer";
 
 const SOURCE_LABEL: Record<string, string> = {
   justdial: "Justdial",
@@ -36,6 +37,29 @@ const STATUS_BADGE: Record<string, "emerald" | "amber" | "cyan"> = {
   duplicate: "cyan",
   no_phone: "amber",
 };
+
+/** How fast a person answered this lead - or how long it has been waiting. */
+function TouchLine({ lead }: { lead: LeadRow }) {
+  if (!lead.customer_id) return null;
+  const received = new Date(lead.received_at).getTime();
+  if (lead.first_touch_at) {
+    const mins = Math.max(0, Math.round((new Date(lead.first_touch_at).getTime() - received) / 60000));
+    return (
+      <p className="text-[11px] text-emerald-300">
+        Answered {mins < 1 ? "within a minute" : `after ${mins} min`}
+        {lead.assigned_to_name ? ` - ${lead.assigned_to_name}` : ""}
+      </p>
+    );
+  }
+  const waited = Math.max(0, Math.round((Date.now() - received) / 60000));
+  const late = waited >= 5;
+  return (
+    <p className={`text-[11px] ${late ? "text-rose-300" : "text-amber-200"}`}>
+      Nobody has answered yet - waiting {waited < 60 ? `${waited} min` : `${Math.floor(waited / 60)} h`}
+      {lead.assigned_to_name ? ` (with ${lead.assigned_to_name})` : ""}
+    </p>
+  );
+}
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -211,6 +235,12 @@ export default function LeadsPage() {
                       {lead.email ? ` · ${lead.email}` : ""}
                     </p>
                     {lead.query && <p className="text-xs text-white/80">{lead.query}</p>}
+                    <TouchLine lead={lead} />
+                    {lead.customer_id && lead.phone && (
+                      <div className="pt-1.5">
+                        <CallCustomer customerId={lead.customer_id} customerName={lead.name} />
+                      </div>
+                    )}
                   </div>
                   <span className="text-[11px] text-os-text-dim font-mono shrink-0">
                     {timeAgo(lead.received_at)}
