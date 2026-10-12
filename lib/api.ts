@@ -906,10 +906,17 @@ export type TeamMember = {
   locked?: boolean | null;
   /** False = Away: new chats are not routed to them. */
   available?: boolean;
+  /** Where calls for this person ring (digits, no plus). Owner / admin, and the person themselves. */
+  phone?: string | null;
 };
 
 export const team = {
   list: () => api.get<TeamMember[]>("/team"),
+  /** Owner / admin: set where calls for a member ring. Empty clears it. */
+  setMemberPhone: (userId: string, phone: string) =>
+    api.patch<{ phone: string | null }>(`/team/members/${userId}/phone`, { phone }),
+  /** Where calls for me ring. */
+  setMyPhone: (phone: string) => api.put<{ phone: string | null }>("/team/me/phone", { phone }),
   /** Owner / admin. The password in the result is shown once and never again. */
   add: (body: { full_name: string; handle: string; role: "admin" | "agent"; password?: string }) =>
     api.post<TeamCredentials>("/team/members", body),

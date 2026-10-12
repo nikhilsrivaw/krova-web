@@ -6,6 +6,7 @@ import { CheckSquare, Siren, Wallet, ArrowRight, Inbox as InboxIcon } from "luci
 import { approvals, escalations, ledger, team, teamSettings, type LedgerSummary, type MyWork } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 import { getUserId } from "@/lib/auth";
+import { PhoneField } from "@/components/team/PhoneField";
 
 function formatPaise(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -25,6 +26,7 @@ export default function TodayPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [mine, setMine] = useState<MyWork | null>(null);
   const [away, setAway] = useState<boolean | null>(null);
+  const [myPhone, setMyPhone] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +45,7 @@ export default function TodayPage() {
       team.list().then((list) => {
         const me = list.find((m) => m.user_id === getUserId());
         if (mounted && me && me.role === "agent") setAway(me.available === false);
+        if (mounted && me) setMyPhone(me.phone ?? null);
       }).catch(() => {});
       setIsLoading(false);
     })();
@@ -87,6 +90,25 @@ export default function TodayPage() {
             >
               {away ? "You are Away - no new chats come to you. Tap to go available." : "You are available for new chats. Tap to go Away."}
             </button>
+          )}
+          {myPhone !== undefined && (
+            <div className="rounded-2xl border border-os-border bg-os-card p-3.5">
+              <PhoneField
+                tone="light"
+                value={myPhone}
+                label="Calls for you ring on"
+                onSave={async (phone) => {
+                  const res = await team.setMyPhone(phone);
+                  setMyPhone(res.phone);
+                  return res.phone;
+                }}
+              />
+              {!myPhone && (
+                <p className="mt-2 text-[11px] text-os-text-dim">
+                  Add your number to get customers put through to you and to call customers from here.
+                </p>
+              )}
+            </div>
           )}
           {mine && mine.chats + mine.escalations + mine.cases > 0 && (
             <Link href={appPath("/inbox")} className="block rounded-2xl bg-os-card border border-os-border p-4">

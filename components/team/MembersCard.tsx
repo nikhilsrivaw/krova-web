@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/EmptyState";
+import { PhoneField } from "@/components/team/PhoneField";
 import { account, team, teamSettings, type TeamCredentials, type TeamMember, type TeamSettings } from "@/lib/api";
 import { getUserId } from "@/lib/auth";
 
@@ -216,6 +217,20 @@ export function MembersCard() {
                   {m.team_id ? `ID ${m.team_id}` : m.email}
                   {" - signed in "}{relative(m.last_login_at)}
                 </p>
+                {(isOwner || myRole === "admin" || m.user_id === me) && (
+                  <div className="mt-2 max-w-xs">
+                    <PhoneField
+                      value={m.phone}
+                      onSave={async (phone) => {
+                        const res = m.user_id === me
+                          ? await team.setMyPhone(phone)
+                          : await team.setMemberPhone(m.user_id, phone);
+                        setMembers((list) => list.map((x) => (x.user_id === m.user_id ? { ...x, phone: res.phone } : x)));
+                        return res.phone;
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {m.role === "agent" && m.available === false && <Badge variant="amber" size="sm">Away</Badge>}
