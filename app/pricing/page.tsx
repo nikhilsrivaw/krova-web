@@ -7,13 +7,14 @@ import { Check, Phone, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
+import { PLAN_GUIDE, guideLines, type PlanKey } from "@/lib/planGuide";
 
 // Prices are per month, before 18% GST. The same numbers live in
 // krova-platform/shared/billing/plans.py - change them together.
-const PLANS = [
-  { key: "starter", name: "Starter", tagline: "For one-person and small teams", base: 2999 },
-  { key: "pro", name: "Pro", tagline: "For growing businesses", base: 5999, highlight: true, badge: "Most popular" },
-  { key: "scale", name: "Scale", tagline: "For busy, multi-person teams", base: 9999 },
+const PLANS: { key: PlanKey; name: string; base: number; highlight?: boolean; badge?: string }[] = [
+  { key: "starter", name: "Starter", base: 2999 },
+  { key: "pro", name: "Pro", base: 5999, highlight: true, badge: "Most popular" },
+  { key: "scale", name: "Scale", base: 9999 },
 ];
 
 const INCLUDED = [
@@ -36,6 +37,14 @@ const FAQS = [
   {
     q: "How is voice paid for?",
     a: "Voice runs on a prepaid wallet in rupees. Each call is charged at what it actually costs us plus 25%, shown as a breakdown, and each phone number is Rs 220 a month. There is no free voice trial because a number has to be bought for you first. When you add money, the payment gateway fee and GST are added on top so your wallet receives the full amount.",
+  },
+  {
+    q: "How do I know which plan I need?",
+    a: "Count the customer messages you get in a month on WhatsApp and Instagram. Up to about 1,000 is Starter, up to about 2,000 is Pro, up to about 3,500 is Scale. Roughly six messages make one enquiry, so Starter suits five or six new enquiries a day. If you are between sizes, start with the smaller one - moving up is one click.",
+  },
+  {
+    q: "Are all three channels in every plan?",
+    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. The plans differ in how much volume, how many phone lines, how many team logins and how much of your own information the AI reads.",
   },
   {
     q: "Is there a free trial?",
@@ -102,7 +111,7 @@ export default function PricingPage() {
                 </span>
               )}
               <span className="text-lg font-semibold text-os-ink mb-1">{plan.name}</span>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">{plan.tagline}</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">{PLAN_GUIDE[plan.key].tagline}</p>
               <div className="mb-6 pb-6 border-b border-os-border">
                 <div className="flex items-end gap-1 mb-1">
                   <span className="font-serif text-4xl font-semibold tracking-tight text-os-ink">{inr(plan.base)}</span>
@@ -110,7 +119,17 @@ export default function PricingPage() {
                 </div>
                 <p className="text-xs text-os-text-dim">+ 18% GST = {inr(Math.round(plan.base * 1.18))}</p>
               </div>
-              <Link href={`/signup?plan=${plan.key}`}>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-3">Built for</p>
+              <ul className="mb-6 space-y-2">
+                {guideLines(plan.key).map((line) => (
+                  <li key={line} className="flex items-start gap-2.5">
+                    <Check size={12} className="mt-1 shrink-0 text-seal-bright" />
+                    <span className="text-xs leading-relaxed text-os-ink/90">{line}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mb-6 text-xs leading-relaxed text-os-text-dim">{PLAN_GUIDE[plan.key].why}</p>
+              <Link href={`/signup?plan=${plan.key}`} className="mt-auto">
                 <button
                   className={`w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
                     plan.highlight
@@ -134,6 +153,44 @@ export default function PricingPage() {
                 <span className="text-xs leading-relaxed text-os-ink/90">{line}</span>
               </li>
             ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 pb-12">
+        <div className="rounded-xl border border-os-border bg-os-card p-7">
+          <h2 className="text-sm font-semibold text-os-ink mb-4">How we sized the plans</h2>
+          <ul className="space-y-3 text-xs leading-relaxed text-os-ink/90">
+            <li>
+              <strong>A customer message</strong> is one message a customer sends you on WhatsApp or Instagram that the AI reads and
+              answers. Voice is separate and runs on the wallet below.
+            </li>
+            <li>
+              <strong>About six messages make one enquiry</strong> - a question, a price, a booking, a follow-up. So 1,000 messages is
+              roughly 170 new people a month, or five to six a day.
+            </li>
+            <li>
+              <strong>Why the sizes grow with the price.</strong> Every message the AI answers costs real money to read and reply to. Each
+              plan is sized so the rate per message stays about the same (₹3.00, then ₹2.86 at Scale), instead of
+              charging a small business for room it will never use.
+            </li>
+            <li>
+              <strong>Why the AI reads more of your own information on bigger plans.</strong> Before every reply it reads all your prices,
+              FAQs and policies. The more it reads, the more each reply costs to produce, so the amount grows with the plan.
+              About nine pages is plenty for a price list, hours and a dozen policies.
+            </li>
+            <li>
+              <strong>The same on every plan:</strong> the AI looks at the last 20 messages of the chat before it replies, checks the last
+              40 for promises made, and keeps a running summary of each customer built from up to 200 messages.
+            </li>
+            <li>
+              <strong>Phone lines</strong> - Starter has one. Pro has three, for example a main line, a sales line and a branch. Scale has five.
+              Each line is ₹220 a month, paid from the wallet.
+            </li>
+            <li>
+              <strong>If you grow past your plan,</strong> nothing is switched off overnight. If your business regularly goes beyond its
+              size we will talk to you about moving up.
+            </li>
           </ul>
         </div>
       </section>

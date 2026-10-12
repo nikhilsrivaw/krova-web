@@ -1,5 +1,6 @@
 "use client";
 
+import { guideLines } from "@/lib/planGuide";
 import { UnlockHero } from "@/components/billing/UnlockHero";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -189,6 +190,13 @@ function BillingInner() {
                           <p className="text-2xl font-bold text-white">{inr(p.base)}<span className="text-xs font-normal text-os-text-dim"> /month</span></p>
                           <p className="text-[11px] text-os-text-dim">+ {inr(p.gst)} GST = {inr(p.total)}</p>
                         </div>
+                        <ul className="space-y-1.5 border-t border-white/[0.08] pt-3">
+                          {guideLines(p.key).map((line) => (
+                            <li key={line} className="flex items-start gap-1.5 text-[11px] leading-snug text-os-text-dim">
+                              <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-300" /> {line}
+                            </li>
+                          ))}
+                        </ul>
                         {current ? (
                           <p className="flex items-center gap-1 text-xs text-emerald-300"><Check className="w-3.5 h-3.5" /> Your plan</p>
                         ) : (
