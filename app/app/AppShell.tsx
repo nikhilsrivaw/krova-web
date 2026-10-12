@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account, approvals, type UserProfile } from "@/lib/api";
 import { isSignedIn, clearSession } from "@/lib/auth";
+import { useSessionWatch } from "@/lib/useSessionWatch";
 import { appPath, isAppSubdomain } from "@/lib/app-nav";
 import { BottomNav } from "@/components/app-shell/BottomNav";
 import { AppTopBar } from "@/components/app-shell/AppTopBar";
@@ -19,6 +20,7 @@ import { AppTopBar } from "@/components/app-shell/AppTopBar";
  * appPath()'s login route is the one route here that doesn't need a session.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  useSessionWatch();
   const router = useRouter();
   const pathname = usePathname();
   // Public routes skip the session guard: the login page, and the Google

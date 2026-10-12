@@ -1,5 +1,6 @@
 "use client";
 
+import { useSessionWatch } from "@/lib/useSessionWatch";
 import React, { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangle, Menu } from "lucide-react";
@@ -35,6 +36,7 @@ export function AppLayout({
   actions,
   children,
 }: AppLayoutProps) {
+  useSessionWatch();
   const router = useRouter();
   const pathname = usePathname();
   const navigation = useWorkspaceNavigation(appearance === "refined");
