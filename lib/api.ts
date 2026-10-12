@@ -1014,8 +1014,17 @@ export const teamSettings = {
 
 export type BillingPlan = { key: "starter" | "pro" | "scale"; label: string; base: string; gst: string; total: string };
 
+/** Why the plan is off - null when it is not. */
+export type PlanStatus = {
+  state: "required" | "suspended" | "ended" | null;
+  blocked: boolean;
+  /** Owner or admin: may open Billing and pay. */
+  can_manage: boolean;
+};
+
 export type BillingOverview = {
   payments_enabled: boolean;
+  plan_state?: "required" | "suspended" | "ended" | null;
   plans: BillingPlan[];
   subscription: {
     plan: string;
@@ -1040,6 +1049,8 @@ export type PayuCheckout = { action: string; fields: Record<string, string>; tot
 
 export const billing = {
   overview: () => api.get<BillingOverview>("/billing"),
+  /** Open to every member: is the plan paused, and may I fix it? */
+  status: () => api.get<PlanStatus>("/billing/status"),
   quote: (amountRupees: number) =>
     api.get<{ credit: string; gst: string; fee: string; total: string }>(`/billing/quote?amount_rupees=${amountRupees}`),
   subscribe: (plan: BillingPlan["key"]) => api.post<PayuCheckout>("/billing/subscribe", { plan }),

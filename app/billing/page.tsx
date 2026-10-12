@@ -126,7 +126,11 @@ function BillingInner() {
         {data?.blocked && (
           <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            Your plan is paused. AI replies and campaigns are off until a payment goes through. Your customers and conversations are all still here.
+            {data.plan_state === "required"
+              ? "Choose a plan below to switch KROVA on. AI replies, calls and campaigns start after your first payment. Your customers and conversations are all here."
+              : data.plan_state === "ended"
+                ? "Your plan has ended. Choose a plan below to turn AI replies, calls and campaigns back on."
+                : "Your plan is paused. AI replies, calls and campaigns are off until a payment goes through. Your customers and conversations are all still here."}
           </div>
         )}
 

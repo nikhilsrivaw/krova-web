@@ -8,6 +8,7 @@ import { useSessionWatch } from "@/lib/useSessionWatch";
 import { appPath, isAppSubdomain } from "@/lib/app-nav";
 import { BottomNav } from "@/components/app-shell/BottomNav";
 import { AppTopBar } from "@/components/app-shell/AppTopBar";
+import { PlanBanner } from "@/components/shell/PlanBanner";
 
 /**
  * Shell for the installable KROVA app - its own self-contained product
@@ -108,7 +109,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-os-bg flex flex-col">
       <AppTopBar businessName={profile.business_name || "KROVA"} />
-      <main className="flex-1 overflow-y-auto pb-20">{children}</main>
+      <main className="flex-1 overflow-y-auto pb-20">
+        <PlanBanner phone />
+        {children}
+      </main>
       <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} />
     </div>
   );

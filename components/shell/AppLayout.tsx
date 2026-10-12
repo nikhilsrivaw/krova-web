@@ -1,5 +1,6 @@
 "use client";
 
+import { PlanBanner } from "@/components/shell/PlanBanner";
 import { useSessionWatch } from "@/lib/useSessionWatch";
 import React, { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -153,8 +154,9 @@ export function AppLayout({
           {appearance === "refined" ? <div className="mx-auto max-w-[1440px]">
             {showPageIntro && title && <WorkspacePageIntro title={title} subtitle={subtitle} actions={actions} />}
             {!showPageIntro && actions && <div className="workspace-page-actions mb-5 flex flex-wrap gap-2">{actions}</div>}
+            <PlanBanner />
             <WorkspaceContent route={pathname}>{children}</WorkspaceContent>
-          </div> : <>{actions && <div className="mb-5 flex flex-wrap gap-2">{actions}</div>}{children}</>}
+          </div> : <>{actions && <div className="mb-5 flex flex-wrap gap-2">{actions}</div>}<PlanBanner />{children}</>}
         </main>
       </div>
 
