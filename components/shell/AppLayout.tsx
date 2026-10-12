@@ -163,6 +163,7 @@ export function AppLayout({
         onClose={() => setIsCommandOpen(false)}
         onOpen={appearance === "refined" ? () => setIsCommandOpen(true) : undefined}
         onSetAutonomy={handleSetAutonomy}
+        role={profile?.role ?? null}
       />
     </div>
     </WorkspaceDesign.Provider>

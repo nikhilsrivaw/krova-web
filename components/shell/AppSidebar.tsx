@@ -311,6 +311,7 @@ export function AppSidebar({
     },
     {
       label: "Knowledge & Gaps",
+      requiresRole: ["owner", "admin"],
       href: "/knowledge",
       icon: BookOpen,
       shortcut: "G K",
@@ -382,7 +383,7 @@ export function AppSidebar({
             appearance={appearance}
             level={autonomy}
             onClick={onAutonomyClick}
-            interactive={true}
+            interactive={role === "owner" || role === "admin"}
             size="sm"
           />
         </div>

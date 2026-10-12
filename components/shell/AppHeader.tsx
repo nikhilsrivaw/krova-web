@@ -27,6 +27,8 @@ interface AppHeaderProps {
   onSetAutonomy: (level: AutonomyLevel) => void;
   onOpenCommand: () => void;
   actions?: React.ReactNode;
+  /** Only the owner and admins change how much the AI does on its own. */
+  canChangeAutonomy?: boolean;
 }
 
 export function AppHeader({
@@ -39,6 +41,7 @@ export function AppHeader({
   onSetAutonomy,
   onOpenCommand,
   actions,
+  canChangeAutonomy = true,
 }: AppHeaderProps) {
   const [showAutonomyModal, setShowAutonomyModal] = useState(false);
 
@@ -120,8 +123,8 @@ export function AppHeader({
           <AutonomyPill
             appearance={appearance}
             level={autonomy}
-            onClick={() => setShowAutonomyModal(true)}
-            interactive={true}
+            onClick={() => canChangeAutonomy && setShowAutonomyModal(true)}
+            interactive={canChangeAutonomy}
             size="md"
           />
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/lib/useRole";
 import React, { useEffect, useState } from "react";
 import {
   CheckSquare,
@@ -69,6 +70,7 @@ function expiryUrgency(draft: MessageDraft): { label: string; className: string 
 }
 
 export default function ApprovalsPage() {
+  const { supervisor } = useRole();
   const [drafts, setDrafts] = useState<MessageDraft[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [isLoading, setIsLoading] = useState(true);
@@ -258,6 +260,7 @@ export default function ApprovalsPage() {
         {/* Auto-Send Rules - `conditional` autonomy configured here, not a
             separate settings page, since this is where the load it's
             solving is actually felt. */}
+        {supervisor && (
         <GlassCard className="overflow-hidden">
           <button
             type="button"
@@ -399,6 +402,7 @@ export default function ApprovalsPage() {
             </div>
           )}
         </GlassCard>
+        )}
 
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">

@@ -41,8 +41,12 @@ export default function MorePage() {
     account.profile().then(setProfile).catch(() => {});
   }, []);
 
+  const supervisor = profile?.role === "owner" || profile?.role === "admin";
   const visible = ITEMS.filter(
-    (item) => !item.requiresCapability || profile?.capabilities.includes(item.requiresCapability)
+    (item) =>
+      (!item.requiresCapability || profile?.capabilities.includes(item.requiresCapability)) &&
+      // Command runs owner commands and Ask KROVA answers from the business's money ledger.
+      (supervisor || (item.href !== "/command" && item.href !== "/ask")),
   );
 
   return (

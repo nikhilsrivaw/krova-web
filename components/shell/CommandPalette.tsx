@@ -30,7 +30,13 @@ interface CommandPaletteProps {
   onClose: () => void;
   onOpen?: () => void;
   onSetAutonomy?: (level: AutonomyLevel) => void;
+  role?: string | null;
 }
+
+const OWNER_ADMIN_ONLY = [
+  "/whatsapp", "/instagram", "/voice", "/automations", "/campaigns", "/analytics", "/billing", "/team",
+  "/settings", "/products", "/forms", "/knowledge",
+];
 
 const COMMANDS = [
   {
@@ -156,6 +162,7 @@ export function CommandPalette({
   onClose,
   onOpen,
   onSetAutonomy,
+  role = null,
 }: CommandPaletteProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(isOpen && appearance === "refined", panelRef);
@@ -164,8 +171,14 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Flatten searchable items
+  const supervisor = role === "owner" || role === "admin";
   const allItems = COMMANDS.flatMap((c) =>
     c.items.map((i) => ({ ...i, category: c.category }))
+  ).filter(
+    // The same areas the menu hides from a team member, and the AI-autonomy switches.
+    (item) =>
+      supervisor ||
+      (!("action" in item && item.action) && !OWNER_ADMIN_ONLY.some((h) => "href" in item && item.href === h)),
   ).filter(
     (item) =>
       item.title.toLowerCase().includes(query.toLowerCase()) ||
