@@ -251,19 +251,22 @@ export default function CalendarPage() {
           <GlassCard className="p-6">
             <EmptyState icon={CalendarDays} title="Calendar is not on yet" description={unavailable} />
           </GlassCard>
-        ) : doctors.length === 0 ? (
-          <GlassCard className="p-6">
-            <EmptyState
-              icon={CalendarDays}
-              title={`Add your first ${labels.provider.toLowerCase()}`}
-              description={`The calendar shows each ${labels.provider.toLowerCase()}'s ${labels.booking_noun_plural}. Add one and set their working hours on the Scheduling page.`}
-            />
-            <div className="mt-4 text-center">
-              <Link href="/scheduling" className="text-xs font-semibold text-cyan-400 hover:underline">Go to Scheduling</Link>
-            </div>
-          </GlassCard>
         ) : (
           <>
+            {doctors.length === 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
+                <p className="text-xs text-cyan-100">
+                  No {labels.provider_plural.toLowerCase()} yet, so there is nothing to book. Add your first{" "}
+                  {labels.provider.toLowerCase()} and set their working hours, and their {labels.booking_noun_plural} will appear here.
+                </p>
+                <Link
+                  href="/scheduling"
+                  className="shrink-0 rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-400"
+                >
+                  Add a {labels.provider.toLowerCase()}
+                </Link>
+              </div>
+            )}
             <GlassCard className="space-y-3 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -299,8 +302,10 @@ export default function CalendarPage() {
                   </div>
                   <button
                     type="button"
+                    disabled={doctors.length === 0}
+                    title={doctors.length === 0 ? `Add a ${labels.provider.toLowerCase()} first` : undefined}
                     onClick={() => setSeed({ dayKey: anchor < today ? today : anchor, minutes: 9 * 60 })}
-                    className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-400 cursor-pointer"
+                    className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> New {labels.booking_noun}
                   </button>
@@ -365,14 +370,22 @@ export default function CalendarPage() {
                 availability={availability}
                 showProvider={view === "week" && visibleDoctors.length > 1}
                 minColumnWidth={view === "day" ? 168 : 112}
-                onCreate={(dayKey, minutes, doctorId) => setSeed({ dayKey, minutes, doctorId })}
+                onCreate={(dayKey, minutes, doctorId) => {
+                  if (doctors.length === 0) {
+                    say("bad", `Add a ${labels.provider.toLowerCase()} on the Scheduling page first.`);
+                    return;
+                  }
+                  setSeed({ dayKey, minutes, doctorId });
+                }}
                 onOpen={setSelected}
                 onMove={handleMove}
               />
             )}
 
             <p className="text-[11px] text-os-text-dim">
-              Click an empty time to add a {labels.booking_noun}. Drag one to move it. Striped areas are outside working hours.
+              {doctors.length === 0
+                ? `Add a ${labels.provider.toLowerCase()} to start booking.`
+                : `Click an empty time to add a ${labels.booking_noun}. Drag one to move it. Striped areas are outside working hours.`}
             </p>
           </>
         )}
