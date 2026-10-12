@@ -237,8 +237,23 @@ export const ledger = {
 
   customers: () => api.get<CustomerSummary[]>("/ledger/customers"),
 
-  importCustomers: (contacts: { phone: string; name?: string | null }[]) =>
-    api.post<ContactImportResult>("/ledger/customers/import", { contacts }),
+  // Sent in batches of 1,000 so a large file never sits in one long request; `total` lets the server
+  // check the whole file against the plan's import size, not just each batch.
+  importCustomers: async (contacts: { phone: string; name?: string | null }[]): Promise<ContactImportResult> => {
+    const BATCH = 1000;
+    const merged: ContactImportResult = { created: 0, already_existed: 0, invalid: 0, rows: [] };
+    for (let i = 0; i < contacts.length; i += BATCH) {
+      const part = await api.post<ContactImportResult>("/ledger/customers/import", {
+        contacts: contacts.slice(i, i + BATCH),
+        total: contacts.length,
+      });
+      merged.created += part.created;
+      merged.already_existed += part.already_existed;
+      merged.invalid += part.invalid;
+      merged.rows.push(...part.rows.map((r) => ({ ...r, row_number: r.row_number + i })));
+    }
+    return merged;
+  },
 
   // Settled payments as a Tally-importable Receipt Voucher XML - clinics
   // hand this straight to their CA. Scope: payments received only, see the
