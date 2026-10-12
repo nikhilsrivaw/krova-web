@@ -9,7 +9,7 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/EmptyState";
-import { account, billing, goToPayu, type BillingOverview } from "@/lib/api";
+import { account, billing, goToPayu, type BillingOverview, type PlanUsage } from "@/lib/api";
 
 const inr = (rupees: string | number) =>
   `₹${Number(rupees).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -31,6 +31,47 @@ const STATUS_BADGE: Record<string, "emerald" | "amber" | "rose" | "cyan"> = {
 };
 
 const PRESETS = [500, 1000, 2000, 5000];
+
+function UsageBar({ label, used, limit, note }: { label: string; used: number; limit: number; note?: string }) {
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const tone = used >= limit ? "bg-rose-400" : pct >= 80 ? "bg-amber-400" : "bg-teal-400";
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-2 text-[11px]">
+        <span className="text-os-text-dim">{label}</span>
+        <span className="font-semibold text-white">{used.toLocaleString("en-IN")} / {limit.toLocaleString("en-IN")}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
+      </div>
+      {note && <p className="text-[11px] text-amber-300">{note}</p>}
+    </div>
+  );
+}
+
+function UsageCard({ u }: { u: PlanUsage }) {
+  const over = u.messages_used >= u.messages_limit;
+  return (
+    <GlassCard className="space-y-3 p-4" aria-label="Usage this month">
+      <h3 className="text-xs font-bold text-white">This month on your {u.plan} plan</h3>
+      <UsageBar
+        label="Customer messages"
+        used={u.messages_used}
+        limit={u.messages_limit}
+        note={
+          over
+            ? "You are past the size this plan is built for. Nothing is switched off; moving up keeps the cost per message low."
+            : u.messages_used >= u.messages_limit * 0.8
+              ? "You are close to the size this plan is built for."
+              : undefined
+        }
+      />
+      <UsageBar label="Team logins" used={u.team_used} limit={u.team_limit} />
+      <UsageBar label="Phone lines" used={u.phone_lines_used} limit={u.phone_lines_limit} />
+      <UsageBar label="Business information the AI reads (tokens)" used={u.knowledge_tokens_used} limit={u.knowledge_tokens_limit} />
+    </GlassCard>
+  );
+}
 
 export default function BillingPage() {
   return (
@@ -178,6 +219,8 @@ function BillingInner() {
                   )}
                 </GlassCard>
               )}
+
+              {data.usage && <UsageCard u={data.usage} />}
 
               {isOwner ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -7,7 +7,7 @@ import { Check, Phone, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
-import { PLAN_GUIDE, guideLines, type PlanKey } from "@/lib/planGuide";
+import { PLAN_GUIDE, SAME_ON_EVERY_PLAN, guideLines, planTable, type PlanKey } from "@/lib/planGuide";
 
 // Prices are per month, before 18% GST. The same numbers live in
 // krova-platform/shared/billing/plans.py - change them together.
@@ -44,7 +44,7 @@ const FAQS = [
   },
   {
     q: "Are all three channels in every plan?",
-    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. The plans differ in how much volume, how many phone lines, how many team logins and how much of your own information the AI reads.",
+    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. Every feature is on every plan. The plans differ only in size: how many messages, phone lines and team logins, how much of your own information the AI reads, how big a campaign or import can be, and whether you can connect API keys and webhooks.",
   },
   {
     q: "Is there a free trial?",
@@ -148,6 +148,44 @@ export default function PricingPage() {
           <h2 className="text-sm font-semibold text-os-ink mb-4">Every plan includes</h2>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {INCLUDED.map((line) => (
+              <li key={line} className="flex items-start gap-2.5">
+                <Check size={12} className="mt-1 shrink-0 text-seal-bright" />
+                <span className="text-xs leading-relaxed text-os-ink/90">{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 pb-12" aria-label="Compare plans">
+        <div className="rounded-xl border border-os-border bg-os-card p-7">
+          <h2 className="text-sm font-semibold text-os-ink mb-1">What each plan can handle</h2>
+          <p className="mb-5 text-xs text-os-text-dim">The only difference between plans is size. Every feature is on every plan.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-os-border text-os-text-dim">
+                  <th className="py-2 pr-4 font-medium" />
+                  {PLANS.map((p) => (
+                    <th key={p.key} className="py-2 pr-4 font-semibold text-os-ink">{p.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {planTable().map((r) => (
+                  <tr key={r.label} className="border-b border-os-border/60">
+                    <th scope="row" className="py-2.5 pr-4 font-normal text-os-text-dim">{r.label}</th>
+                    {r.values.map((v, i) => (
+                      <td key={i} className="py-2.5 pr-4 text-os-ink">{v}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h3 className="mt-6 mb-3 text-xs font-semibold text-os-ink">Included on every plan</h3>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {SAME_ON_EVERY_PLAN.map((line) => (
               <li key={line} className="flex items-start gap-2.5">
                 <Check size={12} className="mt-1 shrink-0 text-seal-bright" />
                 <span className="text-xs leading-relaxed text-os-ink/90">{line}</span>

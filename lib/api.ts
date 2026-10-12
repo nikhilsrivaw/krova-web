@@ -1022,7 +1022,21 @@ export type PlanStatus = {
   can_manage: boolean;
 };
 
+export type PlanUsage = {
+  plan: string;
+  messages_used: number;
+  messages_limit: number;
+  phone_lines_used: number;
+  phone_lines_limit: number;
+  team_used: number;
+  team_limit: number;
+  knowledge_tokens_used: number;
+  knowledge_tokens_limit: number;
+};
+
 export type BillingOverview = {
+  /** Null when the business is not on a sized plan (a trial). */
+  usage?: PlanUsage | null;
   payments_enabled: boolean;
   plan_state?: "required" | "suspended" | "ended" | null;
   plans: BillingPlan[];
