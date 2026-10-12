@@ -5,6 +5,7 @@ import { MessageSquare, PhoneCall, Mail, Instagram, Globe } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { PendingWrapups } from "@/components/team/PendingWrapups";
+import { UnlockChannels } from "@/components/dashboard/UnlockChannels";
 import {
   account,
   ledger,
@@ -116,6 +117,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout title="Command Center" subtitle="Your business overview" appearance="refined" showPageIntro={false}>
+      <UnlockChannels />
       <div className="mb-4 empty:hidden">
         <PendingWrapups />
       </div>

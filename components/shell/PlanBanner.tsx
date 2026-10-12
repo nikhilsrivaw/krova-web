@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { billing, type PlanStatus } from "@/lib/api";
 import { desktopUrl } from "@/lib/app-nav";
@@ -15,6 +16,7 @@ import { desktopUrl } from "@/lib/app-nav";
  */
 export function PlanBanner({ phone = false }: { phone?: boolean }) {
   const [status, setStatus] = useState<PlanStatus | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     let live = true;
@@ -23,6 +25,8 @@ export function PlanBanner({ phone = false }: { phone?: boolean }) {
   }, []);
 
   if (!status?.blocked) return null;
+  // These two screens already say it, bigger.
+  if (status.state === "required" && (pathname === "/dashboard" || pathname.startsWith("/billing"))) return null;
 
   const message =
     status.state === "required"

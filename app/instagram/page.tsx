@@ -924,7 +924,7 @@ function InstagramPageContent() {
 
 export default function InstagramPage() {
   return (
-    <OwnerAdminOnly title="Instagram">
+    <OwnerAdminOnly title="Instagram" unlock="instagram">
       <InstagramPageContent />
     </OwnerAdminOnly>
   );

@@ -2,13 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Lock } from "lucide-react";
 
 interface WorkspaceNavItem {
   label: string;
   href: string;
   icon: React.ElementType;
   badge?: number;
+  /** Locked until a plan is bought: the link goes to the pricing instead. */
+  locked?: boolean;
+  unlockHref?: string;
 }
 
 const GROUPS = [
@@ -38,8 +41,8 @@ export function WorkspaceNav({ items, pathname, onNavigate }: {
                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                 const Icon = item.icon;
                 return (
-                  <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={isActive ? "page" : undefined} className={`group flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors ${isActive ? "border-teal/20 bg-teal/[0.09] text-white" : "border-transparent text-os-text-dim hover:bg-white/[0.035] hover:text-white"}`}>
-                    <span className="flex min-w-0 items-center gap-3"><Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-teal-bright" : "text-os-text-dim group-hover:text-white"}`} aria-hidden="true" /><span>{item.label}</span></span>
+                  <Link key={item.href} href={item.locked && item.unlockHref ? item.unlockHref : item.href} onClick={onNavigate} aria-current={isActive ? "page" : undefined} aria-label={item.locked ? `${item.label} (locked - choose a plan)` : undefined} className={`group flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors ${isActive ? "border-teal/20 bg-teal/[0.09] text-white" : "border-transparent text-os-text-dim hover:bg-white/[0.035] hover:text-white"}`}>
+                    <span className="flex min-w-0 items-center gap-3"><Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-teal-bright" : "text-os-text-dim group-hover:text-white"}`} aria-hidden="true" /><span>{item.label}</span>{item.locked && <Lock className="h-3 w-3 text-os-text-dim" aria-hidden="true" />}</span>
                     <span className="flex shrink-0 items-center gap-1.5">
                       {item.badge !== undefined && <span className={`min-w-5 rounded-md px-1.5 py-0.5 text-center text-[10px] tabular-nums ${item.href === "/escalations" ? "bg-rose-400/10 text-rose-300" : "bg-teal/10 text-teal-bright"}`}>{item.badge}</span>}
                       {isActive && <ChevronRight className="h-3 w-3 text-teal-bright" aria-hidden="true" />}

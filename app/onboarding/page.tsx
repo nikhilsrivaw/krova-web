@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Lock } from "lucide-react";
+import { CHANNEL_BY_SLUG, usePlan } from "@/lib/usePlan";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -31,8 +34,35 @@ const STEPS = [
 
 
 
+function LockedChannelStep({ slug }: { slug: "whatsapp" | "voice" }) {
+  const channel = CHANNEL_BY_SLUG[slug];
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white">
+          <Lock className="h-5 w-5 text-os-text-dim" aria-hidden="true" /> {channel.title} unlocks with a plan
+        </h2>
+        <p className="mt-1 text-xs text-os-text-dim">{channel.blurb}</p>
+      </div>
+      <GlassCard className="space-y-3 p-5">
+        <p className="text-xs text-os-text-dim">
+          Choose a plan whenever you are ready - nothing here needs doing now. Continue to set up the rest, and connect
+          {" "}{channel.title} straight after your first payment.
+        </p>
+        <Link
+          href={`/billing?unlock=${slug}`}
+          className="inline-block rounded-lg bg-teal px-4 py-2 text-xs font-bold text-os-bg hover:bg-teal-dim"
+        >
+          See plans and unlock {channel.title}
+        </Link>
+      </GlassCard>
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const plan = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
 
   // Step 1: Business Profile
@@ -159,8 +189,13 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
+        {/* Steps 1 and 2 are channels: locked until a plan is chosen */}
+        {(currentStep === 1 || currentStep === 2) && plan.channelsLocked && (
+          <LockedChannelStep slug={currentStep === 1 ? "whatsapp" : "voice"} />
+        )}
+
         {/* Step 1: Connect WhatsApp */}
-        {currentStep === 1 && (
+        {currentStep === 1 && !plan.channelsLocked && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -210,7 +245,7 @@ export default function OnboardingPage() {
         )}
 
         {/* Step 2: Connect Voice (Optional) */}
-        {currentStep === 2 && (
+        {currentStep === 2 && !plan.channelsLocked && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

@@ -1789,7 +1789,7 @@ function WhatsAppPageContent() {
 
 export default function WhatsAppPage() {
   return (
-    <OwnerAdminOnly title="WhatsApp">
+    <OwnerAdminOnly title="WhatsApp" unlock="whatsapp">
       <WhatsAppPageContent />
     </OwnerAdminOnly>
   );

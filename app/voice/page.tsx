@@ -1245,7 +1245,7 @@ function VoicePageContent() {
 
 export default function VoicePage() {
   return (
-    <OwnerAdminOnly title="Voice Agent">
+    <OwnerAdminOnly title="Voice Agent" unlock="voice">
       <VoicePageContent />
     </OwnerAdminOnly>
   );

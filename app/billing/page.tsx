@@ -1,5 +1,6 @@
 "use client";
 
+import { UnlockHero } from "@/components/billing/UnlockHero";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Check, CreditCard, Phone, Wallet } from "lucide-react";
@@ -123,14 +124,13 @@ function BillingInner() {
             Online payments are not switched on for this workspace yet.
           </div>
         )}
-        {data?.blocked && (
+        {data && (data.plan_state === "required" || data.plan_state === "ended") && (
+          <UnlockHero unlock={params.get("unlock")} canChoose={role === "owner"} />
+        )}
+        {data?.plan_state === "suspended" && (
           <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            {data.plan_state === "required"
-              ? "Choose a plan below to switch KROVA on. AI replies, calls and campaigns start after your first payment. Your customers and conversations are all here."
-              : data.plan_state === "ended"
-                ? "Your plan has ended. Choose a plan below to turn AI replies, calls and campaigns back on."
-                : "Your plan is paused. AI replies, calls and campaigns are off until a payment goes through. Your customers and conversations are all still here."}
+            Your plan is paused. AI replies, calls and campaigns are off until a payment goes through. Your customers and conversations are all still here.
           </div>
         )}
 

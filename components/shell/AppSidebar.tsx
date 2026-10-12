@@ -38,9 +38,11 @@ import {
   Wallet,
   X,
   CalendarDays,
+  Lock,
 } from "lucide-react";
 import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
+import { usePlan, LOCKED_CHANNELS } from "@/lib/usePlan";
 import { AutonomyPill } from "../ui/AutonomyPill";
 import { GetAppModal } from "./GetAppModal";
 import { WorkspaceNav } from "./WorkspaceNav";
@@ -128,6 +130,9 @@ export function AppSidebar({
     requiresCapability?: Capability | Capability[];
     // Hidden from everyone but these roles - the matching API routes refuse anyone else.
     requiresRole?: Array<"owner" | "admin">;
+    // Shown, but locked until a plan is bought: clicking goes to the pricing for this item.
+    locked?: boolean;
+    unlockHref?: string;
   };
 
   const ALL_NAV_ITEMS: NavItem[] = [
@@ -344,11 +349,17 @@ export function AppSidebar({
     },
   ];
 
+  const plan = usePlan();
   const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => {
     if (item.requiresRole && !(role && item.requiresRole.includes(role as "owner" | "admin"))) return false;
     if (!item.requiresCapability) return true;
     const required = Array.isArray(item.requiresCapability) ? item.requiresCapability : [item.requiresCapability];
     return required.some((cap) => capabilities.includes(cap));
+  }).map((item) => {
+    const channel = LOCKED_CHANNELS[item.href];
+    return plan.channelsLocked && channel
+      ? { ...item, locked: true, unlockHref: `/billing?unlock=${channel.slug}` }
+      : item;
   });
 
   return (
@@ -399,9 +410,9 @@ export function AppSidebar({
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.locked && item.unlockHref ? item.unlockHref : item.href}
                 aria-current={isActive ? "page" : undefined}
-                aria-label={item.label}
+                aria-label={item.locked ? `${item.label} (locked - choose a plan)` : item.label}
                 className={`group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border-l-2 ${
                   isActive
                     ? "bg-white/[0.06] text-os-ink font-semibold border-l-brass"
@@ -417,6 +428,7 @@ export function AppSidebar({
                     }`}
                   />
                   <span>{item.label}</span>
+                  {item.locked && <Lock className="w-3 h-3 text-os-text-dim" aria-hidden="true" />}
                 </div>
 
                 <div className="flex items-center gap-1.5">
