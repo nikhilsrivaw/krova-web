@@ -9,6 +9,14 @@
  */
 export type PlanKey = "starter" | "pro" | "scale";
 
+/** The struck-through "regular" price shown beside what is actually charged (before GST). Display only. */
+export const LIST_PRICE: Record<PlanKey, number> = { starter: 4999, pro: 7999, scale: 13999 };
+
+/** "40% off" for a plan sold at `price` (rupees, before GST). */
+export function discountText(key: PlanKey, price: number): string {
+  return `${Math.round((1 - price / LIST_PRICE[key]) * 100)}% off`;
+}
+
 type Guide = {
   tagline: string;
   /** Customer messages the AI reads and answers each month, across WhatsApp and Instagram. */

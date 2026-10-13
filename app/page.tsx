@@ -675,11 +675,13 @@ export default function Hero() {
               <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-os-ink mb-3">
                 Plans start at{" "}
                 <span className="inline-flex items-baseline text-teal">
+                  <span className="mr-2 text-xl font-normal text-os-text-dim line-through">₹4,999</span>
                   <IndianRupee size={26} className="mr-0.5" strokeWidth={2.5} />
                   2,999
                 </span>
                 <span className="text-os-text-dim text-xl font-normal">/month + GST</span>
               </h2>
+              <p className="mb-3 text-sm font-semibold text-teal">Now at a discounted price · 40% off</p>
               <p className="text-os-text-dim max-w-md leading-relaxed">
                 One AI analyst across every channel you already use. Pay monthly by card or UPI
                 AutoPay. Voice runs on a prepaid wallet.

@@ -1,6 +1,6 @@
 "use client";
 
-import { guideLines } from "@/lib/planGuide";
+import { LIST_PRICE, discountText, guideLines } from "@/lib/planGuide";
 import { UnlockHero } from "@/components/billing/UnlockHero";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -242,7 +242,8 @@ function BillingInner() {
                       <GlassCard key={p.key} className="p-4 space-y-3">
                         <p className="text-sm font-bold text-white">{p.label}</p>
                         <div>
-                          <p className="text-2xl font-bold text-white">{inr(p.base)}<span className="text-xs font-normal text-os-text-dim"> /month</span></p>
+                          <p className="text-2xl font-bold text-white"><span className="mr-1.5 text-base font-normal text-os-text-dim line-through">{inr(LIST_PRICE[p.key])}</span>{inr(p.base)}<span className="text-xs font-normal text-os-text-dim"> /month</span></p>
+                          <p className="text-[11px] font-semibold text-emerald-300">Now at a discounted price · {discountText(p.key, Number(p.base))}</p>
                           <p className="text-[11px] text-os-text-dim">+ {inr(p.gst)} GST = {inr(p.total)}</p>
                         </div>
                         <ul className="space-y-1.5 border-t border-white/[0.08] pt-3">

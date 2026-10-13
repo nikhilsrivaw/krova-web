@@ -7,7 +7,7 @@ import { Check, Phone, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
-import { PLAN_GUIDE, SAME_ON_EVERY_PLAN, guideLines, planTable, type PlanKey } from "@/lib/planGuide";
+import { LIST_PRICE, PLAN_GUIDE, discountText, SAME_ON_EVERY_PLAN, guideLines, planTable, type PlanKey } from "@/lib/planGuide";
 
 // Prices are per month, before 18% GST. The same numbers live in
 // krova-platform/shared/billing/plans.py - change them together.
@@ -114,9 +114,11 @@ export default function PricingPage() {
               <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">{PLAN_GUIDE[plan.key].tagline}</p>
               <div className="mb-6 pb-6 border-b border-os-border">
                 <div className="flex items-end gap-1 mb-1">
+                  <span className="font-serif text-2xl text-os-text-dim line-through mr-1">{inr(LIST_PRICE[plan.key])}</span>
                   <span className="font-serif text-4xl font-semibold tracking-tight text-os-ink">{inr(plan.base)}</span>
                   <span className="text-os-text-dim text-sm mb-1">/month</span>
                 </div>
+                <p className="mb-1 text-xs font-semibold text-seal-bright">Now at a discounted price · {discountText(plan.key, plan.base)}</p>
                 <p className="text-xs text-os-text-dim">+ 18% GST = {inr(Math.round(plan.base * 1.18))}</p>
               </div>
               <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-3">Built for</p>
