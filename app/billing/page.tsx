@@ -293,7 +293,7 @@ function BillingInner() {
                     </p>
                   </div>
                   <p className="flex items-center gap-1.5 text-[11px] text-os-text-dim">
-                    <Phone className="w-3.5 h-3.5" /> Calls are charged at cost + 25%. Each phone number is {inr(data.number_rent)} a month.
+                    <Phone className="w-3.5 h-3.5" /> Calls are charged at cost + platform charge. Each phone number is {inr(data.number_rent)} a month.
                   </p>
                 </div>
                 {data.low_balance && <p className="text-xs text-amber-300">Running low - calls stop when this reaches zero.</p>}

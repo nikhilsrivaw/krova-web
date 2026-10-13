@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: "How is voice paid for?",
-    a: "Voice runs on a prepaid wallet in rupees. Each call is charged at what it actually costs us plus 25%, shown as a breakdown, and each phone number is Rs 220 a month. There is no free voice trial because a number has to be bought for you first. When you add money, the payment gateway fee is added on top so your wallet receives the full amount.",
+    a: "Voice runs on a prepaid wallet in rupees. Each call is charged at what it actually costs plus a platform charge, shown as a breakdown, and each phone number is Rs 220 a month. There is no free voice trial because a number has to be bought for you first. When you add money, the payment gateway fee is added on top so your wallet receives the full amount.",
   },
   {
     q: "How do I know which plan I need?",
@@ -257,9 +257,9 @@ export default function PricingPage() {
               <p className="text-[11px] text-os-text-dim mt-1">Taken from your wallet. Starter has 1 line, Pro 3, Scale 5.</p>
             </div>
             <div className="rounded-md border border-os-border p-4">
-              <p className="font-serif text-3xl font-semibold text-os-ink">Cost + 25%</p>
+              <p className="font-serif text-3xl font-semibold text-os-ink">Cost + platform charge</p>
               <p className="text-xs font-semibold text-os-ink mt-1">for every call</p>
-              <p className="text-[11px] text-os-text-dim mt-1">What the call really cost us, plus 25%. The breakdown is shown for every call.</p>
+              <p className="text-[11px] text-os-text-dim mt-1">What the call really cost, plus a platform charge. The breakdown is shown for every call.</p>
             </div>
             <div className="rounded-md border border-os-border p-4">
               <p className="font-serif text-3xl font-semibold text-os-ink">₹100</p>
