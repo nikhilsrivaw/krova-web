@@ -236,18 +236,44 @@ export default function PricingPage() {
       </section>
 
       <section className="max-w-5xl mx-auto px-6 pb-24">
-        <div className="rounded-lg border border-os-border bg-os-card p-8 flex flex-col md:flex-row items-start gap-6">
-          <div className="w-11 h-11 rounded-md border border-os-border flex items-center justify-center shrink-0">
-            <Phone size={18} className="text-teal" />
+        <div className="rounded-lg border border-os-border bg-os-card p-8">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-11 h-11 rounded-md border border-os-border flex items-center justify-center shrink-0">
+              <Phone size={18} className="text-teal" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-base text-os-ink mb-1">Voice Agent: pay for what you use</h3>
+              <p className="text-os-text-dim text-sm leading-relaxed">
+                The Voice Agent is on every plan. It is not part of the monthly plan price: it runs on a prepaid
+                rupee wallet, so you only pay for the phone numbers you hold and the calls you make or take.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-base text-os-ink mb-1">Voice: pay for what you use</h3>
-            <p className="text-os-text-dim text-sm leading-relaxed">
-              Recharge a rupee wallet. Each call costs what it really costs us plus 25%, with the breakdown shown.
-              A phone number is ₹220 a month. When you recharge, the payment gateway fee is added on top,
-              so the wallet receives exactly the amount you chose.
-            </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="rounded-md border border-os-border p-4">
+              <p className="font-serif text-3xl font-semibold text-os-ink">₹220</p>
+              <p className="text-xs font-semibold text-os-ink mt-1">per phone number, per month</p>
+              <p className="text-[11px] text-os-text-dim mt-1">Taken from your wallet. Starter has 1 line, Pro 3, Scale 5.</p>
+            </div>
+            <div className="rounded-md border border-os-border p-4">
+              <p className="font-serif text-3xl font-semibold text-os-ink">Cost + 25%</p>
+              <p className="text-xs font-semibold text-os-ink mt-1">for every call</p>
+              <p className="text-[11px] text-os-text-dim mt-1">What the call really cost us, plus 25%. The breakdown is shown for every call.</p>
+            </div>
+            <div className="rounded-md border border-os-border p-4">
+              <p className="font-serif text-3xl font-semibold text-os-ink">₹100</p>
+              <p className="text-xs font-semibold text-os-ink mt-1">smallest recharge</p>
+              <p className="text-[11px] text-os-text-dim mt-1">Up to ₹50,000 at a time. The whole amount lands in your wallet.</p>
+            </div>
           </div>
+
+          <ul className="space-y-1.5 text-sm text-os-text-dim leading-relaxed list-disc pl-5">
+            <li>There is no fixed per-minute rate: a call&apos;s price depends on what the call actually cost, so you never pay for a guess.</li>
+            <li>When you recharge, only the payment gateway fee is added on top, so the wallet receives exactly the amount you chose.</li>
+            <li>There is no free voice trial, because a phone number has to be bought for you first.</li>
+            <li>You are alerted when the wallet drops below ₹100. Calls pause when it is empty or a number&apos;s rent is unpaid.</li>
+          </ul>
         </div>
       </section>
 
