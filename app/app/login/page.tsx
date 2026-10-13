@@ -59,12 +59,12 @@ export default function AppLoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-[11px] font-mono uppercase tracking-wide text-os-text-dim mb-1.5">
-            {teamMode ? "Team ID" : "Email"}
+            {teamMode ? "Team ID" : "Email or phone number"}
           </label>
           <input
-            type={teamMode ? "text" : "email"}
+            type="text"
             required
-            autoComplete={teamMode ? "username" : "email"}
+            autoComplete="username"
             inputMode={teamMode ? "text" : "email"}
             autoCapitalize="none"
             autoCorrect="off"
@@ -72,7 +72,7 @@ export default function AppLoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-os-card border border-os-border text-os-ink text-sm focus:border-teal focus:outline-none"
-            placeholder={teamMode ? "rahul@yourshop" : "you@business.com"}
+            placeholder={teamMode ? "rahul@yourshop" : "you@business.com or 98765 43210"}
           />
         </div>
         <div>
@@ -111,7 +111,7 @@ export default function AppLoginPage() {
         onClick={() => { setTeamMode(!teamMode); setError(null); }}
         className="mt-4 w-full text-center text-xs text-teal hover:underline"
       >
-        {teamMode ? "I sign in with my email" : "I'm a team member - sign in with my Team ID"}
+        {teamMode ? "I sign in with my email or phone" : "I'm a team member - sign in with my Team ID"}
       </button>
 
       <div className="flex items-center gap-3 my-6">
