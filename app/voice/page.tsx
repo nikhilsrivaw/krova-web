@@ -803,7 +803,7 @@ function VoicePageContent() {
                                   : "—"}
                               </td>
                               <td className="py-3 px-3 font-mono">
-                                <span className="font-bold text-white block">{log.cost_display}</span>
+                                <span className="font-bold text-white block">{log.charged_display || log.cost_display}</span>
                                 {/* Paise precision, not whole rupees - each of
                                     these is tens of paise on a real call, so
                                     the default rounding showed every one as
@@ -811,7 +811,9 @@ function VoicePageContent() {
                                 <span className="text-[10px] text-os-text-dim block">
                                   STT: {formatPaise(log.cost_breakdown.sarvam_stt_paise ?? 0, false, 2)} • TTS:{" "}
                                   {formatPaise(log.cost_breakdown.sarvam_tts_paise ?? 0, false, 2)} • Carrier:{" "}
-                                  {formatPaise(log.cost_breakdown.plivo_voice_paise ?? 0, false, 2)}
+                                  {formatPaise(log.cost_breakdown.plivo_voice_paise ?? 0, false, 2)} • AI:{" "}
+                                  {formatPaise(log.ai_paise ?? 0, false, 2)} • Platform charge:{" "}
+                                  {formatPaise(log.platform_paise ?? 0, false, 2)}
                                 </span>
                               </td>
                               <td className="py-3 px-3 font-mono text-os-text-dim text-[11px]">
@@ -1179,8 +1181,11 @@ function VoicePageContent() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-os-text-dim block text-[10px]">Total Cost</span>
-                  <span className="text-cyan-400 font-bold">{selectedCall.cost_display}</span>
+                  <span className="text-os-text-dim block text-[10px]">Total charged</span>
+                  <span className="text-cyan-400 font-bold">{selectedCall.charged_display || selectedCall.cost_display}</span>
+                  <span className="text-os-text-dim block text-[10px] mt-1">
+                    incl. platform charge {formatPaise(selectedCall.platform_paise ?? 0, false, 2)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-os-text-dim block text-[10px]">Ended</span>

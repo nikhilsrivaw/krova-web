@@ -1584,6 +1584,11 @@ export type CallLog = {
     plivo_voice_paise?: number;
     plivo_cost_source?: string;
   };
+  /** What the wallet is charged for the call: real cost (speech, carrier, AI) plus the platform charge. */
+  ai_paise?: number;
+  platform_paise?: number;
+  charged_paise?: number;
+  charged_display?: string;
   /** Which of the business's numbers this call used. */
   number?: string | null;
   number_label?: string | null;
@@ -2448,6 +2453,89 @@ export const numberRequests = {
     id: string,
     data: Partial<{ status: NumberRequestStatus; admin_notes: string; provisioned_number: string }>,
   ) => api.patch<NumberRequest>(`/voice-onboarding/number-requests/${id}`, data),
+};
+
+// ── Platform admin panel (PLATFORM_ADMIN_EMAIL only) ──────────────────────────
+
+export type AdminOverview = {
+  businesses_total: number; businesses_new_7d: number; businesses_no_plan: number;
+  subs_active: number; subs_past_due: number; subs_suspended: number; subs_cancelled: number;
+  mrr: string; wallet_total: string; wallets_low: number; wallets_rent_short: number;
+  number_requests_waiting: number; number_requests_with_plivo: number;
+  payments_failed_7d: number; payments_pending_old: number; messages_this_month: number;
+};
+export type AdminBusiness = {
+  id: string; name: string; vertical: string; plan: string; sub_status: string | null;
+  owner_name: string | null; owner_email: string | null; owner_phone: string | null;
+  created_at: string; wallet: string | null; voice_numbers: number; messages_month: number; is_active: boolean;
+};
+export type AdminPayment = {
+  id: string; business_id: string; business_name: string | null; purpose: string; plan: string | null;
+  total: string; status: string; mode: string | null; failure: string | null; txnid: string;
+  created_at: string; paid_at: string | null;
+};
+export type AdminNumberRequest = NumberRequest & {
+  business_name: string | null; owner_name: string | null; owner_email: string | null; owner_phone: string | null;
+};
+export type AdminBusinessDetail = {
+  business: AdminBusiness;
+  settings_flags: Record<string, unknown>;
+  team: { name: string | null; email: string | null; username: string | null; role: string; last_login: string | null; active: boolean }[];
+  subscription: {
+    plan: string; status: string; amount: string; current_period_end: string; next_charge_at: string | null;
+    attempts: number; last_failure: string | null; cancel_at_period_end: boolean;
+  } | null;
+  wallet_entries: { kind: string; amount: string; balance_after: string; note: string | null; created_at: string }[];
+  payments: AdminPayment[];
+  numbers: { number: string; label: string | null; status: string }[];
+  number_requests: { id: string; type: string; status: string; created_at: string; provisioned_number: string | null }[];
+};
+
+const ADMIN_TOKEN_KEY = "krova_admin_token";
+
+export const adminSession = {
+  get: (): string | null => {
+    try { return typeof window === "undefined" ? null : window.sessionStorage.getItem(ADMIN_TOKEN_KEY); } catch { return null; }
+  },
+  set: (token: string) => { try { window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token); } catch { /* private window */ } },
+  clear: () => { try { window.sessionStorage.removeItem(ADMIN_TOKEN_KEY); } catch { /* ignore */ } },
+};
+
+export class AdminSignedOut extends Error {
+  constructor() { super("Your admin session ended. Sign in again."); }
+}
+
+// The admin panel has its own sign-in and its own token (header X-Admin-Token); it never uses a customer login.
+async function adminCall<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const token = adminSession.get();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["X-Admin-Token"] = token;
+  const res = await fetch(`${API_BASE}/api/v1/admin${path}`, {
+    method, headers, body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== "/login") {
+    adminSession.clear();
+    throw new AdminSignedOut();
+  }
+  if (!res.ok) {
+    const detail = (data as { detail?: unknown }).detail;
+    throw new Error(typeof detail === "string" ? detail : "That did not work.");
+  }
+  return data as T;
+}
+
+export const admin = {
+  login: (email: string, password: string) => adminCall<{ token: string; email: string }>("POST", "/login", { email, password }),
+  me: () => adminCall<{ email: string }>("GET", "/me"),
+  overview: () => adminCall<AdminOverview>("GET", "/overview"),
+  businesses: (q?: string) => adminCall<AdminBusiness[]>("GET", `/businesses${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  business: (id: string) => adminCall<AdminBusinessDetail>("GET", `/businesses/${id}`),
+  payments: (state?: "pending" | "success" | "failed") => adminCall<AdminPayment[]>("GET", `/payments${state ? `?state=${state}` : ""}`),
+  numberRequests: () => adminCall<AdminNumberRequest[]>("GET", "/number-requests"),
+  updateNumberRequest: (
+    id: string, data: Partial<{ status: NumberRequestStatus; admin_notes: string; provisioned_number: string }>,
+  ) => adminCall<AdminNumberRequest>("PATCH", `/number-requests/${id}`, data),
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
