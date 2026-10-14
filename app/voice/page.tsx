@@ -812,8 +812,10 @@ function VoicePageContent() {
                                   STT: {formatPaise(log.cost_breakdown.sarvam_stt_paise ?? 0, false, 2)} • TTS:{" "}
                                   {formatPaise(log.cost_breakdown.sarvam_tts_paise ?? 0, false, 2)} • Carrier:{" "}
                                   {formatPaise(log.cost_breakdown.plivo_voice_paise ?? 0, false, 2)} • AI:{" "}
-                                  {formatPaise(log.ai_paise ?? 0, false, 2)} • Platform charge:{" "}
-                                  {formatPaise(log.platform_paise ?? 0, false, 2)}
+                                  {formatPaise(log.ai_paise ?? 0, false, 2)}
+                                  {(log.platform_paise ?? 0) > 0 && (
+                                    <> • Platform charge: {formatPaise(log.platform_paise ?? 0, false, 2)}</>
+                                  )}
                                 </span>
                               </td>
                               <td className="py-3 px-3 font-mono text-os-text-dim text-[11px]">
@@ -1183,9 +1185,11 @@ function VoicePageContent() {
                 <div>
                   <span className="text-os-text-dim block text-[10px]">Total charged</span>
                   <span className="text-cyan-400 font-bold">{selectedCall.charged_display || selectedCall.cost_display}</span>
-                  <span className="text-os-text-dim block text-[10px] mt-1">
-                    incl. platform charge {formatPaise(selectedCall.platform_paise ?? 0, false, 2)}
-                  </span>
+                  {(selectedCall.platform_paise ?? 0) > 0 && (
+                    <span className="text-os-text-dim block text-[10px] mt-1">
+                      incl. platform charge {formatPaise(selectedCall.platform_paise ?? 0, false, 2)}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="text-os-text-dim block text-[10px]">Ended</span>

@@ -58,7 +58,8 @@ function InstagramPageContent() {
     try {
       const list = await channels.list();
       const conn = list.find((c) => c.channel === "instagram") || null;
-      setConnection(conn);
+      // A disconnected account (the owner let go of it) shows the same as never connected.
+      setConnection(conn && conn.status !== "disconnected" ? conn : null);
       // A 409 here just means not connected yet - not worth surfacing as
       // a page-level load error the way the connection list's own
       // failure is.
@@ -92,16 +93,20 @@ function InstagramPageContent() {
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
-  const handleConnectInstagram = async () => {
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
     try {
-      const res = await channels.instagramFbConnectUrl();
-      if (res?.url) {
-        window.location.href = res.url;
-      } else {
-        alert("Instagram isn't configured for this account yet.");
-      }
+      await channels.disconnectInstagram();
+      setInsights(null);
+      setConfirmDisconnect(false);
+      await loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not connect Instagram.");
+      alert(err instanceof Error ? err.message : "Could not disconnect Instagram.");
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -366,23 +371,16 @@ function InstagramPageContent() {
             <EmptyState
               icon={Instagram}
               title="No Instagram account connected"
-              description="Connect through either Meta login route below to start receiving DMs and comments."
+              description="Sign in with Instagram to start receiving DMs and comments."
             />
             <GlassCard className="p-6">
               <div className="workspace-actions">
                 <button
                   type="button"
-                  onClick={handleConnectInstagram}
+                  onClick={handleConnectInstagramLogin}
                   className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-bold border border-white/[0.1] transition-all cursor-pointer"
                 >
-                  Connect Instagram
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConnectInstagramLogin}
-                  className="px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-bold border border-white/[0.08] transition-all cursor-pointer"
-                >
-                  Connect via Instagram Login
+                  Connect with Instagram
                 </button>
               </div>
             </GlassCard>
@@ -428,30 +426,47 @@ function InstagramPageContent() {
                 </div>
               </div>
 
-              {/* Reachable while connected on purpose: re-running the Meta
-                  login is how a business switches which Instagram account
-                  is linked, and how anyone demonstrates the grant flow
-                  without first tearing the connection down. */}
+              {/* Reconnect stays reachable while connected: running the Instagram sign-in
+                  again is how a business switches which account is linked. */}
               <div className="workspace-actions pt-4 border-t border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={handleConnectInstagram}
-                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                >
-                  Reconnect
-                </button>
-                {/* Instagram Business Login - a separate connect route from
-                    the Facebook Login button above (different Meta app,
-                    different token host). Kept as a distinct button rather
-                    than merged in, since which one a business should use is
-                    a real choice, not a detail to hide. */}
                 <button
                   type="button"
                   onClick={handleConnectInstagramLogin}
                   className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-os-text-dim hover:text-white text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
                 >
-                  Reconnect via Instagram Login
+                  Reconnect Instagram
                 </button>
+                {confirmDisconnect ? (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="text-os-text-dim">
+                      Stop receiving DMs and comments from {connection.handle || "this account"}?
+                    </span>
+                    <button
+                      type="button"
+                      disabled={disconnecting}
+                      onClick={handleDisconnect}
+                      className="px-3.5 py-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-300 font-semibold border border-red-500/30 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {disconnecting ? "Disconnecting..." : "Yes, disconnect"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={disconnecting}
+                      onClick={() => setConfirmDisconnect(false)}
+                      className="px-3 py-1.5 rounded-lg text-os-text-dim hover:text-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDisconnect(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/25 transition-all cursor-pointer"
+                  >
+                    Disconnect Instagram
+                  </button>
+                )}
               </div>
             </GlassCard>
 

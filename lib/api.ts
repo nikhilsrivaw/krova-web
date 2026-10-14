@@ -1286,6 +1286,7 @@ export const channels = {
     api.post<EmbeddedSignupResult>("/channels/whatsapp/embedded-signup", { code }),
 
   disconnectWhatsApp: () => api.delete<void>("/channels/whatsapp"),
+  disconnectInstagram: () => api.delete<void>("/channels/instagram"),
 
   windowState: (phone: string) =>
     api.get<WhatsAppWindow>(`/messages/window/${encodeURIComponent(phone)}`),
@@ -1584,7 +1585,7 @@ export type CallLog = {
     plivo_voice_paise?: number;
     plivo_cost_source?: string;
   };
-  /** What the wallet is charged for the call: real cost (speech, carrier, AI) plus the platform charge. */
+  /** What the wallet is charged for the call: real cost (speech, carrier, AI) plus any platform charge (none for now). */
   ai_paise?: number;
   platform_paise?: number;
   charged_paise?: number;
