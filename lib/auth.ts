@@ -177,6 +177,35 @@ export async function requestOtp(destination: string, channel: "email" | "call")
   }
 }
 
+/** Forgot password, step 1: send a code to the email, or read it aloud on a call to the phone number. */
+export async function requestPasswordReset(destination: string, channel: "email" | "call"): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination, channel }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Could not send the code");
+  }
+}
+
+/** Forgot password, step 2: the code and the new password. Every session is signed out. */
+export async function confirmPasswordReset(input: {
+  destination: string; channel: "email" | "call"; code: string; new_password: string;
+}): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/password-reset/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    throw new Error(detail || "Could not change the password");
+  }
+}
+
 export async function otpLogin(
   destination: string, channel: "email" | "call", code: string,
 ): Promise<Session> {

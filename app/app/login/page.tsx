@@ -106,10 +106,16 @@ export default function AppLoginPage() {
         </button>
       </form>
 
+      {!teamMode && (
+        <a href="/forgot-password" className="mt-4 block w-full text-center text-xs text-os-text-dim hover:text-white">
+          Forgot password?
+        </a>
+      )}
+
       <button
         type="button"
         onClick={() => { setTeamMode(!teamMode); setError(null); }}
-        className="mt-4 w-full text-center text-xs text-teal hover:underline"
+        className="mt-3 w-full text-center text-xs text-teal hover:underline"
       >
         {teamMode ? "I sign in with my email or phone" : "I'm a team member - sign in with my Team ID"}
       </button>
