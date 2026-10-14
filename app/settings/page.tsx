@@ -1961,7 +1961,7 @@ export default function SettingsPage() {
             </CapabilityFold>
             )}
 
-            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!githubConnection} label="GitHub">
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!githubConnection} hidden label="GitHub">
             {/* GitHub - software-startup vertical's closed bug-lifecycle loop */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">
@@ -2025,7 +2025,7 @@ export default function SettingsPage() {
             </div>
             </CapabilityFold>
 
-            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!emailSendConnection} label="Outbound email address">
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!emailSendConnection} hidden label="Outbound email address">
             {/* Outbound email (Postmark sender signature) - software-startup vertical */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">
@@ -2072,7 +2072,7 @@ export default function SettingsPage() {
             </div>
             </CapabilityFold>
 
-            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!stripeConnection} label="Stripe billing dunning">
+            <CapabilityFold have={profile?.capabilities} anyOf={["product_feedback"]} keepOpen={!!stripeConnection} hidden label="Stripe billing dunning">
             {/* Stripe billing dunning - software-startup vertical */}
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div className="flex items-center gap-3">

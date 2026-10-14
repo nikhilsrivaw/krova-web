@@ -21,6 +21,7 @@ export function CapabilityFold({
   anyOf,
   label,
   keepOpen = false,
+  hidden = false,
   children,
 }: {
   /** The business's capabilities from its profile; undefined while loading. */
@@ -31,8 +32,11 @@ export function CapabilityFold({
   label: string;
   /** Already in use (connected, filled in) - never fold something being used. */
   keepOpen?: boolean;
+  /** Not shown at all, even folded. */
+  hidden?: boolean;
   children: React.ReactNode;
 }) {
+  if (hidden) return null;
   const relevant = have === undefined || keepOpen || anyOf.some((cap) => have.includes(cap));
   if (relevant) return <>{children}</>;
 

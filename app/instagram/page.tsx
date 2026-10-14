@@ -46,6 +46,10 @@ const INSTAGRAM_METRIC_LABELS: Record<string, string> = {
   website_clicks: "Website Clicks",
 };
 
+// Photo publishing and a hand-typed DM were built for Meta's app review. Hidden from owners; the
+// carousel sender and the auto-replies are the real features. Flip to true to show them again.
+const SHOW_MANUAL_TOOLS = false;
+
 function InstagramPageContent() {
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -493,7 +497,7 @@ function InstagramPageContent() {
               </GlassCard>
             )}
 
-            {connection.status === "active" && (
+            {SHOW_MANUAL_TOOLS && connection.status === "active" && (
               <GlassCard className="p-6 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400">
@@ -537,7 +541,7 @@ function InstagramPageContent() {
               </GlassCard>
             )}
 
-            {connection.status === "active" && (
+            {SHOW_MANUAL_TOOLS && connection.status === "active" && (
               <GlassCard className="p-6 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
