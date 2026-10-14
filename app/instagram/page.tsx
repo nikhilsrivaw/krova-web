@@ -57,9 +57,11 @@ function InstagramPageContent() {
     setLoadError(null);
     try {
       const list = await channels.list();
-      const conn = list.find((c) => c.channel === "instagram") || null;
-      // A disconnected account (the owner let go of it) shows the same as never connected.
-      setConnection(conn && conn.status !== "disconnected" ? conn : null);
+      // A business can hold several Instagram rows (an account it disconnected, then another it connected).
+      // Show the live one; a disconnected row (the owner let go of it) counts as not connected.
+      const rows = list.filter((c) => c.channel === "instagram" && c.status !== "disconnected");
+      const conn = rows.find((c) => c.status === "active") || rows[0] || null;
+      setConnection(conn);
       // A 409 here just means not connected yet - not worth surfacing as
       // a page-level load error the way the connection list's own
       // failure is.
