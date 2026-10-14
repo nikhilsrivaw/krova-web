@@ -2,6 +2,7 @@
 
 import { LIST_PRICE, discountText, guideLines } from "@/lib/planGuide";
 import { UnlockHero } from "@/components/billing/UnlockHero";
+import { BillingDetailsCard, InvoicesSection } from "@/components/billing/InvoicesAndDetails";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Check, CreditCard, Phone, Wallet } from "lucide-react";
@@ -223,6 +224,8 @@ function BillingInner() {
 
               {data.usage && <UsageCard u={data.usage} />}
 
+              {isOwner && <BillingDetailsCard />}
+
               {isOwner && !sub && (
                 <div className="flex items-center gap-2">
                   <input
@@ -353,6 +356,8 @@ function BillingInner() {
                 </GlassCard>
               )}
             </section>
+
+            {isOwner && <InvoicesSection refreshKey={data.payments.length} />}
 
             {data.payments.length > 0 && (
               <section aria-label="Payments" className="space-y-3">

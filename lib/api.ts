@@ -1073,6 +1073,19 @@ export type BillingOverview = {
   payments: { at: string; purpose: string; status: string; total: string; failure: string | null }[];
 };
 
+/** Who GST invoices are made out to. */
+export type BillingDetails = {
+  legal_name: string; address: string; state_code: string; state_name: string; gstin: string;
+  /** An address and state are on file. */
+  complete: boolean;
+  states: { code: string; name: string }[];
+};
+
+/** One invoice (plan payment) or receipt (wallet top-up). */
+export type InvoiceRow = {
+  id: string; number: string; kind: "invoice" | "receipt"; issued_at: string; description: string; total: string; gst: string;
+};
+
 /** A signed form the browser posts to PayU. */
 export type PayuCheckout = { action: string; fields: Record<string, string>; total: string };
 
@@ -1086,6 +1099,11 @@ export const billing = {
   topup: (amountRupees: number) => api.post<PayuCheckout>("/billing/topup", { amount_rupees: amountRupees }),
   cancel: () => api.post<{ ends_on: string }>("/billing/cancel"),
   resume: () => api.post<{ resumed: boolean }>("/billing/resume"),
+  details: () => api.get<BillingDetails>("/billing/details"),
+  saveDetails: (d: { legal_name: string; address: string; state_code: string; gstin: string }) =>
+    api.put<BillingDetails>("/billing/details", d),
+  invoices: () => api.get<InvoiceRow[]>("/billing/invoices"),
+  downloadInvoice: (id: string) => api.getBlob(`/billing/invoices/${id}/pdf`),
 };
 
 /** Hand the customer to PayU: build the form and submit it. Leaves this page. */
