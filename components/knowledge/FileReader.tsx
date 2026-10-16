@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { knowledge, type KnowledgeFileReading } from "@/lib/api";
@@ -14,7 +14,7 @@ type FaqPick = { question: string; answer: string; use: boolean };
  * Read a price list, menu, brochure or FAQ sheet ONCE and fill the Business Card from it. The owner checks every
  * suggestion before it is saved; the file itself is not kept, so the AI never reads the whole file on each message.
  */
-export function FileReader({ onSaved }: { onSaved: () => void }) {
+export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPending?: (waiting: boolean) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -23,6 +23,13 @@ export function FileReader({ onSaved }: { onSaved: () => void }) {
   const [faqs, setFaqs] = useState<FaqPick[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // Tell the page while suggestions sit unsaved, and bring them into view when they arrive.
+  useEffect(() => {
+    onPending?.(!!result);
+    if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [result, onPending]);
 
   const read = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,15 +94,24 @@ export function FileReader({ onSaved }: { onSaved: () => void }) {
             className="w-full py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-50 text-white text-xs font-bold cursor-pointer">
             {reading ? "Reading..." : "Read it"}
           </button>
+          {reading && (
+            <p className="text-[11px] text-os-text-dim">Reading your file - this can take up to a minute. Your suggestions will appear below.</p>
+          )}
         </form>
         {done && <p className="text-xs text-emerald-300">{done}</p>}
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && (
+          <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">{error}</div>
+        )}
       </GlassCard>
 
       {result && (
-        <GlassCard className="p-6 space-y-4">
+        <div ref={resultRef}>
+        <GlassCard className="p-6 space-y-4 border-brass/30">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-sm font-bold text-white">Check before saving</h4>
+            <div>
+              <h4 className="text-sm font-bold text-white">Check before saving</h4>
+              <p className="text-[11px] text-os-text-dim">Nothing is on your card yet. Tick what is right, edit it if needed, then press Save at the bottom.</p>
+            </div>
             <span className="text-[10px] font-mono text-os-text-dim">{result.reads_left_today} reads left today</span>
           </div>
           {result.truncated && (
@@ -134,6 +150,7 @@ export function FileReader({ onSaved }: { onSaved: () => void }) {
             </button>
           )}
         </GlassCard>
+        </div>
       )}
     </div>
   );

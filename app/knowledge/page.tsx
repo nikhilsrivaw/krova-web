@@ -45,6 +45,7 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 export default function KnowledgePage() {
   const [activeTab, setActiveTab] = useState<"card" | "team" | "gaps" | "items" | "upload">("card");
   const [editingItem, setEditingItem] = useState<KnowledgeItem | null>(null);
+  const [fileSuggestionsWaiting, setFileSuggestionsWaiting] = useState(false);
   const [gaps, setGaps] = useState<KnowledgeGap[]>([]);
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [status, setStatus] = useState<KnowledgeStatus | null>(null);
@@ -244,6 +245,15 @@ export default function KnowledgePage() {
         </div>
 
         {/* TAB 0: THE CARDS - short, same fields for every business type, read by the AI on every message */}
+        {activeTab !== "upload" && fileSuggestionsWaiting && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("upload")}
+            className="w-full text-left px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 cursor-pointer"
+          >
+            Suggestions from your file are waiting. They are not on your card yet - open <strong>Fill from a file</strong>, tick them and press Save.
+          </button>
+        )}
         {activeTab === "card" && <BusinessCard onChanged={loadData} />}
         {activeTab === "team" && <TeamCard onChanged={loadData} />}
 
@@ -392,7 +402,10 @@ export default function KnowledgePage() {
         )}
 
         {/* TAB 3: READ A FILE ONCE INTO THE CARD */}
-        {activeTab === "upload" && <FileReader onSaved={loadData} />}
+        {/* Kept mounted on every tab: a read costs an AI call, so its suggestions must survive a look at another tab. */}
+        <div className={activeTab === "upload" ? "" : "hidden"}>
+          <FileReader onSaved={loadData} onPending={setFileSuggestionsWaiting} />
+        </div>
 
         {/* Answer Gap / Create Modal */}
         <Modal
