@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import {
   BookOpen,
   Plus,
-  Upload,
   Sparkles,
   CheckCircle2,
   Trash2,
@@ -17,6 +16,7 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { BusinessCard } from "@/components/knowledge/BusinessCard";
 import { TeamCard } from "@/components/knowledge/TeamCard";
 import { GapAnswer } from "@/components/knowledge/GapAnswer";
+import { FileReader } from "@/components/knowledge/FileReader";
 import {
   knowledge,
   type KnowledgeItem,
@@ -29,6 +29,9 @@ import {
 // which it recommends retrieval instead of whole-document injection. Not a
 // hard ceiling, just what the progress bar is measured against.
 const TOKEN_BUDGET_REFERENCE = 12_000;
+
+// Matches knowledge_card.OTHER_CHARS_LIMIT on the backend.
+const OTHER_CHARS_LIMIT = 4000;
 
 const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
   { value: "price_list", label: "Price List" },
@@ -56,12 +59,6 @@ export default function KnowledgePage() {
   const [newKind, setNewKind] = useState<KnowledgeKind>("other");
   const [newContent, setNewContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Direct Upload State
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadTitle, setUploadTitle] = useState("");
-  const [uploadKind, setUploadKind] = useState<KnowledgeKind>("other");
-  const [isUploading, setIsUploading] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -133,7 +130,7 @@ export default function KnowledgePage() {
   };
 
   // Card fields live on the Business card and Team tabs; this list is everything else.
-  const otherItems = items.filter((i) => !i.topic);
+  const otherItems = items.filter((i) => !i.topic && !i.card);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,23 +150,6 @@ export default function KnowledgePage() {
       setActionError(err instanceof Error ? err.message : "Could not save this knowledge item.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile || !uploadTitle.trim()) return;
-    setIsUploading(true);
-    setActionError(null);
-    try {
-      await knowledge.upload({ file: selectedFile, title: uploadTitle, kind: uploadKind });
-      setSelectedFile(null);
-      setUploadTitle("");
-      loadData();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not upload this document.");
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -246,7 +226,7 @@ export default function KnowledgePage() {
             { key: "team", label: "Team" },
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
             { key: "items", label: `Other entries (${otherItems.length})` },
-            { key: "upload", label: "Upload Documents (TXT / MD / CSV)" },
+            { key: "upload", label: "Fill from a file" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -339,6 +319,21 @@ export default function KnowledgePage() {
         {/* TAB 2: KNOWLEDGE ITEMS */}
         {activeTab === "items" && (
           <div className="space-y-4">
+            {status && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-os-text-dim">
+                <span>
+                  Short notes for what fits nowhere on the Business card. The AI reads every entry that is on, on every message, so they are kept small.
+                </span>
+                <span className={`font-mono ${status.other_items > status.other_items_limit || status.other_tokens > status.other_tokens_limit ? "text-amber-300" : ""}`}>
+                  {status.other_items}/{status.other_items_limit} on · {status.other_tokens}/{status.other_tokens_limit} tokens
+                </span>
+              </div>
+            )}
+            {status && (status.other_items > status.other_items_limit || status.other_tokens > status.other_tokens_limit) && (
+              <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                These entries are over the limit from before. Move what matters to the Business card, then switch the long ones off.
+              </div>
+            )}
             {otherItems.length === 0 ? (
               <EmptyState
                 icon={BookOpen}
@@ -396,72 +391,8 @@ export default function KnowledgePage() {
           </div>
         )}
 
-        {/* TAB 3: DOCUMENT UPLOADER */}
-        {activeTab === "upload" && (
-          <div className="max-w-xl mx-auto space-y-6">
-            <GlassCard className="p-6 space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white mb-1">
-                  Upload Business Documents
-                </h4>
-                <p className="text-xs text-os-text-dim">
-                  Only plain text is read today (.txt, .md, .csv) — for anything else, copy the text into an entry instead.
-                </p>
-              </div>
-
-              <form onSubmit={handleFileUpload} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
-                    Title:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={uploadTitle}
-                    onChange={(e) => setUploadTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1.5">
-                    Kind:
-                  </label>
-                  <select
-                    value={uploadKind}
-                    onChange={(e) => setUploadKind(e.target.value as KnowledgeKind)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                  >
-                    {KIND_OPTIONS.map((k) => (
-                      <option key={k.value} value={k.value}>{k.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="border-2 border-dashed border-white/[0.12] rounded-2xl p-8 text-center bg-black/30 hover:border-brass/50 transition-colors">
-                  <Upload className="w-8 h-8 mx-auto text-os-text-dim mb-3" />
-                  <input
-                    type="file"
-                    accept=".txt,.md,.csv"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="block w-full text-xs text-os-text-dim file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/[0.08] file:text-white hover:file:bg-white/[0.12] cursor-pointer"
-                  />
-                  <p className="text-[10px] text-os-text-dim mt-2 font-mono">
-                    Supported: TXT, MD, CSV (Max 2MB)
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!selectedFile || !uploadTitle.trim() || isUploading}
-                  className="w-full py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
-                >
-                  {isUploading ? "Extracting & Ingesting..." : "Ingest Document into AI"}
-                </button>
-              </form>
-            </GlassCard>
-          </div>
-        )}
+        {/* TAB 3: READ A FILE ONCE INTO THE CARD */}
+        {activeTab === "upload" && <FileReader onSaved={loadData} />}
 
         {/* Answer Gap / Create Modal */}
         <Modal
@@ -518,11 +449,13 @@ export default function KnowledgePage() {
               <textarea
                 rows={5}
                 required
+                maxLength={OTHER_CHARS_LIMIT}
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder="State details clearly (e.g. We partner with Hotel Orchid across the street offering 20% discount with promo code MED2026...)"
                 className="w-full p-3 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
               />
+              <span className="text-[10px] font-mono text-os-text-dim">{newContent.length}/{OTHER_CHARS_LIMIT}</span>
             </div>
 
             <div className="flex justify-end gap-3 pt-3">

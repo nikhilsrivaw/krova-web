@@ -2142,6 +2142,8 @@ export type KnowledgeItem = {
   topic?: string | null;
   /** After this moment the AI stops using it. */
   valid_until?: string | null;
+  /** "faq" for a top question; null for a card field (see topic) or a free note. */
+  card?: string | null;
 };
 
 /** One Business Card field (the same fields for every business type; the type only rewords them), with its value. */
@@ -2182,6 +2184,19 @@ export type KnowledgeStatus = {
   total_tokens: number;
   fits_in_context: boolean;
   advice: string;
+  /** "Other entries" (free notes) have their own small budget. */
+  other_items: number;
+  other_tokens: number;
+  other_items_limit: number;
+  other_tokens_limit: number;
+};
+
+/** What a one-time file read suggests for the card. Nothing is saved until the owner saves it. */
+export type KnowledgeFileReading = {
+  fields: { key: string; title: string; limit: number; current: string | null; suggested: string }[];
+  faqs: { question: string; answer: string }[];
+  truncated: boolean;
+  reads_left_today: number;
 };
 
 export const knowledge = {
@@ -2199,12 +2214,11 @@ export const knowledge = {
     resolves_gap?: string;
   }) => api.post<KnowledgeItem>("/knowledge", data),
 
-  upload: (data: { file: File; title: string; kind?: KnowledgeKind }) => {
+  /** Read a PDF, photo or text file once and get suggestions for the card. The file is not kept. */
+  readFile: (file: File) => {
     const formData = new FormData();
-    formData.set("file", data.file);
-    formData.set("title", data.title);
-    if (data.kind) formData.set("kind", data.kind);
-    return api.post<KnowledgeItem>("/knowledge/upload", formData, true);
+    formData.set("file", file);
+    return api.post<KnowledgeFileReading>("/knowledge/read-file", formData, true);
   },
 
   delete: (id: string) => api.delete<void>(`/knowledge/${id}`),
