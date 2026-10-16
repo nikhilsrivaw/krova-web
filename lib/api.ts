@@ -2138,6 +2138,32 @@ export type KnowledgeItem = {
   /** The gap text this item was written to answer, if any - matches KnowledgeGap.gap, not an id. */
   resolves_gap: string | null;
   created_at: string;
+  /** The card field this item is ("about", "when", "team"...), if it is one. */
+  topic?: string | null;
+  /** After this moment the AI stops using it. */
+  valid_until?: string | null;
+};
+
+/** One Business Card field (the same fields for every business type; the type only rewords them), with its value. */
+export type KnowledgeCardField = {
+  key: string; title: string; question: string; placeholder: string; kind: KnowledgeKind; limit: number;
+  required: boolean; expires: boolean; link: boolean; value: string | null; item_id: string | null; valid_until: string | null;
+};
+
+export type KnowledgeTeamPerson = { name: string; role: string; handles: string; languages: string };
+
+export type KnowledgeTeamCard = { contact: string; people: KnowledgeTeamPerson[]; languages: string; response_note: string };
+
+export type KnowledgeFaq = { id: string; question: string; answer: string; active: boolean };
+
+export type KnowledgeCard = {
+  vertical: string; vertical_label: string; fields: KnowledgeCardField[]; team: KnowledgeTeamCard; faqs: KnowledgeFaq[];
+  coverage: {
+    required_total: number; required_done: number; fields_total: number; fields_done: number;
+    team_done: number; faqs: number; faq_limit: number;
+  };
+  /** Roughly what the cards cost the AI to read on every message. */
+  tokens: number;
 };
 
 // Gaps have no id on the backend - they're identified by the gap text itself
@@ -2147,6 +2173,8 @@ export type KnowledgeGap = {
   times_asked: number;
   last_asked: string | null;
   example_question: string | null;
+  /** The card field this most likely belongs to ("when", "payment", "team"...). A suggestion only. */
+  suggested_field: string | null;
 };
 
 export type KnowledgeStatus = {
@@ -2180,6 +2208,26 @@ export const knowledge = {
   },
 
   delete: (id: string) => api.delete<void>(`/knowledge/${id}`),
+
+  update: (id: string, patch: Partial<{
+    title: string; content: string; kind: KnowledgeKind; active: boolean; valid_until: string; clear_valid_until: boolean;
+  }>) => api.patch<KnowledgeItem>(`/knowledge/${id}`, patch),
+
+  card: () => api.get<KnowledgeCard>("/knowledge/card"),
+
+  /** Save one Business Card field; an empty value removes it. */
+  saveCardField: (key: string, data: { content: string; valid_until?: string; resolves_gap?: string }) =>
+    api.put<KnowledgeItem | null>(`/knowledge/card/${key}`, data),
+
+  saveTeamCard: (data: KnowledgeTeamCard & { resolves_gap?: string }) =>
+    api.put<KnowledgeTeamCard>("/knowledge/team-card", data),
+
+  addFaq: (data: { question: string; answer: string; resolves_gap?: string }) => api.post<KnowledgeFaq>("/knowledge/faqs", data),
+
+  /** "Always hand this to me": the AI passes this kind of question to a person from now on. */
+  handoverGap: (gap: string) => api.post<void>("/knowledge/gaps/handover", { gap }),
+
+  dismissGap: (gap: string) => api.post<void>("/knowledge/gaps/dismiss", { gap }),
 };
 
 // ── Campaigns ─────────────────────────────────────────────────────────────────

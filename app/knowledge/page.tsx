@@ -14,6 +14,9 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
+import { BusinessCard } from "@/components/knowledge/BusinessCard";
+import { TeamCard } from "@/components/knowledge/TeamCard";
+import { GapAnswer } from "@/components/knowledge/GapAnswer";
 import {
   knowledge,
   type KnowledgeItem,
@@ -37,7 +40,8 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 ];
 
 export default function KnowledgePage() {
-  const [activeTab, setActiveTab] = useState<"gaps" | "items" | "upload">("gaps");
+  const [activeTab, setActiveTab] = useState<"card" | "team" | "gaps" | "items" | "upload">("card");
+  const [editingItem, setEditingItem] = useState<KnowledgeItem | null>(null);
   const [gaps, setGaps] = useState<KnowledgeGap[]>([]);
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [status, setStatus] = useState<KnowledgeStatus | null>(null);
@@ -85,37 +89,64 @@ export default function KnowledgePage() {
     loadData();
   }, []);
 
-  const isModalOpen = !!answeringGap || isAddModalOpen;
+  const isModalOpen = !!answeringGap || isAddModalOpen || !!editingItem;
 
   const closeModal = () => {
     setAnsweringGap(null);
+    setEditingItem(null);
     setIsAddModalOpen(false);
     setNewTitle("");
     setNewContent("");
     setNewKind("other");
   };
 
+  const openEditModal = (item: KnowledgeItem) => {
+    setEditingItem(item);
+    setNewTitle(item.title);
+    setNewContent(item.content);
+    setNewKind(item.kind);
+  };
+
+  const handleToggleActive = async (item: KnowledgeItem) => {
+    setActionError(null);
+    try {
+      const updated = await knowledge.update(item.id, { active: !item.active });
+      setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)));
+      loadData();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not change this item.");
+    }
+  };
+
+  const handleDismissGap = async (gap: KnowledgeGap) => {
+    setActionError(null);
+    try {
+      await knowledge.dismissGap(gap.gap);
+      setGaps((prev) => prev.filter((g) => g.gap !== gap.gap));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not dismiss this gap.");
+    }
+  };
+
   const openGapModal = (gap: KnowledgeGap) => {
     setAnsweringGap(gap);
-    setNewTitle(gap.gap);
-    setNewContent("");
-    setNewKind("other");
   };
+
+  // Card fields live on the Business card and Team tabs; this list is everything else.
+  const otherItems = items.filter((i) => !i.topic);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setActionError(null);
     try {
-      await knowledge.create({
-        title: newTitle,
-        content: newContent,
-        kind: newKind,
-        resolves_gap: answeringGap?.gap,
-      });
-      if (answeringGap) {
-        setGaps((prev) => prev.filter((g) => g.gap !== answeringGap.gap));
+      if (editingItem) {
+        await knowledge.update(editingItem.id, { title: newTitle, content: newContent, kind: newKind });
+        closeModal();
+        loadData();
+        return;
       }
+      await knowledge.create({ title: newTitle, content: newContent, kind: newKind });
       closeModal();
       loadData();
     } catch (err) {
@@ -211,8 +242,10 @@ export default function KnowledgePage() {
         {/* Sub-Navigation Tabs */}
         <div className="workspace-tabs border-b border-white/[0.08]">
           {[
+            { key: "card", label: "Business card" },
+            { key: "team", label: "Team" },
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
-            { key: "items", label: `Knowledge Entries (${items.length})` },
+            { key: "items", label: `Other entries (${otherItems.length})` },
             { key: "upload", label: "Upload Documents (TXT / MD / CSV)" },
           ].map((tab) => (
             <button
@@ -230,12 +263,16 @@ export default function KnowledgePage() {
           ))}
         </div>
 
+        {/* TAB 0: THE CARDS - short, same fields for every business type, read by the AI on every message */}
+        {activeTab === "card" && <BusinessCard onChanged={loadData} />}
+        {activeTab === "team" && <TeamCard onChanged={loadData} />}
+
         {/* TAB 1: GAPS QUEUE (THE DIFFERENTIATING QUEUE) */}
         {activeTab === "gaps" && (
           <div className="space-y-4">
             <div className="workspace-card-heading justify-between p-5 rounded-xl bg-teal/[0.05] border border-teal/20 text-xs text-os-text-dim">
               <span>
-                <strong>The Gaps Queue</strong> lists real questions asked by your customers that the AI didn't have answers for. Click <strong>Answer This</strong> to instantly add knowledge and close the loop.
+                <strong>The Gaps Queue</strong> lists real questions asked by your customers that the AI didn't have answers for. Add the answer to your card, keep it as a top question, or tell the AI to always hand it to you.
               </span>
               <Badge variant="indigo">{gaps.length} Gaps Open</Badge>
             </div>
@@ -263,6 +300,9 @@ export default function KnowledgePage() {
                         <Badge variant="amber" size="sm">
                           Asked {gap.times_asked} times
                         </Badge>
+                        {gap.suggested_field && (
+                          <Badge variant="outline" size="sm">Fits: {gap.suggested_field.replace("_", " ")}</Badge>
+                        )}
                       </div>
                       {gap.example_question && (
                         <p className="text-xs text-white/80 italic font-mono">
@@ -271,14 +311,24 @@ export default function KnowledgePage() {
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => openGapModal(gap)}
-                      className="px-4 py-2 rounded-xl bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all shadow-md shrink-0 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Answer This & Close Gap
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleDismissGap(gap)}
+                        className="px-3 py-2 rounded-xl text-xs text-os-text-dim hover:text-white cursor-pointer"
+                        title="Not a real gap, or already covered"
+                      >
+                        Dismiss
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openGapModal(gap)}
+                        className="px-4 py-2 rounded-xl bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Answer
+                      </button>
+                    </div>
                   </GlassCard>
                 ))}
               </div>
@@ -289,22 +339,30 @@ export default function KnowledgePage() {
         {/* TAB 2: KNOWLEDGE ITEMS */}
         {activeTab === "items" && (
           <div className="space-y-4">
-            {items.length === 0 ? (
+            {otherItems.length === 0 ? (
               <EmptyState
                 icon={BookOpen}
-                title="No knowledge added yet"
-                description="Add a price list, FAQ, or policy so the agent can answer from it."
+                title="Nothing extra here"
+                description="Most things belong on the Business card. Add an entry here only for something that fits nowhere else - keep it short, the AI reads it on every message."
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {items.map((item) => (
-                  <GlassCard key={item.id} className="p-5 flex flex-col justify-between">
+                {otherItems.map((item) => (
+                  <GlassCard key={item.id} className={`p-5 flex flex-col justify-between ${item.active ? "" : "opacity-60"}`}>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-2 gap-2">
                         <span className="text-xs font-bold text-white">{item.title}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-os-text-dim">
-                          {item.kind}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!item.active && <Badge variant="outline" size="sm">Off</Badge>}
+                          {item.valid_until && (
+                            <Badge variant={new Date(item.valid_until).getTime() < Date.now() ? "rose" : "amber"} size="sm">
+                              {new Date(item.valid_until).getTime() < Date.now() ? "Ended" : "Until"} {new Date(item.valid_until).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </Badge>
+                          )}
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-os-text-dim">
+                            {item.kind}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.06] text-xs text-white/90 font-mono whitespace-pre-wrap leading-relaxed mb-4">
@@ -314,14 +372,22 @@ export default function KnowledgePage() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[10px] font-mono text-os-text-dim">
                       <span>{item.token_estimate} Tokens · {item.source}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="text-os-text-dim hover:text-thread-bright transition-colors flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => openEditModal(item)} className="text-os-text-dim hover:text-white transition-colors cursor-pointer">
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => handleToggleActive(item)} className="text-os-text-dim hover:text-white transition-colors cursor-pointer">
+                          {item.active ? "Switch off" : "Switch on"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="text-os-text-dim hover:text-thread-bright transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </GlassCard>
                 ))}
@@ -401,20 +467,21 @@ export default function KnowledgePage() {
         <Modal
           isOpen={isModalOpen}
           onClose={closeModal}
-          title={answeringGap ? answeringGap.gap : "Add Knowledge Entry"}
+          title={editingItem ? "Edit Knowledge Entry" : answeringGap ? answeringGap.gap : "Add Knowledge Entry"}
           subtitle="This information will immediately feed the AI agent's reasoning across WhatsApp and Voice."
           maxWidth="lg"
         >
+          {answeringGap ? (
+            <GapAnswer
+              gap={answeringGap}
+              onDone={() => {
+                setGaps((prev) => prev.filter((g) => g.gap !== answeringGap.gap));
+                closeModal();
+                loadData();
+              }}
+            />
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {answeringGap?.example_question && (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-                <span className="text-[10px] uppercase font-mono block mb-0.5">
-                  Customer Inquiry Example:
-                </span>
-                "{answeringGap.example_question}"
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
                 Title:
@@ -471,10 +538,11 @@ export default function KnowledgePage() {
                 disabled={isSubmitting}
                 className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-brass hover:bg-brass-dim shadow-md shadow-brass/20 cursor-pointer"
               >
-                {isSubmitting ? "Saving..." : answeringGap ? "Save & Close Gap" : "Save"}
+                {isSubmitting ? "Saving..." : editingItem ? "Save changes" : "Save"}
               </button>
             </div>
           </form>
+          )}
         </Modal>
       </div>
     </AppLayout>
