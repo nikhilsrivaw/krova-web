@@ -2197,7 +2197,15 @@ export type KnowledgeFileReading = {
   faqs: { question: string; answer: string }[];
   truncated: boolean;
   reads_left_today: number;
+  /** The longer, opened-when-needed knowledge the same file holds. */
+  catalogue: KnowledgeCatalogueRow[];
+  catalogue_now: number;
+  bank: { question: string; answer: string }[];
+  bank_room: number;
 };
+
+/** One Catalogue row. The AI is shown only the rows a customer's message names, never the whole list. */
+export type KnowledgeCatalogueRow = { name: string; price: string; details: string };
 
 export const knowledge = {
   list: () => api.get<KnowledgeItem[]>("/knowledge"),
@@ -2213,6 +2221,18 @@ export const knowledge = {
     /** Pass the gap's own text (KnowledgeGap.gap) to close it out once this is added. */
     resolves_gap?: string;
   }) => api.post<KnowledgeItem>("/knowledge", data),
+
+  catalogue: () => api.get<{ rows: KnowledgeCatalogueRow[]; limit: number }>("/knowledge/catalogue"),
+
+  /** Replace the whole catalogue; no rows removes it. */
+  saveCatalogue: (rows: KnowledgeCatalogueRow[]) =>
+    api.put<{ rows: KnowledgeCatalogueRow[]; limit: number }>("/knowledge/catalogue", { rows }),
+
+  /** Saved answers shown to the AI only when a customer asks something like them. */
+  bank: () => api.get<{ items: KnowledgeFaq[]; limit: number }>("/knowledge/bank"),
+
+  addToBank: (data: { question: string; answer: string; resolves_gap?: string }) =>
+    api.post<KnowledgeFaq>("/knowledge/bank", data),
 
   /** Read a PDF, photo or text file once and get suggestions for the card. The file is not kept. */
   readFile: (file: File) => {

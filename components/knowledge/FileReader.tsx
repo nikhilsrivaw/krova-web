@@ -21,6 +21,9 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
   const [result, setResult] = useState<KnowledgeFileReading | null>(null);
   const [fields, setFields] = useState<FieldPick[]>([]);
   const [faqs, setFaqs] = useState<FaqPick[]>([]);
+  const [useCatalogue, setUseCatalogue] = useState(true);
+  const [catalogueMode, setCatalogueMode] = useState<"add" | "replace">("add");
+  const [bank, setBank] = useState<FaqPick[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -40,6 +43,9 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
       setResult(r);
       setFields(r.fields.map((f) => ({ ...f, text: f.suggested, use: !f.current })));
       setFaqs(r.faqs.map((q) => ({ ...q, use: true })));
+      setBank((r.bank ?? []).map((q) => ({ ...q, use: true })));
+      setUseCatalogue((r.catalogue ?? []).length > 0);
+      setCatalogueMode(r.catalogue_now ? "add" : "replace");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read the file.");
     } finally {
@@ -59,15 +65,31 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
       try { await knowledge.addFaq({ question: q.question, answer: q.answer }); saved++; }
       catch (err) { problems.push(`${q.question}: ${err instanceof Error ? err.message : "not saved"}`); }
     }
+    if (result && useCatalogue && result.catalogue.length) {
+      try {
+        const current = catalogueMode === "add" ? (await knowledge.catalogue()).rows : [];
+        const seen = new Set(current.map((r) => r.name.trim().toLowerCase()));
+        const merged = [...current, ...result.catalogue.filter((r) => !seen.has(r.name.trim().toLowerCase()))];
+        const out = await knowledge.saveCatalogue(merged);
+        saved += Math.max(0, out.rows.length - current.length);
+      } catch (err) { problems.push(`Catalogue: ${err instanceof Error ? err.message : "not saved"}`); }
+    }
+    for (const q of bank.filter((x) => x.use)) {
+      try { await knowledge.addToBank({ question: q.question, answer: q.answer }); saved++; }
+      catch (err) { problems.push(`${q.question}: ${err instanceof Error ? err.message : "not saved"}`); }
+    }
     setSaving(false);
     if (problems.length) setError(problems.join(" · "));
-    setDone(`${saved} saved to your card.`);
+    setDone(`${saved} saved to your knowledge.`);
     setResult(null); setFile(null);
     onSaved();
   };
 
   const setField = (i: number, patch: Partial<FieldPick>) => setFields((p) => p.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const setFaq = (i: number, patch: Partial<FaqPick>) => setFaqs((p) => p.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+  const setBankPick = (i: number, patch: Partial<FaqPick>) => setBank((p) => p.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+  const rowsFound = result?.catalogue?.length ?? 0;
+  const anything = fields.length > 0 || faqs.length > 0 || rowsFound > 0 || bank.length > 0;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -117,7 +139,7 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
           {result.truncated && (
             <p className="text-[11px] text-amber-300">The file was long, so only its first part was read.</p>
           )}
-          {fields.length === 0 && faqs.length === 0 && (
+          {!anything && (
             <p className="text-xs text-os-text-dim">Nothing in this file answers the card&apos;s questions. Try another file, or type it in.</p>
           )}
           {fields.map((f, i) => (
@@ -143,7 +165,46 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               ))}
             </div>
           )}
-          {(fields.length > 0 || faqs.length > 0) && (
+          {rowsFound > 0 && result && (
+            <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+              <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer">
+                <input type="checkbox" checked={useCatalogue} onChange={(e) => setUseCatalogue(e.target.checked)} />
+                Catalogue: {rowsFound} items found
+              </label>
+              <p className="text-[11px] text-os-text-dim">
+                The AI is shown only the items a customer names, so the whole list costs nothing extra.
+              </p>
+              {result.catalogue_now > 0 && (
+                <div className="flex gap-3 text-[11px] text-os-text-dim">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={catalogueMode === "add"} onChange={() => setCatalogueMode("add")} />
+                    Add to my {result.catalogue_now} items
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={catalogueMode === "replace"} onChange={() => setCatalogueMode("replace")} />
+                    Replace them
+                  </label>
+                </div>
+              )}
+              <div className="max-h-48 overflow-y-auto rounded-lg bg-black/30 border border-white/[0.06] p-2 text-[11px] font-mono text-white/80 space-y-0.5">
+                {result.catalogue.map((r, i) => (
+                  <div key={i}>{r.name}{r.price ? ` - ${r.price}` : ""}{r.details ? ` (${r.details})` : ""}</div>
+                ))}
+              </div>
+            </div>
+          )}
+          {bank.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+              <span className="text-xs font-bold text-white">More answers for the question bank</span>
+              {bank.map((q, i) => (
+                <label key={i} className="flex items-start gap-2 text-xs cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={q.use} onChange={(e) => setBankPick(i, { use: e.target.checked })} />
+                  <span><span className="text-white font-semibold">{q.question}</span><br /><span className="text-os-text-dim">{q.answer}</span></span>
+                </label>
+              ))}
+            </div>
+          )}
+          {anything && (
             <button type="button" onClick={save} disabled={saving}
               className="px-5 py-2 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold cursor-pointer disabled:opacity-50">
               {saving ? "Saving..." : "Save the ticked ones"}

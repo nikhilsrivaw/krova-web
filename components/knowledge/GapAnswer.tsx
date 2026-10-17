@@ -13,7 +13,7 @@ const TEAM = "team";
  */
 export function GapAnswer({ gap, onDone }: { gap: KnowledgeGap; onDone: () => void }) {
   const [card, setCard] = useState<KnowledgeCard | null>(null);
-  const [mode, setMode] = useState<"field" | "faq">("field");
+  const [mode, setMode] = useState<"field" | "faq" | "bank">("field");
   const [fieldKey, setFieldKey] = useState<string>("");
   const [text, setText] = useState("");
   const [question, setQuestion] = useState(gap.example_question?.slice(0, 150) || gap.gap.slice(0, 150));
@@ -60,6 +60,8 @@ export function GapAnswer({ gap, onDone }: { gap: KnowledgeGap; onDone: () => vo
     if (!card) return;
     if (mode === "faq") {
       run(() => knowledge.addFaq({ question, answer, resolves_gap: gap.gap }));
+    } else if (mode === "bank") {
+      run(() => knowledge.addToBank({ question, answer, resolves_gap: gap.gap }));
     } else if (fieldKey === TEAM) {
       run(() => knowledge.saveTeamCard({ ...card.team, contact: text, resolves_gap: gap.gap }));
     } else {
@@ -79,7 +81,7 @@ export function GapAnswer({ gap, onDone }: { gap: KnowledgeGap; onDone: () => vo
       )}
 
       <div className="flex gap-2">
-        {([["field", "Add to the business card"], ["faq", "Add as a top question"]] as const).map(([m, label]) => (
+        {([["field", "Add to the business card"], ["faq", "Add as a top question"], ["bank", "Add to the question bank"]] as const).map(([m, label]) => (
           <button key={m} type="button" onClick={() => setMode(m)} disabled={m === "faq" && faqFull}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-40 ${
               mode === m ? "bg-white/[0.1] text-white border border-white/[0.12]" : "text-os-text-dim hover:text-white"}`}>
@@ -106,8 +108,12 @@ export function GapAnswer({ gap, onDone }: { gap: KnowledgeGap; onDone: () => vo
       ) : (
         <div className="space-y-2">
           <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={150} required className={input} />
-          <textarea rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={250} required placeholder="Short answer" className={input} />
-          <span className="text-[10px] font-mono text-os-text-dim">{answer.length}/250 · {card.faqs.length} of {card.coverage.faq_limit} top questions used</span>
+          <textarea rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={mode === "bank" ? 400 : 250} required placeholder="Short answer" className={input} />
+          <span className="text-[10px] font-mono text-os-text-dim">
+            {mode === "bank"
+              ? `${answer.length}/400 · shown to the AI only when a customer asks something like this`
+              : `${answer.length}/250 · ${card.faqs.length} of ${card.coverage.faq_limit} top questions used`}
+          </span>
         </div>
       )}
 

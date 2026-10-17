@@ -17,6 +17,8 @@ import { BusinessCard } from "@/components/knowledge/BusinessCard";
 import { TeamCard } from "@/components/knowledge/TeamCard";
 import { GapAnswer } from "@/components/knowledge/GapAnswer";
 import { FileReader } from "@/components/knowledge/FileReader";
+import { Catalogue } from "@/components/knowledge/Catalogue";
+import { QuestionBank } from "@/components/knowledge/QuestionBank";
 import {
   knowledge,
   type KnowledgeItem,
@@ -43,7 +45,7 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 ];
 
 export default function KnowledgePage() {
-  const [activeTab, setActiveTab] = useState<"card" | "team" | "gaps" | "items" | "upload">("card");
+  const [activeTab, setActiveTab] = useState<"card" | "team" | "catalogue" | "bank" | "gaps" | "items" | "upload">("card");
   const [editingItem, setEditingItem] = useState<KnowledgeItem | null>(null);
   const [fileSuggestionsWaiting, setFileSuggestionsWaiting] = useState(false);
   const [gaps, setGaps] = useState<KnowledgeGap[]>([]);
@@ -225,6 +227,8 @@ export default function KnowledgePage() {
           {[
             { key: "card", label: "Business card" },
             { key: "team", label: "Team" },
+            { key: "catalogue", label: "Catalogue" },
+            { key: "bank", label: "Question bank" },
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
             { key: "items", label: `Other entries (${otherItems.length})` },
             { key: "upload", label: "Fill from a file" },
@@ -256,6 +260,8 @@ export default function KnowledgePage() {
         )}
         {activeTab === "card" && <BusinessCard onChanged={loadData} />}
         {activeTab === "team" && <TeamCard onChanged={loadData} />}
+        {activeTab === "catalogue" && <Catalogue onChanged={loadData} />}
+        {activeTab === "bank" && <QuestionBank onChanged={loadData} />}
 
         {/* TAB 1: GAPS QUEUE (THE DIFFERENTIATING QUEUE) */}
         {activeTab === "gaps" && (
