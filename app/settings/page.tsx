@@ -65,6 +65,7 @@ import {
   dataExport,
   queue as queueApi,
   fetchVerticals,
+  groupVerticals,
   WEBHOOK_EVENT_TYPES,
   WEBHOOK_FORMATS,
   type UserProfile,
@@ -1100,7 +1101,12 @@ export default function SettingsPage() {
                 (see Features below) stay as they are.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {verticals.map((v) => (
+                {groupVerticals(verticals).map(({ group, items }) => (
+                  <React.Fragment key={group ?? "main"}>
+                {group && (
+                  <p className="sm:col-span-2 pt-2 text-[10px] font-mono uppercase tracking-wide text-os-text-dim">{group}</p>
+                )}
+                {items.map((v) => (
                   <div
                     key={v.key}
                     onClick={() => setVertical(v.key)}
@@ -1114,6 +1120,8 @@ export default function SettingsPage() {
                     <p className="text-[11px] leading-relaxed opacity-80">{v.summary}</p>
                     <VerticalFeatures features={v.features} />
                   </div>
+                ))}
+                  </React.Fragment>
                 ))}
               </div>
             </div>

@@ -19,7 +19,7 @@ import {
   Eye,
   FileText,
 } from "lucide-react";
-import { fetchVerticals, type Vertical } from "@/lib/api";
+import { fetchVerticals, groupVerticals, type Vertical } from "@/lib/api";
 import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
@@ -165,7 +165,12 @@ export default function OnboardingPage() {
                   What kind of business is this?
                 </label>
                 <div className="space-y-2.5">
-                  {verticals.map((v) => (
+                  {groupVerticals(verticals).map(({ group, items }) => (
+                    <React.Fragment key={group ?? "main"}>
+                  {group && (
+                    <p className="pt-2 text-[10px] font-mono uppercase tracking-wide text-os-text-dim">{group}</p>
+                  )}
+                  {items.map((v) => (
                     <div
                       key={v.key}
                       onClick={() => setVertical(v.key)}
@@ -182,6 +187,8 @@ export default function OnboardingPage() {
                       <p className="text-[11px] opacity-80 mt-0.5">{v.summary}</p>
                       <VerticalFeatures features={v.features} />
                     </div>
+                  ))}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>

@@ -3755,7 +3755,21 @@ export type Vertical = {
   summary: string;
   /** The optional modules this type switches on, in plain words (e.g. "Quotations"). */
   features?: string[];
+  /** A heading related types sit under (e.g. "Healthcare"); null for the main market types. */
+  group?: string | null;
 };
+
+/** Types in order, ungrouped first, each group together under its heading - for the "what kind of business" lists. */
+export function groupVerticals(list: Vertical[]): { group: string | null; items: Vertical[] }[] {
+  const out: { group: string | null; items: Vertical[] }[] = [];
+  for (const v of [...list.filter((x) => !x.group), ...list.filter((x) => x.group)]) {
+    const g = v.group ?? null;
+    const last = out[out.length - 1];
+    if (last && last.group === g) last.items.push(v);
+    else out.push({ group: g, items: [v] });
+  }
+  return out;
+}
 
 export async function fetchVerticals(): Promise<Vertical[]> {
   try {

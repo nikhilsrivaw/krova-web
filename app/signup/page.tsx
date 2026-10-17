@@ -27,7 +27,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, AlertCircle, Mail, PhoneCall, Pencil } from "lucide-react";
 import { googleStart, requestOtp, otpRegister } from "@/lib/auth";
-import { fetchVerticals, type Vertical } from "@/lib/api";
+import { fetchVerticals, groupVerticals, type Vertical } from "@/lib/api";
 import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 
 import { AuroraText } from "@/components/magicui/aurora-text";
@@ -180,11 +180,14 @@ function SignupForm() {
           className={FIELD_CLASS}
         >
           {verticals.length === 0 && <option value="general">General business</option>}
-          {verticals.map((v) => (
-            <option key={v.key} value={v.key}>
-              {v.label}
-            </option>
-          ))}
+          {groupVerticals(verticals).map(({ group, items }) => {
+            const options = items.map((v) => (
+              <option key={v.key} value={v.key}>
+                {v.label}
+              </option>
+            ));
+            return group ? <optgroup key={group} label={group}>{options}</optgroup> : options;
+          })}
         </select>
         {verticals.find((v) => v.key === vertical)?.summary && (
           <p className="text-[11px] text-os-text-dim leading-relaxed">
