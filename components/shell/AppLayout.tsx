@@ -18,7 +18,17 @@ import {
   type AutonomyLevel,
   type UserProfile,
 } from "@/lib/api";
-import { isSignedIn, clearSession } from "@/lib/auth";
+import { isSignedIn, clearSession, getUserId } from "@/lib/auth";
+
+// Every page renders its own AppLayout, so moving between pages mounts a new one. The profile is kept here for the
+// life of the tab so the next page opens at once (no full-screen spinner) and is refreshed quietly behind it.
+// It belongs to one signed-in user: another sign-in in the same tab never sees it.
+let cachedProfile: UserProfile | null = null;
+let cachedFor: string | null = null;
+
+function profileFromCache(): UserProfile | null {
+  return cachedProfile && cachedFor && cachedFor === getUserId() ? cachedProfile : null;
+}
 
 interface AppLayoutProps {
   appearance?: "default" | "refined";
@@ -41,28 +51,35 @@ export function AppLayout({
   const router = useRouter();
   const pathname = usePathname();
   const navigation = useWorkspaceNavigation(appearance === "refined");
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
+  const [profile, setProfile] = useState<UserProfile | null>(profileFromCache);
+  const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => profileFromCache()?.autonomy ?? "draft");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !profileFromCache());
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
-    setIsLoading(true);
+    const hadProfile = !!profileFromCache();
+    if (!hadProfile) setIsLoading(true);
     setLoadError(null);
     try {
       const data = await account.profile();
+      cachedProfile = data;
+      cachedFor = getUserId();
       setProfile(data);
       if (data.autonomy) setAutonomy(data.autonomy);
     } catch (err) {
       if (err instanceof NotAuthenticated) {
+        cachedProfile = null;
         clearSession();
         router.replace("/login");
         return;
       }
-      setLoadError(
-        err instanceof Error ? err.message : "Could not load your profile.",
-      );
+      // With a profile already on screen, a failed background refresh keeps the page as it is.
+      if (!hadProfile) {
+        setLoadError(
+          err instanceof Error ? err.message : "Could not load your profile.",
+        );
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -60,6 +60,12 @@ interface SidebarProps {
   onAutonomyClick?: () => void;
 }
 
+// Each page mounts its own sidebar, so these are kept for the life of the tab: where the menu was scrolled to, and
+// the last badge counts - otherwise every click jumps the menu back to the top and the badges flash to zero.
+let savedNavScroll = 0;
+let lastPendingCount = 0;
+let lastEscalationCount = 0;
+
 export function AppSidebar({
   appearance = "default",
   navigationOpen = false,
@@ -72,9 +78,15 @@ export function AppSidebar({
   onAutonomyClick,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [pendingCount, setPendingCount] = useState<number>(0);
-  const [openEscalationCount, setOpenEscalationCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(lastPendingCount);
+  const [openEscalationCount, setOpenEscalationCount] = useState<number>(lastEscalationCount);
   const [isGetAppOpen, setIsGetAppOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Put the menu back where it was before the paint, so it never visibly jumps.
+  useLayoutEffect(() => {
+    if (navRef.current) navRef.current.scrollTop = savedNavScroll;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -82,6 +94,7 @@ export function AppSidebar({
       try {
         const res = await approvals.count();
         if (mounted && res && typeof res.pending === "number") {
+          lastPendingCount = res.pending;
           setPendingCount(res.pending);
         }
       } catch {
@@ -102,6 +115,7 @@ export function AppSidebar({
       try {
         const res = await escalations.count();
         if (mounted && res && typeof res.open === "number") {
+          lastEscalationCount = res.open;
           setOpenEscalationCount(res.open);
         }
       } catch {
@@ -400,7 +414,7 @@ export function AppSidebar({
         </div>
 
         {/* Navigation List */}
-        <nav aria-label="Main navigation" className={appearance === "refined" ? "workspace-navigation min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-1" : "p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]"}>
+        <nav ref={navRef} onScroll={(e) => { savedNavScroll = e.currentTarget.scrollTop; }} aria-label="Main navigation" className={appearance === "refined" ? "workspace-navigation min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-1" : "p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)]"}>
           {appearance === "refined" ? <WorkspaceNav items={NAV_ITEMS} pathname={pathname} onNavigate={onCloseNavigation} /> : NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href ||
