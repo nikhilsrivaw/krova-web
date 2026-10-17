@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { PaymentGatewayCard } from "@/components/payments/PaymentGatewayCard";
 import Link from "next/link";
 import {
   Settings,
@@ -1928,6 +1929,7 @@ export default function SettingsPage() {
           </p>
 
           <div className="space-y-3">
+            <PaymentGatewayCard />
             {SHOW_GOOGLE_CALENDAR && (
             <CapabilityFold have={profile?.capabilities} anyOf={["scheduling", "opd_queue"]} keepOpen={!!calendarStatus?.connected} label="Google Calendar">
             {/* Google Calendar */}

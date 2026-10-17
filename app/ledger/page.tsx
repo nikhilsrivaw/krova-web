@@ -23,6 +23,7 @@ import {
   Download,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Badge } from "@/components/ui/Badge";
@@ -591,6 +592,16 @@ export default function LedgerPage() {
                     {paymentRequestSent && (
                       <p className="text-[11px] text-seal-bright">Sent - the customer will see a real Pay button in the chat.</p>
                     )}
+                  </div>
+                )}
+
+              {/* A payment link from the business's own Razorpay, sent on WhatsApp; marked paid by itself once paid. */}
+              {selectedCommitment.direction === "they_owe" &&
+                selectedCommitment.status === "open" &&
+                (selectedCommitment.outstanding_paise ?? 0) > 0 && (
+                  <div className="pt-4 border-t border-white/[0.06] space-y-2">
+                    <h5 className="text-xs font-mono uppercase text-os-text-dim">Payment link (Razorpay):</h5>
+                    <PaymentLinkButton key={selectedCommitment.id} target={{ kind: "commitment", id: selectedCommitment.id }} />
                   </div>
                 )}
 

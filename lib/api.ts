@@ -2264,6 +2264,40 @@ export const knowledge = {
   dismissGap: (gap: string) => api.post<void>("/knowledge/gaps/dismiss", { gap }),
 };
 
+// ── Payment links (the business's own Razorpay) ──────────────────────────────
+// The money goes straight to the business's gateway; KROVA sends the link on WhatsApp and checks whether it was paid.
+
+export type PaymentGateway = { connected: boolean; gateway: string | null; key_id_hint: string | null; connected_at: string | null };
+
+export type PaymentLink = {
+  id: string; commitment_id: string; gateway: string; short_url: string; amount_paise: number;
+  /** created | partially_paid | paid | expired | cancelled - the gateway's own words */
+  status: string; amount_paid_paise: number; created_at: string; paid_at: string | null;
+};
+
+/** The link always exists once made; `sent` says whether WhatsApp took it (if not, copy and share it). */
+export type PaymentLinkSend = { link: PaymentLink; sent: boolean; reason: string | null };
+
+type TemplateChoice = { template_name?: string; template_language?: string };
+
+export const payments = {
+  gateway: () => api.get<PaymentGateway>("/payments/gateway"),
+  connectGateway: (key_id: string, key_secret: string) =>
+    api.put<PaymentGateway>("/payments/gateway", { gateway: "razorpay", key_id, key_secret }),
+  disconnectGateway: () => api.delete<void>("/payments/gateway"),
+
+  sendForCommitment: (commitment_id: string, t: TemplateChoice = {}) =>
+    api.post<PaymentLinkSend>("/payments/links", { commitment_id, ...t }),
+  sendForToken: (entryId: string, amount_paise?: number, t: TemplateChoice = {}) =>
+    api.post<PaymentLinkSend>(`/payments/queue/${entryId}/link`, { amount_paise, ...t }),
+  sendForAppointment: (appointmentId: string, amount_paise?: number, t: TemplateChoice = {}) =>
+    api.post<PaymentLinkSend>(`/payments/appointments/${appointmentId}/link`, { amount_paise, ...t }),
+
+  links: (commitmentId?: string) =>
+    api.get<PaymentLink[]>(`/payments/links${commitmentId ? `?commitment_id=${commitmentId}` : ""}`),
+  check: (linkId: string) => api.post<PaymentLink>(`/payments/links/${linkId}/check`),
+};
+
 // ── Campaigns ─────────────────────────────────────────────────────────────────
 // audience values are fixed by the backend's Audience enum - not free text.
 

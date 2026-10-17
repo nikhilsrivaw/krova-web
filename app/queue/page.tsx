@@ -4,6 +4,7 @@ import { useRole } from "@/lib/useRole";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Clock, UserPlus, Check, SkipForward, PhoneCall, Sun, Moon, Siren, Lock, LockOpen, Tablet, Copy, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
@@ -426,6 +427,8 @@ export default function QueuePage() {
                       </div>
                       <Badge variant={STATUS_BADGE[entry.status]} size="sm">{statusLabel[entry.status]}</Badge>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                    {entry.customer_id && <PaymentLinkButton compact askAmount target={{ kind: "token", id: entry.id }} />}
                     <button
                       type="button"
                       onClick={() => advance(entry.id, "done")}
@@ -433,6 +436,7 @@ export default function QueuePage() {
                     >
                       <Check className="w-3.5 h-3.5" /> Done
                     </button>
+                    </div>
                   </GlassCard>
                 ))}
               </div>
