@@ -2296,7 +2296,13 @@ export const payments = {
   links: (commitmentId?: string) =>
     api.get<PaymentLink[]>(`/payments/links${commitmentId ? `?commitment_id=${commitmentId}` : ""}`),
   check: (linkId: string) => api.post<PaymentLink>(`/payments/links/${linkId}/check`),
+
+  /** Send the fee link by itself right after the AI books a token or appointment on WhatsApp. */
+  auto: () => api.get<PaymentAuto>("/payments/auto"),
+  setAuto: (s: PaymentAuto) => api.put<PaymentAuto>("/payments/auto", s),
 };
+
+export type PaymentAuto = { tokens: boolean; appointments: boolean; default_fee_paise: number | null };
 
 // ── Campaigns ─────────────────────────────────────────────────────────────────
 // audience values are fixed by the backend's Audience enum - not free text.
