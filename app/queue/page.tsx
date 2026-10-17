@@ -454,7 +454,8 @@ export default function QueuePage() {
                         {doctorName(entry.doctor_id) && <p className="text-[10px] text-os-text-dim">{doctorName(entry.doctor_id)}</p>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {entry.customer_id && <PaymentLinkButton compact askAmount target={{ kind: "token", id: entry.id }} />}
                       <button
                         type="button"
                         onClick={() => advance(entry.id, "in_consultation")}
