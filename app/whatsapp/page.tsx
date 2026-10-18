@@ -90,6 +90,13 @@ function WhatsAppPageContent() {
   // own _sample() fallback, but surfaced to the person writing it instead
   // of silently substituted.
   const [newTemplateExamples, setNewTemplateExamples] = useState<Record<string, string>>({});
+  // "en" unless KROVA wrote it in Devanagari Hindi ("hi") - Meta checks the text against the language.
+  const [newTemplateLanguage, setNewTemplateLanguage] = useState("en");
+  // "Describe it, KROVA writes it": the owner's description and what came back.
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   // Ready-made starting points (GET /templates/examples), loaded the first time the builder opens.
   const [exampleList, setExampleList] = useState<TemplateExample[]>([]);
   const [pickedExample, setPickedExample] = useState<TemplateExample | null>(null);
@@ -454,6 +461,35 @@ function WhatsAppPageContent() {
     setNewTemplateFooter("");
     setNewTemplateButtons(example.buttons.map((text): TemplateButton => ({ type: "QUICK_REPLY", text })));
     setNewTemplateExamples(example.examples);
+    setNewTemplateLanguage("en");
+    setAiNote(null);
+  };
+
+  const writeWithAi = async () => {
+    if (aiBrief.trim().length < 5 || aiBusy) return;
+    setAiBusy(true);
+    setAiError(null);
+    setAiNote(null);
+    try {
+      const d = await templates.draft(aiBrief.trim());
+      setPickedExample(null);
+      setNewTemplateName(d.name);
+      setNewTemplateCategory(d.category);
+      setNewTemplateLanguage(d.language);
+      setNewTemplateBody(d.body);
+      setNewTemplateHeader(d.header_text ?? "");
+      setNewTemplateFooter(d.footer ?? "");
+      setNewTemplateButtons(d.buttons);
+      setNewTemplateExamples(d.examples);
+      setAiNote(
+        [d.note, `${Math.max(0, d.limit - d.used)} of ${d.limit} AI-written templates left this month.`]
+          .filter(Boolean).join(" "),
+      );
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "KROVA could not write the template.");
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const resetTemplateForm = () => {
@@ -465,6 +501,10 @@ function WhatsAppPageContent() {
     setNewTemplateFooter("");
     setNewTemplateButtons([]);
     setNewTemplateExamples({});
+    setNewTemplateLanguage("en");
+    setAiBrief("");
+    setAiNote(null);
+    setAiError(null);
   };
 
   const handleCreateTemplate = async (e: React.FormEvent) => {
@@ -493,6 +533,7 @@ function WhatsAppPageContent() {
         name,
         category: newTemplateCategory,
         body: newTemplateBody,
+        language: newTemplateLanguage,
         header_text: newTemplateHeader.trim() || undefined,
         footer: newTemplateFooter.trim() || undefined,
         buttons: newTemplateButtons.length ? newTemplateButtons : undefined,
@@ -1220,6 +1261,37 @@ function WhatsAppPageContent() {
           maxWidth="xl"
         >
           <form onSubmit={handleCreateTemplate} className="space-y-5">
+            <div className="p-3.5 rounded-xl bg-cyan-500/[0.05] border border-cyan-500/20 space-y-2">
+              <label className="block text-xs font-mono uppercase text-cyan-300">
+                Describe it, KROVA writes it (optional)
+              </label>
+              <p className="text-[11px] text-os-text-dim">
+                Say who gets it and what it should tell them, in English or Hinglish. KROVA fills the whole form below
+                - read it, change anything, then Submit to Meta.
+              </p>
+              <textarea
+                value={aiBrief}
+                onChange={(e) => setAiBrief(e.target.value)}
+                rows={2}
+                maxLength={1500}
+                placeholder="e.g. appointment se ek din pehle patient ko reminder, time aur doctor ka naam ke saath, confirm ka button"
+                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+              />
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={writeWithAi}
+                  disabled={aiBusy || aiBrief.trim().length < 5}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 text-xs font-semibold border border-cyan-500/30 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                >
+                  {aiBusy ? "Writing…" : "Write it for me"}
+                </button>
+                {newTemplateLanguage === "hi" && <span className="text-[11px] text-os-text-dim">Language: Hindi</span>}
+              </div>
+              {aiError && <p className="text-xs text-red-400">{aiError}</p>}
+              {aiNote && <p className="text-[11px] text-cyan-100/90">{aiNote}</p>}
+            </div>
+
             {exampleList.length > 0 && (
               <div className="p-3.5 rounded-xl bg-teal/[0.05] border border-teal/20 space-y-2">
                 <label className="block text-xs font-mono uppercase text-teal-bright">

@@ -1222,6 +1222,21 @@ export type WhatsAppWindow = {
   explanation: string;
 };
 
+export type TemplateAiDraft = {
+  name: string;
+  category: "UTILITY" | "MARKETING";
+  language: string;
+  body: string;
+  header_text: string | null;
+  footer: string | null;
+  examples: Record<string, string>;
+  buttons: TemplateButton[];
+  // why this category, what each {{n}} is - in the owner's language
+  note: string;
+  used: number;
+  limit: number;
+};
+
 export type TemplateButton = {
   type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER";
   text: string;
@@ -1532,6 +1547,9 @@ export const templates = {
     formData.set("file", file);
     return api.post<CarouselImageUpload>("/templates/carousel/image", formData, true);
   },
+
+  /** A whole template written by KROVA from what it is for. Nothing is submitted - it fills the form. */
+  draft: (brief: string) => api.post<TemplateAiDraft>("/templates/draft", { brief }),
 
   draftCarouselCards: (brief: string, cardCount: number) =>
     api.post<{ cards: CarouselDraftCard[] }>("/templates/carousel/draft", {
