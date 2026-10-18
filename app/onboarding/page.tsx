@@ -13,20 +13,17 @@ import {
   Shield,
   Sparkles,
   ArrowRight,
-  Check,
   Zap,
   ChevronRight,
   Eye,
   FileText,
 } from "lucide-react";
-import { fetchVerticals, groupVerticals, type Vertical } from "@/lib/api";
-import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
-import { account, approvals, channels, type AutonomyLevel } from "@/lib/api";
+import { approvals, channels, type AutonomyLevel } from "@/lib/api";
 
+// The business name and type come from signup - onboarding never asks again, and never overwrites them.
 const STEPS = [
-  "Business & Vertical",
   "Connect WhatsApp",
   "Connect Voice (Optional)",
   "Autonomy Guardrails",
@@ -65,22 +62,11 @@ export default function OnboardingPage() {
   const plan = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Step 1: Business Profile
-  const [businessName, setBusinessName] = useState("Apex Healthcare LLP");
-  const [vertical, setVertical] = useState("general");
-  const [verticals, setVerticals] = useState<Vertical[]>([]);
-
-  // Server-driven, same as signup: onboarding asks for the business's market
-  // type, and that list is a config change rather than a frontend release.
-  useEffect(() => {
-    fetchVerticals().then(setVerticals).catch(() => setVerticals([]));
-  }, []);
-
-  // Step 2: WhatsApp
+  // WhatsApp
   const [isConnectingWA, setIsConnectingWA] = useState(false);
   const [isWAConnected, setIsWAConnected] = useState(true);
 
-  // Step 3: Voice
+  // Voice
   const [isVoiceConnected, setIsVoiceConnected] = useState(false);
 
   // Step 4: Autonomy (Default draft)
@@ -95,10 +81,6 @@ export default function OnboardingPage() {
       setIsFinishing(true);
       setFinishError(null);
       try {
-        await account.updateProfile({
-          business_name: businessName,
-          vertical,
-        });
         await approvals.setAutonomy(autonomy);
         router.push("/dashboard");
       } catch (err) {
@@ -131,78 +113,13 @@ export default function OnboardingPage() {
 
       {/* Main Step Body */}
       <main className="max-w-2xl mx-auto w-full my-auto py-8 relative z-10">
-        {/* Step 0: Business Name & Vertical */}
-        {currentStep === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                Welcome to KROVA. Tell us about your business.
-              </h2>
-              <p className="text-xs text-os-text-dim mt-1">
-                Your industry vertical customizes the AI agent's tone, terminology, and knowledge defaults.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                  Business Legal or Trading Name:
-                </label>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-sm text-white focus:border-brass focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
-                  What kind of business is this?
-                </label>
-                <div className="space-y-2.5">
-                  {groupVerticals(verticals).map(({ group, items }) => (
-                    <React.Fragment key={group ?? "main"}>
-                  {group && (
-                    <p className="pt-2 text-[10px] font-mono uppercase tracking-wide text-os-text-dim">{group}</p>
-                  )}
-                  {items.map((v) => (
-                    <div
-                      key={v.key}
-                      onClick={() => setVertical(v.key)}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        vertical === v.key
-                          ? "border-brass/60 bg-brass/10 text-white font-semibold"
-                          : "border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">{v.label}</span>
-                        {vertical === v.key && <Check className="w-4 h-4 text-brass" />}
-                      </div>
-                      <p className="text-[11px] opacity-80 mt-0.5">{v.summary}</p>
-                      <VerticalFeatures features={v.features} />
-                    </div>
-                  ))}
-                    </React.Fragment>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
+        {/* Steps 0 and 1 are channels: locked until a plan is chosen */}
+        {(currentStep === 0 || currentStep === 1) && plan.channelsLocked && (
+          <LockedChannelStep slug={currentStep === 0 ? "whatsapp" : "voice"} />
         )}
 
-        {/* Steps 1 and 2 are channels: locked until a plan is chosen */}
-        {(currentStep === 1 || currentStep === 2) && plan.channelsLocked && (
-          <LockedChannelStep slug={currentStep === 1 ? "whatsapp" : "voice"} />
-        )}
-
-        {/* Step 1: Connect WhatsApp */}
-        {currentStep === 1 && !plan.channelsLocked && (
+        {/* Step 0: Connect WhatsApp */}
+        {currentStep === 0 && !plan.channelsLocked && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -251,8 +168,8 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
-        {/* Step 2: Connect Voice (Optional) */}
-        {currentStep === 2 && !plan.channelsLocked && (
+        {/* Step 1: Connect Voice (Optional) */}
+        {currentStep === 1 && !plan.channelsLocked && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -291,8 +208,8 @@ export default function OnboardingPage() {
           </motion.div>
         )}
 
-        {/* Step 3: Set Autonomy Guardrails (Default: Draft) */}
-        {currentStep === 3 && (
+        {/* Step 2: Set Autonomy Guardrails (Default: Draft) */}
+        {currentStep === 2 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
