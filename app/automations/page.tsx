@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Zap, Trash2, Plus, Pencil, Check, X,
   MessageSquare, AlertTriangle, Tag, Workflow, Phone, MessageCircle, Mail, Instagram,
-  Filter, Clock, TrendingDown, History, GalleryHorizontal, BellRing, UserPlus, ArrowRightCircle,
+  Filter, Clock, TrendingDown, History, GalleryHorizontal, BellRing, UserPlus, ArrowRightCircle, CreditCard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
@@ -180,7 +180,11 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
   notify_team: "Alert the team",
   assign_to_agent: "Assign the chat to someone",
   set_stage: "Move to a pipeline stage",
+  send_payment_link: "Send a payment link (Razorpay)",
 };
+
+// A payment link needs a booking to charge for; the backend refuses it on any other trigger.
+const BOOKING_TRIGGERS = new Set(["appointment.booked", "queue_token.issued"]);
 
 // Offered when building a NEW rule. send_sms and send_email stay out of this
 // list - not deleted from ACTION_LABEL/ACTION_ICON above, since an existing
@@ -209,6 +213,7 @@ const ACTION_ICON: Record<AutomationAction, LucideIcon> = {
   notify_team: BellRing,
   assign_to_agent: UserPlus,
   set_stage: ArrowRightCircle,
+  send_payment_link: CreditCard,
 };
 
 // Human labels for the real, per-trigger_type condition fields
@@ -434,6 +439,9 @@ export default function AutomationsPage() {
   const [delayUnit, setDelayUnit] = useState<"minutes" | "hours" | "days">("minutes");
   const [textConfig, setTextConfig] = useState(""); // message / reason / tag / sms message / call reason / email body
   const [emailSubject, setEmailSubject] = useState(""); // send_email only - the one action needing two fields
+  // send_payment_link: optional amount (blank = doctor's fee, else the default fee) and template (outside 24 hours)
+  const [linkRupees, setLinkRupees] = useState("");
+  const [linkTemplate, setLinkTemplate] = useState("");
   const [sendTo, setSendTo] = useState<"customer" | "payer">("customer");
   // notify_team / assign_to_agent
   const [notifyTo, setNotifyTo] = useState<"owner" | "admins" | "assigned" | "everyone">("admins");
@@ -576,6 +584,9 @@ export default function AutomationsPage() {
     setCarouselId(isCarousel ? config.carousel_id || "" : "");
     setCarouselTemplateName(isCarousel ? config.template_name || "" : "");
     setSendTo(config.send_to === "payer" ? "payer" : "customer");
+    const isLink = step?.action_type === "send_payment_link";
+    setLinkRupees(isLink && config.amount_paise ? String(Number(config.amount_paise) / 100) : "");
+    setLinkTemplate(isLink ? config.template_name || "" : "");
     setConditionRows(
       (step?.conditions ?? []).map((c) => ({ field: c.field, operator: c.operator, value: String(c.value) })),
     );
@@ -736,6 +747,13 @@ export default function AutomationsPage() {
     }
     if (action === "set_stage") {
       return textConfig.trim() ? { stage: textConfig.trim() } : null;
+    }
+    if (action === "send_payment_link") {
+      const out: Record<string, string> = {};
+      const paise = Math.round(Number(linkRupees) * 100);
+      if (linkRupees.trim() && paise >= 100) out.amount_paise = String(paise);
+      if (linkTemplate.trim()) out.template_name = linkTemplate.trim();
+      return out;
     }
     if (action === "send_flow") {
       if (!selectedFlow || !flowBody.trim() || !flowScreen) return null;
@@ -908,7 +926,7 @@ export default function AutomationsPage() {
           }}
           className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
         >
-          {SELECTABLE_ACTIONS.map((a) => (
+          {SELECTABLE_ACTIONS.filter((a) => a !== "send_payment_link" || BOOKING_TRIGGERS.has(trigger)).map((a) => (
             <option key={a} value={a}>{ACTION_LABEL[a]}</option>
           ))}
         </select>
@@ -1291,6 +1309,36 @@ export default function AutomationsPage() {
           <p className="text-[11px] text-os-text-dim mt-1.5">
             Only a chat nobody owns yet is assigned - it never takes a chat from someone. People marked Away
             are skipped.
+          </p>
+        </div>
+      )}
+
+      {action === "send_payment_link" && (
+        <div className="space-y-2">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Amount (₹)</label>
+            <input
+              type="number"
+              min="1"
+              value={linkRupees}
+              onChange={(e) => setLinkRupees(e.target.value)}
+              placeholder="Blank = the doctor's fee, else the default fee in Settings"
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Template (only if the customer has not written in 24 hours)</label>
+            <input
+              type="text"
+              value={linkTemplate}
+              onChange={(e) => setLinkTemplate(e.target.value)}
+              placeholder="An approved template with {{1}} = amount and {{2}} = link"
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+          <p className="text-[11px] text-os-text-dim">
+            Uses your Razorpay from Settings. One fee and one link per booking, even if the AI, this rule and the desk all
+            send it. Marked paid by itself once Razorpay confirms.
           </p>
         </div>
       )}

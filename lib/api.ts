@@ -1894,7 +1894,9 @@ export type AutomationAction =
   // Inside the business: alert people, hand the chat to someone, move the pipeline.
   | "notify_team"
   | "assign_to_agent"
-  | "set_stage";
+  | "set_stage"
+  // Money: a fee link from the business's own payment gateway, on a booking trigger.
+  | "send_payment_link";
 
 // The real channels a trigger can actually come from - matches the
 // backend's own Channel enum (shared/db/models/channel.py). Kept here
