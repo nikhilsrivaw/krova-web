@@ -112,6 +112,7 @@ export default function SettingsPage() {
     try { window.history.replaceState(null, "", `?tab=${key}`); } catch { /* ignore */ }
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showTypePicker, setShowTypePicker] = useState(false);
   // "Payment with a booking" only matters where something is booked: appointments or the walk-in queue.
   const takesBookings = !!profile?.capabilities?.some((c) => c === "scheduling" || c === "opd_queue");
   // Real verticals from GET /auth/verticals (shared/verticals/templates/*.json)
@@ -1134,11 +1135,34 @@ export default function SettingsPage() {
               <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
                 What kind of business is this?
               </label>
-              <p className="text-[11px] text-os-text-dim -mt-1 mb-2.5">
-                This decides which modules you start with and how the AI talks and what it must never
-                promise. Changing it updates your menu and the AI&apos;s rules. Features you added yourself
-                (see Features below) stay as they are.
-              </p>
+              {/* The type is picked once and rarely changed: show the current one, and the full list only on Change. */}
+              {(() => {
+                const current = verticals.find((v) => v.key === vertical);
+                return !showTypePicker ? (
+                  <div className="flex flex-wrap items-start justify-between gap-3 p-3.5 rounded-xl border border-brass/40 bg-brass/10">
+                    <div className="min-w-0">
+                      {current?.group && <p className="text-[10px] font-mono uppercase tracking-wide text-os-text-dim">{current.group}</p>}
+                      <p className="text-xs font-bold text-white">{current?.label ?? vertical}</p>
+                      {current?.summary && <p className="text-[11px] text-os-text-dim mt-0.5 line-clamp-2">{current.summary}</p>}
+                      <VerticalFeatures features={current?.features} />
+                    </div>
+                    <button type="button" onClick={() => setShowTypePicker(true)}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-white text-xs font-semibold cursor-pointer">
+                      Change
+                    </button>
+                  </div>
+                ) : null;
+              })()}
+              {showTypePicker && (
+              <>
+              <div className="flex items-center justify-between -mt-1 mb-2.5 gap-3">
+                <p className="text-[11px] text-os-text-dim">
+                  This decides which modules you start with and how the AI talks and what it must never
+                  promise. Changing it updates your menu and the AI&apos;s rules. Features you added yourself
+                  stay as they are. Pick one, then press Save.
+                </p>
+                <button type="button" onClick={() => setShowTypePicker(false)} className="shrink-0 text-xs text-os-text-dim hover:text-white cursor-pointer">Close</button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {groupVerticals(verticals).map(({ group, items }) => (
                   <React.Fragment key={group ?? "main"}>
@@ -1163,6 +1187,8 @@ export default function SettingsPage() {
                   </React.Fragment>
                 ))}
               </div>
+              </>
+              )}
             </div>
 
             {/* Autonomy Selector */}
