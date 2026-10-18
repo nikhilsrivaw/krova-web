@@ -112,6 +112,8 @@ export default function SettingsPage() {
     try { window.history.replaceState(null, "", `?tab=${key}`); } catch { /* ignore */ }
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // "Payment with a booking" only matters where something is booked: appointments or the walk-in queue.
+  const takesBookings = !!profile?.capabilities?.some((c) => c === "scheduling" || c === "opd_queue");
   // Real verticals from GET /auth/verticals (shared/verticals/templates/*.json)
   // - was a hardcoded 5-item list here (coaching/salon/agency, which the
   // backend 422s; missing ecommerce/law_firm/real_estate/restaurant/startup),
@@ -1055,7 +1057,7 @@ export default function SettingsPage() {
 
         {tab === "business" && (<>
         {/* The one money choice a clinic must make - kept first, not buried in Leads & payments. */}
-        <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+        {takesBookings && <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />}
 
         {/* SECTION 1: BUSINESS PROFILE & VERTICAL */}
         <form onSubmit={handleSaveProfile}>
@@ -1926,7 +1928,7 @@ export default function SettingsPage() {
             <CreditCard className="w-4 h-4 text-os-accent" />
             <h3 className="text-sm font-bold text-white">Payments</h3>
           </div>
-          <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+          {takesBookings && <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />}
           <PaymentGatewayCard />
         </GlassCard>
 
