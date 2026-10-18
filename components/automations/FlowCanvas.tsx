@@ -1,30 +1,21 @@
 "use client";
 
 /**
- * The automations builder's actual canvas - trigger and step nodes laid
- * out left-to-right, connected by curved dashed lines with arrowheads, on
- * a pannable/zoomable dotted-grid surface. Built on @xyflow/react (the
- * library n8n itself is built on) rather than CSS, after the previous
- * "vertical list with a line down the side" pass was correctly called out
- * as still just a form, not a canvas - and after checking a real reference
- * (a screenshot of AiSensy's own WhatsApp flow builder) plus how Zapier's
- * own Zap editor, n8n, and Make render this same idea.
+ * The automations builder's canvas, laid out the way Zapier, HubSpot workflows and GoHighLevel do it: one column of
+ * cards top to bottom on a dotted, pannable surface, a "Wait 2 days" pill on the line before a step that waits, a "+"
+ * on every line to insert, and an End marker. Clicking a card opens its form in a side panel (below the canvas on a
+ * phone) instead of squeezing the form into the card itself.
  *
- * The engine itself only ever runs a strict linear chain (no branching -
- * see shared/db/models/integrations.py::AutomationStep's own docstring on
- * the backend), so this canvas is intentionally a single left-to-right
- * line of nodes, not a free-form graph - the same honest constraint the
- * previous CSS version had, just rendered with a real canvas engine so it
- * actually behaves like one (pan, zoom, curved connectors) instead of
- * only looking vaguely like one.
+ * Built on @xyflow/react for pan/zoom/fit. The engine only runs a strict linear chain (no branching - see
+ * shared/db/models/integrations.py::AutomationStep on the backend), so this is a single column, not a free graph, and
+ * node positions come from step order (which is also execution order); dragging is off.
  *
- * Node dragging is deliberately off for this pass - positions are purely
- * derived from step order (which is also the real execution order), and
- * free-dragging would need a whole position-persistence layer for a
- * cosmetic effect only. Pan/zoom/fit are real and fully working.
+ * Every node, button and input below carries `!pointer-events-auto`: with nodesDraggable/nodesConnectable/
+ * elementsSelectable all false, React Flow sets `pointer-events: none` on node wrappers, which silently eats clicks on
+ * custom node content (found by driving the canvas with Playwright, not guessed).
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -36,17 +27,16 @@ import {
   MarkerType,
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  getStraightPath,
   useReactFlow,
-  useUpdateNodeInternals,
+  useStore,
   type Node,
   type Edge,
   type NodeProps,
   type EdgeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, Zap, Filter, Clock } from "lucide-react";
-import { ResponsiveFlowViewport } from "./ResponsiveFlowViewport";
+import { ArrowDown, ArrowUp, Clock, Filter, Pencil, Plus, Trash2, X, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type {
   AutomationAction,
@@ -56,60 +46,25 @@ import type {
   AutomationTrigger,
 } from "@/lib/api";
 
-// Wider than the widest node (the open editing form, w-80 = 320px) so an
-// open step never visually overlaps the node to its right.
-const NODE_SPACING_X = 360;
+const NODE_W = 300;
+// Vertical distance between card tops - room for the tallest collapsed card plus the line's wait pill and "+".
+const SLOT_H = 176;
 
-/**
- * Every node here has genuinely dynamic content - a select changing
- * action type, a checkbox revealing a condition/delay row, a textarea
- * wrapping. React Flow only re-measures a node's own bounding box at
- * mount by default; `useUpdateNodeInternals` plus a ResizeObserver on
- * the node's own root keeps its internal record current on every
- * content-driven resize too, not only at mount - the documented fix for
- * dynamically-sized nodes, and worth keeping even though it turned out
- * not to be this bug's actual cause (see each node's own `!pointer-
- * events-auto` class for that one - found by driving the canvas with
- * Playwright and inspecting computed styles, not guessed: with
- * nodesDraggable/nodesConnectable/elementsSelectable all false on
- * <ReactFlow>, it sets `pointer-events: none` on every node wrapper as
- * its own optimization - "nothing to interact with at the node level,
- * let clicks fall through to the pane" - which silently ate every click
- * on every button/input/select inside every node's own custom content).
- */
-function useAutoResize(nodeId: string) {
-  const ref = useRef<HTMLDivElement>(null);
-  const updateNodeInternals = useUpdateNodeInternals();
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => updateNodeInternals(nodeId));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [nodeId, updateNodeInternals]);
-  return ref;
-}
-
-// ── Trigger node ─────────────────────────────────────────────────────────
-
-type TriggerNodeData = {
-  ruleName: string;
-  onRuleNameChange: (name: string) => void;
-  trigger: AutomationTrigger;
-  channel: AutomationChannel | "";
-  showChannel: boolean;
-  // Whether the business has actively made a channel choice for this
-  // trigger yet (including deliberately choosing "any channel") - distinct
-  // from `channel === ""` on its own, which is also what an untouched,
-  // never-decided picker looks like. See page.tsx's own channelTouched
-  // state for why this exists: a rule shaped for WhatsApp silently also
-  // firing mid-voice-call is a real, already-seen risk, so "not decided
-  // yet" gets a visible nudge instead of quietly resolving to "any".
-  channelTouched: boolean;
-  triggerOptions: TriggerOption[];
-  channelOptions: { value: AutomationChannel; label: string }[];
-  onTriggerChange: (t: AutomationTrigger) => void;
-  onChannelChange: (c: AutomationChannel | "") => void;
+// Card accent per kind of action, so a chain reads at a glance: talking to the customer, calling, the team, the record.
+const ACTION_TONE: Record<AutomationAction, string> = {
+  whatsapp_followup: "emerald", send_sms: "emerald", send_email: "emerald", instagram_followup: "emerald",
+  instagram_comment_reply: "emerald", send_flow: "emerald", send_carousel: "emerald",
+  place_call: "violet",
+  notify_team: "amber", create_escalation_task: "amber", assign_to_agent: "amber",
+  add_tag: "sky", set_stage: "sky",
+  send_payment_link: "pink",
+};
+const TONE_TILE: Record<string, string> = {
+  emerald: "bg-emerald-500/15 border-emerald-500/30 text-emerald-300",
+  violet: "bg-violet-500/15 border-violet-500/30 text-violet-300",
+  amber: "bg-amber-500/15 border-amber-500/30 text-amber-300",
+  sky: "bg-sky-500/15 border-sky-500/30 text-sky-300",
+  pink: "bg-pink-500/15 border-pink-500/30 text-pink-300",
 };
 
 // `group` puts the trigger under a heading in the picker (Messages, Bookings & queue, ...). Groups keep the order
@@ -127,210 +82,196 @@ function groupOptions(options: TriggerOption[]): [string | null, TriggerOption[]
   return [...entries.filter(([g]) => g !== null), ...entries.filter(([g]) => g === null)];
 }
 
-function TriggerNode({ id, data }: NodeProps) {
+const hidden = { opacity: 0, pointerEvents: "none" as const };
+
+// ── Trigger card ─────────────────────────────────────────────────────────
+
+type TriggerNodeData = {
+  ruleName: string;
+  label: string;
+  needsChannel: boolean;
+  selected: boolean;
+  locked: boolean;
+  onOpen: () => void;
+};
+
+function TriggerNode({ data }: NodeProps) {
   const d = data as unknown as TriggerNodeData;
-  const ref = useAutoResize(id);
   return (
-    <div ref={ref} className="workspace-flow-node !pointer-events-auto w-64 p-3 rounded-xl bg-[#131313] border border-cyan-500/30 shadow-lg shadow-black/40 nodrag">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-          <Zap className="w-3 h-3" />
+    <button
+      type="button"
+      onClick={d.onOpen}
+      disabled={d.locked}
+      style={{ width: NODE_W }}
+      className={`!pointer-events-auto text-left p-3.5 rounded-2xl bg-[#141414] border shadow-lg shadow-black/40 transition-all cursor-pointer disabled:cursor-default nodrag ${
+        d.selected ? "border-cyan-400 ring-2 ring-cyan-500/30" : "border-cyan-500/30 hover:border-cyan-400/70"
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shrink-0">
+          <Zap className="w-4 h-4" />
         </div>
-        <span className="text-[10px] uppercase tracking-wide text-os-text-dim">Trigger - When</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/80">When this happens</p>
+          <p className="text-xs font-semibold text-white leading-snug line-clamp-2">{d.label}</p>
+        </div>
       </div>
-      <input
-        type="text"
-        value={d.ruleName}
-        onChange={(e) => d.onRuleNameChange(e.target.value)}
-        placeholder="Name this rule (optional)"
-        className="w-full mb-2 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white placeholder:text-os-text-dim/60 focus:border-cyan-500 focus:outline-none"
-      />
-      <select
-        value={d.trigger}
-        onChange={(e) => d.onTriggerChange(e.target.value as AutomationTrigger)}
-        className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-cyan-500 focus:outline-none"
-      >
-        {groupOptions(d.triggerOptions).map(([group, opts]) =>
-          group ? (
-            <optgroup key={group} label={group}>
-              {opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </optgroup>
-          ) : (
-            opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)
-          ),
-        )}
-      </select>
-      {d.showChannel && (
-        <div className="mt-2">
-          <select
-            value={d.channel}
-            onChange={(e) => d.onChannelChange(e.target.value as AutomationChannel | "")}
-            className={`w-full px-2.5 py-1.5 rounded-lg bg-black/40 border text-[11px] text-white font-mono focus:outline-none ${
-              d.channelTouched ? "border-white/[0.12] focus:border-cyan-500" : "border-amber-500/50 focus:border-amber-400"
-            }`}
-          >
-            <option value="">Any channel (fires from all of them)</option>
-            {d.channelOptions.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-          {!d.channelTouched && (
-            <p className="mt-1 text-[10px] text-amber-400/90 leading-snug">
-              This trigger can fire from more than one channel - confirm which one(s) should trigger this rule before saving.
-            </p>
-          )}
-        </div>
-      )}
-      <Handle type="source" position={Position.Right} className="!bg-cyan-500 !border-cyan-300" />
-    </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] text-os-text-dim truncate">{d.ruleName || "Untitled rule"}</p>
+        {d.needsChannel && <span className="text-[10px] text-amber-300 shrink-0">Choose channel</span>}
+      </div>
+      <Handle type="source" position={Position.Bottom} style={hidden} />
+    </button>
   );
 }
 
-// ── Step node (collapsed card, or the open editing form in its place) ──
+// ── Step card ────────────────────────────────────────────────────────────
 
 type StepNodeData = {
-  mode: "collapsed" | "editing";
+  isNew: boolean;
   step?: AutomationStepConfig;
   index: number;
-  total: number;
+  selected: boolean;
   locked: boolean;
   actionLabel: Record<AutomationAction, string>;
   actionIcon: Record<AutomationAction, LucideIcon>;
   fieldLabel: Record<string, string>;
   operatorLabel: Record<AutomationOperator, string>;
   summary: string;
-  delayText: string;
   onOpen: () => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  renderForm?: () => React.ReactNode;
-  title: string;
 };
 
-function StepNode({ id, data }: NodeProps) {
+function StepNode({ data }: NodeProps) {
   const d = data as unknown as StepNodeData;
-  const ref = useAutoResize(id);
 
-  if (d.mode === "editing") {
+  if (d.isNew || !d.step) {
     return (
-      <div ref={ref} className="workspace-flow-editor !pointer-events-auto w-80 p-3 rounded-xl bg-[#131313] border border-cyan-500/40 shadow-lg shadow-black/40 nodrag nowheel">
-        <p className="text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">{d.title}</p>
-        {d.renderForm?.()}
-        <Handle type="target" position={Position.Left} className="!bg-cyan-500 !border-cyan-300" />
-        <Handle type="source" position={Position.Right} className="!bg-cyan-500 !border-cyan-300" />
+      <div style={{ width: NODE_W }} className="!pointer-events-auto p-3.5 rounded-2xl bg-cyan-500/[0.06] border-2 border-dashed border-cyan-400/60 nodrag">
+        <p className="text-xs font-semibold text-cyan-200">New step {d.index + 1}</p>
+        <p className="text-[11px] text-os-text-dim mt-0.5">Set it up in the panel.</p>
+        <Handle type="target" position={Position.Top} style={hidden} />
+        <Handle type="source" position={Position.Bottom} style={hidden} />
       </div>
     );
   }
 
-  const Icon = d.step ? d.actionIcon[d.step.action_type] : Zap;
+  const Icon = d.actionIcon[d.step.action_type] ?? Zap;
+  const tone = TONE_TILE[ACTION_TONE[d.step.action_type] ?? "sky"];
+  const conditions = d.step.conditions ?? [];
+  const iconBtn = "!pointer-events-auto p-1 rounded-md text-os-text-dim hover:text-white hover:bg-white/[0.08] disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer";
+
   return (
-    <div ref={ref} className="workspace-flow-node !pointer-events-auto w-64 p-3 rounded-xl bg-[#131313] border border-white/[0.12] shadow-lg shadow-black/40 nodrag">
-      <div className="flex items-start gap-2">
-        <div className="w-6 h-6 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-os-text-dim shrink-0">
-          <Icon className="w-3 h-3" />
+    <div
+      style={{ width: NODE_W }}
+      className={`group !pointer-events-auto relative p-3.5 rounded-2xl bg-[#141414] border shadow-lg shadow-black/40 transition-all nodrag ${
+        d.selected ? "border-cyan-400 ring-2 ring-cyan-500/30" : "border-white/[0.12] hover:border-white/[0.25]"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={d.onOpen}
+        disabled={d.locked}
+        className="!pointer-events-auto block w-full text-left cursor-pointer disabled:cursor-default"
+      >
+        <div className="flex items-center gap-2.5 pr-16">
+          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${tone}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-os-text-dim">Step {d.index + 1}</p>
+            <p className="text-xs font-semibold text-white truncate">{d.actionLabel[d.step.action_type]}</p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-white truncate">
-            {d.total > 1 && <span className="text-os-text-dim">Step {d.index + 1}: </span>}
-            {d.step ? d.actionLabel[d.step.action_type] : ""}
+        {d.summary && <p className="text-[11px] text-os-text-dim truncate mt-2">{d.summary}</p>}
+        {conditions.length > 0 && (
+          <p className="mt-1.5 inline-flex max-w-full items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 text-[10px]">
+            <Filter className="w-2.5 h-2.5 shrink-0" />
+            <span className="truncate">
+              Only if {d.fieldLabel[conditions[0].field] ?? conditions[0].field} {d.operatorLabel[conditions[0].operator]} &quot;{String(conditions[0].value)}&quot;
+              {conditions.length > 1 && ` +${conditions.length - 1} more`}
+            </span>
           </p>
-          {d.summary && <p className="text-[11px] text-os-text-dim truncate mt-0.5">{d.summary}</p>}
-          {(!!d.step?.conditions?.length || !!d.step?.delay_seconds) && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {d.step?.conditions?.map((c, i) => (
-                <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
-                  <Filter className="w-2.5 h-2.5" />
-                  {i > 0 && <span className="text-cyan-400/60">and</span>}
-                  {d.fieldLabel[c.field] ?? c.field} {d.operatorLabel[c.operator]} &quot;{String(c.value)}&quot;
-                </span>
-              ))}
-              {d.delayText && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px]">
-                  <Clock className="w-2.5 h-2.5" /> {d.delayText}
-                </span>
-              )}
-            </div>
-          )}
+        )}
+      </button>
+      {!d.locked && (
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+          <button type="button" onClick={d.onMoveUp} disabled={!d.canMoveUp} aria-label="Move step earlier" className={iconBtn}>
+            <ArrowUp className="w-3 h-3" />
+          </button>
+          <button type="button" onClick={d.onMoveDown} disabled={!d.canMoveDown} aria-label="Move step later" className={iconBtn}>
+            <ArrowDown className="w-3 h-3" />
+          </button>
+          <button type="button" onClick={d.onRemove} aria-label="Remove step" className={`${iconBtn} hover:!text-red-400 hover:!bg-red-500/10`}>
+            <Trash2 className="w-3 h-3" />
+          </button>
         </div>
-      </div>
-      <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.06]">
-        <button
-          type="button" onClick={d.onMoveUp} disabled={d.locked || !d.canMoveUp}
-          aria-label="Move step earlier"
-          className="p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
-        >
-          ↑
-        </button>
-        <button
-          type="button" onClick={d.onMoveDown} disabled={d.locked || !d.canMoveDown}
-          aria-label="Move step later"
-          className="p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white transition-all cursor-pointer"
-        >
-          ↓
-        </button>
-        <button
-          type="button" onClick={d.onOpen} disabled={d.locked}
-          className="flex-1 px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-white text-[11px] font-semibold transition-all cursor-pointer"
-        >
-          Edit
-        </button>
-        <button
-          type="button" onClick={d.onRemove} disabled={d.locked}
-          aria-label="Remove step"
-          className="p-1 rounded bg-white/[0.04] hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed text-os-text-dim hover:text-red-400 transition-all cursor-pointer"
-        >
-          ✕
-        </button>
-      </div>
-      <Handle type="target" position={Position.Left} className="!bg-white/40 !border-white/20" />
-      <Handle type="source" position={Position.Right} className="!bg-white/40 !border-white/20" />
+      )}
+      <Handle type="target" position={Position.Top} style={hidden} />
+      <Handle type="source" position={Position.Bottom} style={hidden} />
     </div>
   );
 }
 
-// ── The invisible trailing anchor every "append after last step" edge points to ──
+// ── End marker ───────────────────────────────────────────────────────────
 
 function EndNode() {
-  return <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />;
+  return (
+    <div style={{ width: NODE_W }} className="flex justify-center nodrag">
+      <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.1] text-[10px] font-semibold uppercase tracking-wider text-os-text-dim">
+        End
+      </span>
+      <Handle type="target" position={Position.Top} style={hidden} />
+    </div>
+  );
 }
 
-// ── The connecting edge - dashed, arrowed, with a "+" at its midpoint ──
+// ── The line between cards: wait pill and "+" ────────────────────────────
 
-type InsertableEdgeData = { insertable: boolean; onInsert: () => void };
+type LineData = { insertable: boolean; isLast: boolean; waitText: string; onInsert: () => void };
 
-function InsertableEdge({
-  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data,
-}: EdgeProps) {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 12,
-  });
-  const d = data as unknown as InsertableEdgeData | undefined;
+function LineEdge({ id, sourceX, sourceY, targetX, targetY, markerEnd, data }: EdgeProps) {
+  const [path, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY });
+  const d = data as unknown as LineData | undefined;
   return (
     <>
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ stroke: "rgba(45,212,191,0.4)", strokeWidth: 1.5, strokeDasharray: "5 4" }}
-      />
-      {d?.insertable && (
+      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: "rgba(255,255,255,0.18)", strokeWidth: 1.5 }} />
+      {d && (d.insertable || d.waitText) && (
         <EdgeLabelRenderer>
           <div
             style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: "all" }}
-            className="nodrag nopan"
+            className="nodrag nopan flex flex-col items-center gap-1.5"
           >
-            <button
-              type="button"
-              onClick={d.onInsert}
-              title="Insert a step here"
-              aria-label="Insert a step here"
-              className="w-9 h-9 rounded-full bg-black/90 border border-white/20 hover:border-cyan-500 hover:bg-cyan-500/20 text-os-text-dim hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
+            {d.waitText && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1a1408] border border-amber-500/30 text-amber-300 text-[10px] font-semibold whitespace-nowrap">
+                <Clock className="w-2.5 h-2.5" /> {d.waitText}
+              </span>
+            )}
+            {d.insertable && (
+              d.isLast ? (
+                <button
+                  type="button"
+                  onClick={d.onInsert}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/40 hover:bg-cyan-500/25 text-cyan-300 text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" /> Add step
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={d.onInsert}
+                  title="Insert a step here"
+                  aria-label="Insert a step here"
+                  className="w-6 h-6 rounded-full bg-[#141414] border border-white/20 hover:border-cyan-400 hover:bg-cyan-500/20 text-os-text-dim hover:text-cyan-300 flex items-center justify-center cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              )
+            )}
           </div>
         </EdgeLabelRenderer>
       )}
@@ -339,7 +280,7 @@ function InsertableEdge({
 }
 
 const nodeTypes = { trigger: TriggerNode, step: StepNode, end: EndNode };
-const edgeTypes = { insertable: InsertableEdge };
+const edgeTypes = { line: LineEdge };
 
 // ── Public props ─────────────────────────────────────────────────────────
 
@@ -373,102 +314,99 @@ export type FlowCanvasProps = {
   onMoveStep: (i: number, dir: -1 | 1) => void;
 };
 
-function CanvasInner(props: FlowCanvasProps) {
-  const { fitView } = useReactFlow();
+type Item =
+  | { id: string; kind: "trigger" }
+  | { id: string; kind: "step"; step: AutomationStepConfig; stepIndex: number }
+  | { id: string; kind: "new"; atIndex: number }
+  | { id: string; kind: "end" };
 
-  type BaseItem =
-    | { id: string; kind: "trigger" }
-    | { id: string; kind: "step"; step: AutomationStepConfig; stepIndex: number }
-    | { id: string; kind: "end" };
+function CanvasInner(props: FlowCanvasProps & { triggerOpen: boolean; onOpenTrigger: () => void }) {
+  const { fitView, setViewport } = useReactFlow();
+  const paneW = useStore((st) => st.width);
+  const paneH = useStore((st) => st.height);
 
-  const baseItems: BaseItem[] = [
+  const base: Item[] = [
     { id: "trigger", kind: "trigger" },
     ...props.steps.map((step, i) => ({ id: `step-${i}`, kind: "step" as const, step, stepIndex: i })),
     { id: "end", kind: "end" },
   ];
-
-  // Gap g sits between baseItems[g] and baseItems[g+1] - so the "new"
-  // pseudo-item is pushed AFTER baseItems[g], not before it.
-  const items: Array<BaseItem | { id: string; kind: "new"; atIndex: number }> = [];
-  baseItems.forEach((item, i) => {
+  // Gap g sits between base[g] and base[g+1]; a new step being composed there is drawn right after base[g].
+  const items: Item[] = [];
+  base.forEach((item, i) => {
     items.push(item);
     if (props.isNewStep && props.openIndex === i) items.push({ id: `new-${i}`, kind: "new", atIndex: i });
   });
 
+  const triggerLabel = props.triggerOptions.find((o) => o.value === props.trigger)?.label ?? props.trigger;
+
   const nodes: Node[] = items.map((item, idx) => {
-    const position = { x: idx * NODE_SPACING_X, y: 0 };
+    const position = { x: 0, y: idx * SLOT_H };
     if (item.kind === "trigger") {
       const data: TriggerNodeData = {
-        ruleName: props.ruleName, onRuleNameChange: props.onRuleNameChange,
-        trigger: props.trigger, channel: props.channel, showChannel: props.showChannel,
-        channelTouched: props.channelTouched,
-        triggerOptions: props.triggerOptions, channelOptions: props.channelOptions,
-        onTriggerChange: props.onTriggerChange, onChannelChange: props.onChannelChange,
+        ruleName: props.ruleName, label: triggerLabel, needsChannel: props.showChannel && !props.channelTouched,
+        selected: props.triggerOpen && props.openIndex === null, locked: props.locked, onOpen: props.onOpenTrigger,
       };
       return { id: item.id, type: "trigger", position, data: data as unknown as Record<string, unknown>, draggable: false };
     }
     if (item.kind === "end") {
-      return { id: item.id, type: "end", position, data: {}, draggable: false, style: { width: 1, height: 1 } };
+      return { id: item.id, type: "end", position, data: {}, draggable: false };
     }
-    if (item.kind === "new") {
-      const data: StepNodeData = {
-        mode: "editing", index: item.atIndex, total: props.steps.length, locked: false,
-        actionLabel: props.actionLabel, actionIcon: props.actionIcon,
-        fieldLabel: props.fieldLabel, operatorLabel: props.operatorLabel,
-        summary: "", delayText: "",
-        onOpen: () => {}, onRemove: () => {}, onMoveUp: () => {}, onMoveDown: () => {},
-        canMoveUp: false, canMoveDown: false,
-        renderForm: props.renderStepForm, title: "New step",
-      };
-      return { id: item.id, type: "step", position, data: data as unknown as Record<string, unknown>, draggable: false };
-    }
-    // step
-    const isOpenHere = props.openIndex === item.stepIndex && !props.isNewStep;
+    const isNew = item.kind === "new";
+    const index = isNew ? item.atIndex : item.stepIndex;
     const data: StepNodeData = {
-      mode: isOpenHere ? "editing" : "collapsed",
-      step: item.step, index: item.stepIndex, total: props.steps.length, locked: props.locked,
+      isNew,
+      step: isNew ? undefined : item.step,
+      index,
+      selected: !isNew && props.openIndex === index && !props.isNewStep,
+      locked: props.locked,
       actionLabel: props.actionLabel, actionIcon: props.actionIcon,
       fieldLabel: props.fieldLabel, operatorLabel: props.operatorLabel,
-      summary: props.stepSummary(item.step),
-      delayText: item.step.delay_seconds ? `waits ${props.formatDelay(item.step.delay_seconds)}` : "",
-      onOpen: () => props.onOpenStep(item.stepIndex),
-      onRemove: () => props.onRemoveStep(item.stepIndex),
-      onMoveUp: () => props.onMoveStep(item.stepIndex, -1),
-      onMoveDown: () => props.onMoveStep(item.stepIndex, 1),
-      canMoveUp: item.stepIndex > 0, canMoveDown: item.stepIndex < props.steps.length - 1,
-      renderForm: isOpenHere ? props.renderStepForm : undefined,
-      title: `Step ${item.stepIndex + 1}`,
+      summary: isNew ? "" : props.stepSummary(item.step),
+      onOpen: () => !isNew && props.onOpenStep(index),
+      onRemove: () => props.onRemoveStep(index),
+      onMoveUp: () => props.onMoveStep(index, -1),
+      onMoveDown: () => props.onMoveStep(index, 1),
+      canMoveUp: index > 0, canMoveDown: index < props.steps.length - 1,
     };
     return { id: item.id, type: "step", position, data: data as unknown as Record<string, unknown>, draggable: false };
   });
 
-  // "+" only makes sense between two REAL (non-"new") adjacent items, and
-  // only when nothing anywhere is already open - matches the builder's
-  // own "one thing open at a time" rule.
   const edges: Edge[] = [];
   for (let i = 0; i < items.length - 1; i++) {
     const a = items[i];
     const b = items[i + 1];
-    const insertable = !props.locked && a.kind !== "new" && b.kind !== "new";
-    // Gap index = position among the ORIGINAL trigger+steps+end sequence,
-    // which only lines up with `i` when no "new" item is present (see
-    // FlowCanvas's own module docstring on why that's the only time a
-    // gap's "+" is ever shown).
-    const gapIndex = baseItems.findIndex((it) => it.id === a.id);
+    const gapIndex = base.findIndex((it) => it.id === a.id);
+    const delay = b.kind === "step" ? b.step.delay_seconds : null;
+    const data: LineData = {
+      // "+" only between two real cards, and only while nothing is open (one thing open at a time)
+      insertable: !props.locked && a.kind !== "new" && b.kind !== "new",
+      isLast: b.kind === "end",
+      waitText: delay ? `Wait ${props.formatDelay(delay)}` : "",
+      onInsert: () => props.onInsertAt(gapIndex),
+    };
     edges.push({
-      id: `e-${a.id}-${b.id}`,
-      source: a.id,
-      target: b.id,
-      type: "insertable",
-      markerEnd: { type: MarkerType.ArrowClosed, color: "rgba(45,212,191,0.5)", width: 16, height: 16 },
-      data: { insertable, onInsert: () => props.onInsertAt(gapIndex) } as unknown as Record<string, unknown>,
+      id: `e-${a.id}-${b.id}`, source: a.id, target: b.id, type: "line",
+      markerEnd: { type: MarkerType.ArrowClosed, color: "rgba(255,255,255,0.3)", width: 14, height: 14 },
+      data: data as unknown as Record<string, unknown>,
     });
   }
 
+  // The card being edited, so a narrow screen can keep it in view.
+  const focusRow = items.findIndex((it) =>
+    (it.kind === "new") || (it.kind === "step" && props.openIndex === it.stepIndex && !props.isNewStep));
+
   useEffect(() => {
-    fitView({ padding: 0.35, duration: 200, maxZoom: 1 });
+    if (!paneW || !paneH) return;
+    if (paneW < 640) {
+      // Phone: the column fills the width, centred, scrolled to the open card (or the top).
+      const zoom = Math.min(1, (paneW - 32) / NODE_W);
+      const row = Math.max(0, focusRow);
+      void setViewport({ x: (paneW - NODE_W * zoom) / 2, y: 16 - row * SLOT_H * zoom, zoom }, { duration: 200 });
+    } else {
+      void fitView({ padding: 0.15, duration: 200, maxZoom: 1, minZoom: 0.6 });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length]);
+  }, [items.length, paneW, paneH, focusRow]);
 
   return (
     <ReactFlow
@@ -479,26 +417,124 @@ function CanvasInner(props: FlowCanvasProps) {
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable={false}
+      panOnScroll
+      zoomOnScroll={false}
       proOptions={{ hideAttribution: true }}
-      minZoom={0.2}
+      minZoom={0.3}
       maxZoom={1.5}
     >
-      <ResponsiveFlowViewport />
-      <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="rgba(255,255,255,0.08)" />
-      <Controls showInteractive={false} className="!bg-black/60 !border !border-white/10 [&_button]:!bg-transparent [&_button]:!border-white/10 [&_button]:!text-white/70" />
+      <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} color="rgba(255,255,255,0.09)" />
+      <Controls showInteractive={false} className="max-sm:!hidden !bg-black/60 !border !border-white/10 [&_button]:!bg-transparent [&_button]:!border-white/10 [&_button]:!text-white/70" />
     </ReactFlow>
   );
 }
 
-export function FlowCanvas(props: FlowCanvasProps) {
+// ── The side panel: the trigger's settings, or the open step's form ──────
+
+function TriggerPanel(props: FlowCanvasProps & { onClose: () => void }) {
   return (
-    <div className="space-y-2">
-      <div className="workspace-flow-canvas h-[520px] sm:h-[460px] rounded-xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
-        <ReactFlowProvider>
-          <CanvasInner {...props} />
-        </ReactFlowProvider>
+    <div className="space-y-4">
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Rule name</label>
+        <input
+          type="text"
+          value={props.ruleName}
+          onChange={(e) => props.onRuleNameChange(e.target.value)}
+          placeholder="e.g. Chase overdue fees"
+          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim/60 focus:border-cyan-500 focus:outline-none"
+        />
       </div>
-      <p className="text-[11px] text-os-text-dim">Drag the canvas to move between steps. Use +/− to zoom and the fit control to see the whole flow.</p>
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">When this happens</label>
+        <select
+          value={props.trigger}
+          onChange={(e) => props.onTriggerChange(e.target.value as AutomationTrigger)}
+          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+        >
+          {groupOptions(props.triggerOptions).map(([group, opts]) =>
+            group ? (
+              <optgroup key={group} label={group}>
+                {opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </optgroup>
+            ) : (
+              opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)
+            ),
+          )}
+        </select>
+      </div>
+      {props.showChannel && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">On which channel</label>
+          <select
+            value={props.channel}
+            onChange={(e) => props.onChannelChange(e.target.value as AutomationChannel | "")}
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          >
+            <option value="">Any channel (fires from all of them)</option>
+            {props.channelOptions.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+          {!props.channelTouched && (
+            <p className="mt-1.5 text-[11px] text-amber-300/90 leading-snug">
+              This can fire from more than one channel - confirm which one(s) should start this rule before saving.
+            </p>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={props.onClose}
+        className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer"
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
+export function FlowCanvas(props: FlowCanvasProps) {
+  // The trigger's panel starts open on a brand-new rule (nothing to look at yet), closed when editing one.
+  const [triggerOpen, setTriggerOpen] = useState(props.steps.length === 0);
+  const stepOpen = props.openIndex !== null;
+  useEffect(() => {
+    if (stepOpen) setTriggerOpen(false);
+  }, [stepOpen]);
+
+  const panelOpen = stepOpen || triggerOpen;
+  const stepTitle = stepOpen
+    ? props.isNewStep ? `New step ${props.openIndex! + 1}` : `Edit step ${props.openIndex! + 1}`
+    : "Trigger";
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-3">
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="workspace-flow-canvas h-[460px] lg:h-[560px] rounded-xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a]">
+          <ReactFlowProvider>
+            <CanvasInner {...props} triggerOpen={triggerOpen} onOpenTrigger={() => setTriggerOpen(true)} />
+          </ReactFlowProvider>
+        </div>
+        <p className="text-[11px] text-os-text-dim">Click a card to edit it. Scroll or drag to move around; + adds a step there.</p>
+      </div>
+
+      {panelOpen && (
+        <aside className="lg:w-[380px] shrink-0 rounded-xl border border-cyan-500/25 bg-[#101010] flex flex-col lg:max-h-[560px]">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.08]">
+            <div className="flex items-center gap-2 min-w-0">
+              {stepOpen ? <Pencil className="w-3.5 h-3.5 text-cyan-300" /> : <Zap className="w-3.5 h-3.5 text-cyan-300" />}
+              <p className="text-xs font-bold text-white truncate">{stepTitle}</p>
+            </div>
+            {!stepOpen && (
+              <button type="button" onClick={() => setTriggerOpen(false)} aria-label="Close" className="p-1 rounded-md text-os-text-dim hover:text-white hover:bg-white/[0.08] cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="p-4 overflow-y-auto overscroll-contain">
+            {stepOpen ? props.renderStepForm() : <TriggerPanel {...props} onClose={() => setTriggerOpen(false)} />}
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

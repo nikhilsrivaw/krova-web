@@ -422,8 +422,6 @@ body::-webkit-scrollbar,
 .workspace-refined .react-flow__edge-path { stroke: var(--color-teal); }
 .workspace-refined .react-flow__controls-button { width: 40px; height: 40px; }
 .workspace-refined .react-flow__controls { display: flex; flex-direction: row; }
-.workspace-refined .workspace-flow-node { width: min(256px, var(--workspace-flow-node-width, 256px)); }
-.workspace-refined .workspace-flow-editor { width: min(320px, var(--workspace-flow-node-width, 320px)); max-height: var(--workspace-flow-editor-height, 412px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 
 @media (max-width: 767px) {
   .workspace-inbox-actions[data-expanded="false"] > :not(.workspace-inbox-primary):not(.workspace-inbox-toggle) { display: none; }
