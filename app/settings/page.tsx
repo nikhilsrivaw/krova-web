@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { PaymentGatewayCard } from "@/components/payments/PaymentGatewayCard";
+import { BookingPaymentCard } from "@/components/payments/BookingPaymentCard";
 import Link from "next/link";
 import {
   Settings,
@@ -1922,6 +1923,7 @@ export default function SettingsPage() {
             <CreditCard className="w-4 h-4 text-os-accent" />
             <h3 className="text-sm font-bold text-white">Payments</h3>
           </div>
+          <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
           <PaymentGatewayCard />
         </GlassCard>
 
