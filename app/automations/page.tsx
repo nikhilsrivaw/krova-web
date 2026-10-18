@@ -17,6 +17,7 @@ import { RunHistoryPanel } from "@/components/automations/RunHistoryPanel";
 import { RuleTester } from "@/components/automations/RuleTester";
 import { Recipes } from "@/components/automations/Recipes";
 import { TemplateNotice } from "@/components/automations/TemplateNotice";
+import { SendingLimitsCard } from "@/components/automations/SendingLimits";
 import {
   postCallRules,
   flows as flowsApi,
@@ -81,6 +82,10 @@ const SCHEDULING_TRIGGERS = new Set<AutomationTrigger>([
   "appointment.cancelled",
   "appointment.rescheduled",
   "queue_token.issued",
+  "appointment.visited",
+  "appointment.no_show",
+  "queue_token.done",
+  "queue_token.skipped",
 ]);
 
 /** Same check as components/whatsapp/FlowsPanel.tsx and app/campaigns/page.tsx's own usesLiveData. */
@@ -136,6 +141,12 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "reply.overdue": "A customer has waited too long for a reply (target set under Team)",
   "keypad.pressed": "A caller presses a key on your phone menu",
   "customer.date_approaching": "Every day around a date set on a customer — renewal, AMC expiry… (set the day with a condition)",
+  "appointment.visited": "A booking is marked as came (visited)",
+  "appointment.no_show": "A booking is marked as did not come (no-show)",
+  "queue_token.done": "A queue token is marked done",
+  "queue_token.skipped": "A queue token is skipped (did not come)",
+  "order.status_changed": "An order's status changes (paid, shipped, delivered, cancelled…)",
+  "payment.received": "Money is received from a customer (payment link or recorded on the Ledger)",
 };
 
 // The heading each trigger sits under in the picker - 41 triggers in one flat list was a wall. Order here is the
@@ -159,6 +170,9 @@ const TRIGGER_GROUP: Record<AutomationTrigger, string> = {
   "feature_request.detected": "What customers say",
   "report_not_collected.detected": "Orders, reports & claims", "rto_risk.detected": "Orders, reports & claims",
   "claim.status_changed": "Orders, reports & claims",
+  "appointment.visited": "Bookings & queue", "appointment.no_show": "Bookings & queue",
+  "queue_token.done": "Bookings & queue", "queue_token.skipped": "Bookings & queue",
+  "order.status_changed": "Orders, reports & claims", "payment.received": "Payments & promises",
 };
 const GROUP_ORDER = ["Messages", "Bookings & queue", "Payments & promises", "Customers", "Calls",
   "What customers say", "Orders, reports & claims"];
@@ -185,6 +199,11 @@ const TRIGGER_REQUIRED_CAPABILITY: Partial<Record<AutomationTrigger, Capability[
   "intent_leakage.detected": ["order_sync"],
   "rto_risk.detected": ["order_sync"],
   "queue_token.issued": ["opd_queue"],
+  "queue_token.done": ["opd_queue"],
+  "queue_token.skipped": ["opd_queue"],
+  "appointment.visited": ["scheduling"],
+  "appointment.no_show": ["scheduling"],
+  "order.status_changed": ["order_sync"],
   "claim.status_changed": ["tpa_claim_tracking"],
   // commitment.due_soon / commitment.overdue are deliberately ungated -
   // the Commitment Ledger is the core of the product, not a capability
@@ -276,7 +295,15 @@ const FIELD_LABEL: Record<string, string> = {
   amount_paise: "Amount promised (in paise)",
   amount_outstanding_paise: "Amount still owed (in paise)",
   description: "What was promised, in words",
-  status: "Quote status",
+  status: "Status (quote or order: paid, fulfilled, delivered, cancelled…)",
+  previous_status: "Status before the change",
+  order_number: "Order number",
+  total_paise: "Order total (in paise)",
+  is_cod: "Cash on delivery",
+  provider: "Who it was with (calendar name)",
+  visit_number: "Their visit number (1 = first visit)",
+  no_show_count: "How many bookings they have missed",
+  fully_paid: "Now fully paid",
   reference: "Quote reference",
   // customer.inactive. "Customer" and "either side" are spelled out
   // because the difference is the whole point: a reminder the business
@@ -318,6 +345,11 @@ const FIELD_TYPE: Record<string, "text" | "number" | "boolean"> = {
   has_upcoming_visit: "boolean",
   minutes_waiting: "number",
   assigned: "boolean",
+  total_paise: "number",
+  is_cod: "boolean",
+  visit_number: "number",
+  no_show_count: "number",
+  fully_paid: "boolean",
 };
 
 const OPERATOR_LABEL: Record<AutomationOperator, string> = {
@@ -388,10 +420,11 @@ const stepSummary = (step: AutomationStepConfig, publishedFlows: WhatsAppFlow[])
   if (step.action_type === "assign_to_agent") {
     return step.action_config.to === "round_robin" ? "next available agent" : "a chosen team member";
   }
-  return (
-    step.action_config.message || step.action_config.reason || step.action_config.tag
-    || step.action_config.stage || ""
-  );
+  const text = step.action_type === "whatsapp_followup" && step.action_config.template_name
+    ? `${step.action_config.template_name}${step.action_config.message ? `: ${step.action_config.message}` : ""}`
+    : step.action_config.message || step.action_config.reason || step.action_config.tag || step.action_config.stage || "";
+  const stop = step.action_config.stop_if;
+  return stop ? `${text}${text ? " · " : ""}stops if ${stop.split(",").join(" / ")}` : text;
 };
 
 export default function AutomationsPage() {
@@ -479,6 +512,11 @@ export default function AutomationsPage() {
   // send_payment_link: optional amount (blank = doctor's fee, else the default fee) and template (outside 24 hours)
   const [linkRupees, setLinkRupees] = useState("");
   const [linkTemplate, setLinkTemplate] = useState("");
+  // whatsapp_followup: "" = the standard post_call_followup template, else one of the business's own
+  const [followupTemplate, setFollowupTemplate] = useState("");
+  const [followupTemplates, setFollowupTemplates] = useState<Template[]>([]);
+  // "Stop here if, since the rule started, the customer..." (replied / booked / paid)
+  const [stopIf, setStopIf] = useState<string[]>([]);
   const [sendTo, setSendTo] = useState<"customer" | "payer">("customer");
   // notify_team / assign_to_agent
   const [notifyTo, setNotifyTo] = useState<"owner" | "admins" | "assigned" | "everyone">("admins");
@@ -515,6 +553,12 @@ export default function AutomationsPage() {
       setSavedCarousels((carouselsRes.value ?? []).filter((c) => !JSON.stringify(c.elements).includes("{{")));
     }
     if (templatesRes.status === "fulfilled") {
+      // Any approved, non-carousel template with at most one blank: the step's message fills it.
+      setFollowupTemplates(
+        templatesRes.value.filter(
+          (t) => t.sendable && !t.is_carousel && t.variables.length <= 1 && t.name !== "post_call_followup",
+        ),
+      );
       // Only approved carousel templates with no {{variables}} anywhere - a
       // rule has no per-customer values to fill a card's text with.
       setCarouselTemplates(
@@ -629,6 +673,8 @@ export default function AutomationsPage() {
     setCarouselId(isCarousel ? config.carousel_id || "" : "");
     setCarouselTemplateName(isCarousel ? config.template_name || "" : "");
     setSendTo(config.send_to === "payer" ? "payer" : "customer");
+    setFollowupTemplate(step?.action_type === "whatsapp_followup" ? config.template_name || "" : "");
+    setStopIf((config.stop_if || "").split(",").map((k) => k.trim()).filter(Boolean));
     const isLink = step?.action_type === "send_payment_link";
     setLinkRupees(isLink && config.amount_paise ? String(Number(config.amount_paise) / 100) : "");
     setLinkTemplate(isLink ? config.template_name || "" : "");
@@ -768,14 +814,23 @@ export default function AutomationsPage() {
   // Wraps the per-action config with who it goes to. Only messaging
   // actions can go to a payer (the backend's PAYER_ACTIONS); for any other
   // action the choice is dropped rather than saved and rejected.
+  // "Stop if" only means something on a step that comes up after a wait - this one's or an earlier step's.
+  const canStop = delayEnabled || (openIndex !== null && steps.slice(0, openIndex).some((st) => !!st.delay_seconds));
+
   const buildConfig = (): Record<string, string> | null => {
-    const config = buildActionConfig();
-    if (!config) return null;
-    return sendTo === "payer" && PAYER_ACTIONS.has(action) ? { ...config, send_to: "payer" } : config;
+    const built = buildActionConfig();
+    if (!built) return null;
+    const config = sendTo === "payer" && PAYER_ACTIONS.has(action) ? { ...built, send_to: "payer" } : built;
+    return canStop && stopIf.length ? { ...config, stop_if: stopIf.join(",") } : config;
   };
 
   const buildActionConfig = (): Record<string, string> | null => {
     if (action === "whatsapp_followup") {
+      const own = followupTemplates.find((t) => t.name === followupTemplate);
+      if (own) {
+        if (own.variables.length === 0) return { template_name: own.name };
+        return textConfig.trim() ? { template_name: own.name, message: textConfig.trim() } : null;
+      }
       return textConfig.trim() ? { message: textConfig.trim() } : null;
     }
     if (action === "create_escalation_task") {
@@ -1146,21 +1201,49 @@ export default function AutomationsPage() {
       {action === "whatsapp_followup" && (
         <div>
           <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">Message to send</label>
-          <p className="text-[11px] text-os-text-dim mb-2">
-            Sent via your approved &quot;post_call_followup&quot; WhatsApp template.
-          </p>
-          {!templateReady && (
+          <select
+            value={followupTemplate}
+            onChange={(e) => setFollowupTemplate(e.target.value)}
+            className="w-full mb-2 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          >
+            <option value="">Standard follow-up template (post_call_followup, utility)</option>
+            {followupTemplates.map((t) => (
+              <option key={`${t.name}-${t.language}`} value={t.name}>
+                {t.name} ({t.category.toLowerCase()}{t.variables.length ? ", fills one blank" : ", sent as written"})
+              </option>
+            ))}
+          </select>
+          {(() => {
+            const own = followupTemplates.find((t) => t.name === followupTemplate);
+            if (!own) {
+              return (
+                <p className="text-[11px] text-os-text-dim mb-2">
+                  For an offer or a festival greeting, pick one of your approved marketing templates instead - Meta expects
+                  promotional messages to go out as marketing.
+                </p>
+              );
+            }
+            return (
+              <div className="mb-2 p-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[11px] text-os-text-dim whitespace-pre-wrap">
+                {own.body_text || own.name}
+                {own.variables.length === 0 && <p className="mt-1 text-cyan-300">Sent exactly as written - no message needed.</p>}
+              </div>
+            );
+          })()}
+          {!followupTemplate && !templateReady && (
             <div className="mb-2">
               <TemplateNotice templates={autoTemplates} canEdit={canEditTemplates} onChanged={loadAutoTemplates} compact />
             </div>
           )}
-          <textarea
-            value={textConfig}
-            onChange={(e) => setTextConfig(e.target.value)}
-            rows={2}
-            placeholder="Thanks for reaching out - we'll get right back to you."
-            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
-          />
+          {!(followupTemplates.find((t) => t.name === followupTemplate)?.variables.length === 0) && (
+            <textarea
+              value={textConfig}
+              onChange={(e) => setTextConfig(e.target.value)}
+              rows={2}
+              placeholder="Thanks for reaching out - we'll get right back to you."
+              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none resize-none"
+            />
+          )}
           {trigger === "call.completed" && (
             <p className="text-[11px] text-os-text-dim mt-1.5">
               Use <code className="text-cyan-400">{"{{summary}}"}</code> to include what the AI captured about
@@ -1561,6 +1644,34 @@ export default function AutomationsPage() {
         </div>
       )}
 
+      {canStop && (
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">
+            Stop the rule here if, since it started, the customer…
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {([["replied", "replied"], ["booked", "booked"], ["paid", "paid"]] as const).map(([key, label]) => {
+              const on = stopIf.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStopIf((cur) => (on ? cur.filter((k) => k !== key) : [...cur, key]))}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border cursor-pointer transition-all ${
+                    on ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-200" : "bg-white/[0.03] border-white/[0.1] text-os-text-dim hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-os-text-dim mt-1.5">
+            Checked when this step comes up after a wait - so a &quot;still interested?&quot; never reaches someone who already answered.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -1689,6 +1800,9 @@ export default function AutomationsPage() {
 
           {automationsTab !== "activity" && (
             <TemplateNotice templates={autoTemplates} canEdit={canEditTemplates} onChanged={loadAutoTemplates} />
+          )}
+          {(automationsTab === "rules" || automationsTab === "scheduling") && (
+            <SendingLimitsCard canEdit={canEditTemplates} />
           )}
 
           {automationsTab === "recipes" ? (

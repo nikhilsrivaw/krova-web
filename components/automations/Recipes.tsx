@@ -152,7 +152,7 @@ const RECIPES: Recipe[] = [
   {
     key: "new_lead",
     title: "Reach out to every new lead",
-    description: "A new enquiry from Justdial, IndiaMART, an ad or a form: the team is alerted and the lead gets a WhatsApp thank-you.",
+    description: "A new enquiry from Justdial, IndiaMART, an ad or a form: the team is alerted, the lead gets a thank-you, and a check-in a day later unless they already replied or booked.",
     trigger: "lead.received",
     needs: ["lead_capture"],
     usesTemplate: true,
@@ -160,7 +160,85 @@ const RECIPES: Recipe[] = [
     steps: [
       { action_type: "create_escalation_task", action_config: { reason: "A new lead came in - see Leads for who and from where." } },
       { action_type: "whatsapp_followup", action_config: { message: "Thanks for your enquiry! Our team will get back to you shortly." } },
+      {
+        action_type: "whatsapp_followup", delay_seconds: 86400,
+        action_config: { message: "Just checking in - did you find what you were looking for? Reply here and we will help.", stop_if: "replied,booked" },
+      },
     ],
+  },
+  {
+    key: "no_show_rebook",
+    title: "Someone missed their booking",
+    description: "When a booking is marked as did not come, they get a friendly message to pick a new time.",
+    trigger: "appointment.no_show",
+    needs: ["scheduling"],
+    usesTemplate: true,
+    steps: [{
+      action_type: "whatsapp_followup", delay_seconds: 3600,
+      action_config: { message: "We missed you today. Reply here and we will find you a new time.", stop_if: "replied,booked" },
+    }],
+  },
+  {
+    key: "first_visit_thanks",
+    title: "Thank someone after their first visit",
+    description: "The first time a booking is marked as came, a short thank-you goes out a couple of hours later.",
+    trigger: "appointment.visited",
+    needs: ["scheduling"],
+    usesTemplate: true,
+    steps: [{
+      action_type: "whatsapp_followup", delay_seconds: 7200,
+      action_config: { message: "Thank you for coming in today. Reply here anytime if you need anything." },
+      conditions: [{ field: "visit_number", operator: "equals", value: 1 }],
+    }],
+  },
+  {
+    key: "order_delivered",
+    title: "Check in when an order is delivered",
+    description: "A day after an order is marked delivered, the customer is asked if everything is right.",
+    trigger: "order.status_changed",
+    needs: ["order_sync"],
+    usesTemplate: true,
+    steps: [{
+      action_type: "whatsapp_followup", delay_seconds: 86400,
+      action_config: { message: "Your order {{order_number}} was delivered - hope you like it! Reply here if anything is not right." },
+      conditions: [{ field: "status", operator: "equals", value: "delivered" }],
+    }],
+  },
+  {
+    key: "order_cancelled",
+    title: "Tell me when an order is cancelled",
+    description: "Any cancelled order alerts the owner, so a lost sale never goes unnoticed.",
+    trigger: "order.status_changed",
+    needs: ["order_sync"],
+    steps: [{
+      action_type: "notify_team", action_config: { to: "owner", message: "Order {{order_number}} was cancelled." },
+      conditions: [{ field: "status", operator: "equals", value: "cancelled" }],
+    }],
+  },
+  {
+    key: "paid_thanks",
+    title: "Say thank you when a payment is complete",
+    description: "When the last of what a customer owed comes in (link or recorded on the Ledger), they get a thank-you.",
+    trigger: "payment.received",
+    usesTemplate: true,
+    steps: [{
+      action_type: "whatsapp_followup", action_config: { message: "Payment received - thank you! {{description}} is now fully paid." },
+      conditions: [{ field: "fully_paid", operator: "equals", value: true }],
+    }],
+  },
+  {
+    key: "birthday",
+    title: "Wish customers on their birthday",
+    description: "Add a 'Birthday' date on the customer and tick 'Comes every year'. A wish goes out on the day.",
+    trigger: "customer.date_approaching",
+    usesTemplate: true,
+    steps: [{
+      action_type: "whatsapp_followup", action_config: { message: "Happy birthday from all of us! Wishing you a wonderful year ahead." },
+      conditions: [
+        { field: "label", operator: "equals", value: "Birthday" },
+        { field: "days_until", operator: "equals", value: 0 },
+      ],
+    }],
   },
 ];
 

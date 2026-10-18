@@ -644,6 +644,8 @@ export type CustomerDate = {
   /** YYYY-MM-DD */
   date: string;
   note?: string | null;
+  // Comes round every year (birthday, anniversary, yearly AMC).
+  repeats_yearly?: boolean;
 };
 
 export type CustomerTag = {
@@ -745,7 +747,7 @@ export const crm = {
   // "Package ends". Its automation rules act on them through the
   // customer.date_approaching trigger.
   dates: (customerId: string) => api.get<CustomerDate[]>(`/crm/customers/${customerId}/dates`),
-  addDate: (customerId: string, data: { label: string; date: string; note?: string | null }) =>
+  addDate: (customerId: string, data: { label: string; date: string; note?: string | null; repeats_yearly?: boolean }) =>
     api.post<CustomerDate>(`/crm/customers/${customerId}/dates`, data),
   deleteDate: (dateId: string) => api.delete<void>(`/crm/dates/${dateId}`),
   dateLabels: () => api.get<string[]>("/crm/date-labels"),
@@ -1875,7 +1877,15 @@ export type AutomationTrigger =
   // A chat's newest customer message has waited past the reply-time target set under Team.
   | "reply.overdue"
   // A caller pressed a key on the phone keypad menu.
-  | "keypad.pressed";
+  | "keypad.pressed"
+  // Outcomes: a booking marked came / did not come, a token done / skipped,
+  // an order's status moving, money received against what a customer owed.
+  | "appointment.visited"
+  | "appointment.no_show"
+  | "queue_token.done"
+  | "queue_token.skipped"
+  | "order.status_changed"
+  | "payment.received";
 // escalation_rate.detected / account_health.detected deliberately absent -
 // business-level signals with no customer_id, so a rule on either could
 // never fire. Webhook-only, see WEBHOOK_EVENT_TYPES below instead.
@@ -1957,6 +1967,12 @@ export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
   "quotation.aging": ["days_open", "status", "amount_paise", "reference"],
   "customer.stage_changed": ["from_stage", "to_stage"],
   "customer.date_approaching": ["label", "days_until", "date", "note"],
+  "appointment.visited": ["starts_at", "intake_channel", "provider", "visit_number"],
+  "appointment.no_show": ["starts_at", "intake_channel", "provider", "no_show_count"],
+  "queue_token.done": ["shift", "queue_number", "visit_number"],
+  "queue_token.skipped": ["shift", "queue_number"],
+  "order.status_changed": ["status", "previous_status", "order_number", "total_paise", "is_cod"],
+  "payment.received": ["amount_paise", "amount_outstanding_paise", "fully_paid", "description"],
   "customer.inactive": [
     "days_since_customer_message", "days_since_any_message",
     "days_since_last_visit", "has_upcoming_visit", "stage",
@@ -2079,6 +2095,15 @@ export type AutomationTestResult = {
   steps: AutomationTestStep[];
 };
 
+// When automations may message customers: quiet hours (held until they end)
+// and a per-customer daily cap (0 = none). Business time.
+export type SendingLimits = {
+  quiet_hours: boolean;
+  quiet_start: number;
+  quiet_end: number;
+  daily_limit: number;
+};
+
 export type AutomationTemplate = {
   name: string;
   state: "approved" | "pending" | "rejected" | "missing" | "other";
@@ -2113,6 +2138,9 @@ export const postCallRules = {
   // The WhatsApp template(s) Automations' own actions need - today the one behind every
   // "Send a WhatsApp follow-up" step - and where each stands with Meta.
   templates: () => api.get<AutomationTemplate[]>("/post-call-rules/templates"),
+
+  limits: () => api.get<SendingLimits>("/post-call-rules/limits"),
+  setLimits: (data: SendingLimits) => api.put<SendingLimits>("/post-call-rules/limits", data),
 
   // Submit the missing one(s) to Meta. Owner/admin only; safe to press twice.
   createTemplates: () =>

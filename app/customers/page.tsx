@@ -325,6 +325,7 @@ export default function CustomersPage() {
   const [newDateLabel, setNewDateLabel] = useState("");
   const [newDateValue, setNewDateValue] = useState("");
   const [newDateNote, setNewDateNote] = useState("");
+  const [newDateYearly, setNewDateYearly] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -338,11 +339,11 @@ export default function CustomersPage() {
     setDateError(null);
     try {
       const created = await crm.addDate(selectedCustomer.id, {
-        label: newDateLabel.trim(), date: newDateValue, note: newDateNote.trim() || null,
+        label: newDateLabel.trim(), date: newDateValue, note: newDateNote.trim() || null, repeats_yearly: newDateYearly,
       });
       setKeyDates((prev) => [...prev, created].sort((a, b) => a.date.localeCompare(b.date)));
       if (!dateLabels.includes(created.label)) setDateLabels((l) => [...l, created.label]);
-      setNewDateLabel(""); setNewDateValue(""); setNewDateNote("");
+      setNewDateLabel(""); setNewDateValue(""); setNewDateNote(""); setNewDateYearly(false);
     } catch (err) {
       setDateError(err instanceof Error ? err.message : "Could not save the date.");
     }
@@ -952,7 +953,9 @@ export default function CustomersPage() {
                         <div className="min-w-0">
                           <p className="text-xs text-white">
                             {d.label} <span className="text-os-text-dim">·</span>{" "}
-                            {new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {d.repeats_yearly
+                              ? <>{new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })} <span className="text-os-text-dim">every year</span></>
+                              : new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                           {d.note && <p className="text-[11px] text-os-text-dim truncate">{d.note}</p>}
                         </div>
@@ -1002,6 +1005,10 @@ export default function CustomersPage() {
                     Add
                   </button>
                 </div>
+                <label className="flex items-center gap-2 mt-1.5 text-[11px] text-os-text-dim cursor-pointer">
+                  <input type="checkbox" checked={newDateYearly} onChange={(e) => setNewDateYearly(e.target.checked)} />
+                  Comes every year (birthday, anniversary, yearly AMC)
+                </label>
                 {dateError && <p className="text-[11px] text-red-400 mt-1">{dateError}</p>}
                 <p className="text-[11px] text-os-text-dim mt-1.5">
                   Your automation rules can act on these — e.g. “5 days before Renewal → WhatsApp”.
