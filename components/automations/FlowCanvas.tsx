@@ -106,11 +106,26 @@ type TriggerNodeData = {
   // firing mid-voice-call is a real, already-seen risk, so "not decided
   // yet" gets a visible nudge instead of quietly resolving to "any".
   channelTouched: boolean;
-  triggerOptions: { value: AutomationTrigger; label: string }[];
+  triggerOptions: TriggerOption[];
   channelOptions: { value: AutomationChannel; label: string }[];
   onTriggerChange: (t: AutomationTrigger) => void;
   onChannelChange: (c: AutomationChannel | "") => void;
 };
+
+// `group` puts the trigger under a heading in the picker (Messages, Bookings & queue, ...). Groups keep the order
+// they first appear in; options without one go last, ungrouped.
+export type TriggerOption = { value: AutomationTrigger; label: string; group?: string };
+
+function groupOptions(options: TriggerOption[]): [string | null, TriggerOption[]][] {
+  const out = new Map<string | null, TriggerOption[]>();
+  for (const o of options) {
+    const key = o.group ?? null;
+    if (!out.has(key)) out.set(key, []);
+    out.get(key)!.push(o);
+  }
+  const entries = [...out.entries()];
+  return [...entries.filter(([g]) => g !== null), ...entries.filter(([g]) => g === null)];
+}
 
 function TriggerNode({ id, data }: NodeProps) {
   const d = data as unknown as TriggerNodeData;
@@ -135,9 +150,15 @@ function TriggerNode({ id, data }: NodeProps) {
         onChange={(e) => d.onTriggerChange(e.target.value as AutomationTrigger)}
         className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-[11px] text-white font-mono focus:border-cyan-500 focus:outline-none"
       >
-        {d.triggerOptions.map((t) => (
-          <option key={t.value} value={t.value}>{t.label}</option>
-        ))}
+        {groupOptions(d.triggerOptions).map(([group, opts]) =>
+          group ? (
+            <optgroup key={group} label={group}>
+              {opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </optgroup>
+          ) : (
+            opts.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)
+          ),
+        )}
       </select>
       {d.showChannel && (
         <div className="mt-2">
@@ -329,7 +350,7 @@ export type FlowCanvasProps = {
   channel: AutomationChannel | "";
   showChannel: boolean;
   channelTouched: boolean;
-  triggerOptions: { value: AutomationTrigger; label: string }[];
+  triggerOptions: TriggerOption[];
   channelOptions: { value: AutomationChannel; label: string }[];
   onTriggerChange: (t: AutomationTrigger) => void;
   onChannelChange: (c: AutomationChannel | "") => void;

@@ -2079,6 +2079,13 @@ export type AutomationTestResult = {
   steps: AutomationTestStep[];
 };
 
+export type AutomationTemplate = {
+  name: string;
+  state: "approved" | "pending" | "rejected" | "missing" | "other";
+  reason: string | null;
+  purpose: string;
+};
+
 export const postCallRules = {
   list: () => api.get<AutomationRule[]>("/post-call-rules"),
 
@@ -2102,6 +2109,16 @@ export const postCallRules = {
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
   remove: (id: string) => api.delete<void>(`/post-call-rules/${id}`),
+
+  // The WhatsApp template(s) Automations' own actions need - today the one behind every
+  // "Send a WhatsApp follow-up" step - and where each stands with Meta.
+  templates: () => api.get<AutomationTemplate[]>("/post-call-rules/templates"),
+
+  // Submit the missing one(s) to Meta. Owner/admin only; safe to press twice.
+  createTemplates: () =>
+    api.post<{ created: string[]; already_there: string[]; failed: { name: string; error: string }[] }>(
+      "/post-call-rules/templates", {},
+    ),
 
   // What a rule actually did, newest first. Optionally narrowed to one
   // rule. See AutomationRunLog's own docstring for why "it ran but did

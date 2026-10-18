@@ -15,6 +15,8 @@ import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { FlowCanvas } from "@/components/automations/FlowCanvas";
 import { RunHistoryPanel } from "@/components/automations/RunHistoryPanel";
 import { RuleTester } from "@/components/automations/RuleTester";
+import { Recipes } from "@/components/automations/Recipes";
+import { TemplateNotice } from "@/components/automations/TemplateNotice";
 import {
   postCallRules,
   flows as flowsApi,
@@ -28,6 +30,7 @@ import {
   type Template,
   type AutomationRule,
   type AutomationStepConfig,
+  type AutomationTemplate,
   type AutomationTrigger,
   type AutomationAction,
   type AutomationChannel,
@@ -134,6 +137,31 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "keypad.pressed": "A caller presses a key on your phone menu",
   "customer.date_approaching": "Every day around a date set on a customer — renewal, AMC expiry… (set the day with a condition)",
 };
+
+// The heading each trigger sits under in the picker - 41 triggers in one flat list was a wall. Order here is the
+// order the groups appear in.
+const TRIGGER_GROUP: Record<AutomationTrigger, string> = {
+  "message.received": "Messages", "comment.received": "Messages", "story_mention.received": "Messages",
+  "story_reply.received": "Messages", "flow.completed": "Messages", "reply.overdue": "Messages",
+  "escalation.raised": "Messages",
+  "appointment.booked": "Bookings & queue", "appointment.cancelled": "Bookings & queue",
+  "appointment.rescheduled": "Bookings & queue", "queue_token.issued": "Bookings & queue",
+  "commitment.due_soon": "Payments & promises", "commitment.overdue": "Payments & promises",
+  "quotation.aging": "Payments & promises", "overdue_refund.detected": "Payments & promises",
+  "callback_overdue.detected": "Payments & promises", "overdue_followup.detected": "Payments & promises",
+  "lead.received": "Customers", "customer.inactive": "Customers", "customer.date_approaching": "Customers",
+  "customer.stage_changed": "Customers",
+  "call.completed": "Calls", "call.voicemail": "Calls", "call.no_answer": "Calls", "keypad.pressed": "Calls",
+  "complaint.detected": "What customers say", "praise.detected": "What customers say",
+  "churn_risk.detected": "What customers say", "competitor.mentioned": "What customers say",
+  "intent_leakage.detected": "What customers say", "pricing_question.asked": "What customers say",
+  "demo.requested": "What customers say", "bug.detected": "What customers say",
+  "feature_request.detected": "What customers say",
+  "report_not_collected.detected": "Orders, reports & claims", "rto_risk.detected": "Orders, reports & claims",
+  "claim.status_changed": "Orders, reports & claims",
+};
+const GROUP_ORDER = ["Messages", "Bookings & queue", "Payments & promises", "Customers", "Calls",
+  "What customers say", "Orders, reports & claims"];
 
 // Which of a business's own capabilities a trigger actually needs to ever
 // fire - not every trigger here is a Signal, but every Signal-derived one
@@ -370,7 +398,16 @@ export default function AutomationsPage() {
   // "Rules" = everything else, "Scheduling" = the booking-lifecycle subset
   // (SCHEDULING_TRIGGERS) - two filtered views over the same rules and the
   // same builder, not a separate feature or a separate table.
-  const [automationsTab, setAutomationsTab] = useState<"rules" | "scheduling" | "activity">("rules");
+  const [automationsTab, setAutomationsTab] = useState<"recipes" | "rules" | "scheduling" | "activity">("rules");
+  // the WhatsApp template behind "Send a WhatsApp follow-up", and whether it is approved yet
+  const [autoTemplates, setAutoTemplates] = useState<AutomationTemplate[]>([]);
+  const [vertical, setVertical] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const loadAutoTemplates = () => {
+    postCallRules.templates().then(setAutoTemplates).catch(() => setAutoTemplates([]));
+  };
+  const templateReady = !autoTemplates.some((t) => t.name === "post_call_followup" && t.state !== "approved");
+  const canEditTemplates = role === "owner" || role === "admin";
   // Per-viewer convenience only (which businesses have already seen the
   // starter-rule suggestion below) - not real state, never read back by
   // anyone but this browser, so localStorage is the right tool here.
@@ -490,6 +527,11 @@ export default function AutomationsPage() {
     if (rulesRes.status === "fulfilled") {
       setRules(rulesRes.value);
       setLoadError(null);
+      // a business with no rules yet lands on the ready-made ones (unless a link asked for a tab)
+      if (rulesRes.value.length === 0 && !new URLSearchParams(window.location.search).get("tab")
+          && !new URLSearchParams(window.location.search).get("trigger")) {
+        setAutomationsTab("recipes");
+      }
     } else {
       setLoadError(rulesRes.reason instanceof Error ? rulesRes.reason.message : "Could not load automations.");
     }
@@ -501,7 +543,10 @@ export default function AutomationsPage() {
     // whole page.
     if (profileRes.status === "fulfilled") {
       setCapabilities(profileRes.value.capabilities || []);
+      setVertical(profileRes.value.vertical ?? null);
+      setRole(profileRes.value.role ?? null);
     }
+    loadAutoTemplates();
     setIsLoading(false);
   };
 
@@ -521,7 +566,7 @@ export default function AutomationsPage() {
     // rules actually do". Handled before ?trigger= so a link carrying
     // both still opens the builder, which is the more specific intent.
     const requestedTab = params.get("tab");
-    if (requestedTab === "activity" || requestedTab === "scheduling" || requestedTab === "rules") {
+    if (requestedTab === "activity" || requestedTab === "scheduling" || requestedTab === "rules" || requestedTab === "recipes") {
       setAutomationsTab(requestedTab);
     }
     const requested = params.get("trigger");
@@ -1104,6 +1149,11 @@ export default function AutomationsPage() {
           <p className="text-[11px] text-os-text-dim mb-2">
             Sent via your approved &quot;post_call_followup&quot; WhatsApp template.
           </p>
+          {!templateReady && (
+            <div className="mb-2">
+              <TemplateNotice templates={autoTemplates} canEdit={canEditTemplates} onChanged={loadAutoTemplates} compact />
+            </div>
+          )}
           <textarea
             value={textConfig}
             onChange={(e) => setTextConfig(e.target.value)}
@@ -1620,7 +1670,7 @@ export default function AutomationsPage() {
 
         <GlassCard className="p-6 space-y-4">
           <div className="workspace-tabs rounded-xl border border-white/[0.08] bg-white/[0.02] p-1 w-fit">
-            {(["rules", "scheduling", "activity"] as const).map((tab) => (
+            {(["recipes", "rules", "scheduling", "activity"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1632,12 +1682,36 @@ export default function AutomationsPage() {
                   automationsTab === tab ? "bg-cyan-500/20 text-cyan-400" : "text-os-text-dim hover:text-white"
                 }`}
               >
-                {tab === "rules" ? "Rules" : tab === "scheduling" ? "Scheduling" : "Activity"}
+                {tab === "recipes" ? "Ready-made" : tab === "rules" ? "Rules" : tab === "scheduling" ? "Scheduling" : "Activity"}
               </button>
             ))}
           </div>
 
-          {automationsTab === "activity" ? (
+          {automationsTab !== "activity" && (
+            <TemplateNotice templates={autoTemplates} canEdit={canEditTemplates} onChanged={loadAutoTemplates} />
+          )}
+
+          {automationsTab === "recipes" ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Ready-made automations</h3>
+                  <p className="text-xs text-os-text-dim">Common rules, already set up the right way. Pick the ones you want.</p>
+                </div>
+              </div>
+              <Recipes
+                capabilities={capabilities}
+                vertical={vertical}
+                existing={rules}
+                templateReady={templateReady}
+                canEdit
+                onAdded={(rule) => setRules((prev) => [rule, ...prev])}
+              />
+            </div>
+          ) : automationsTab === "activity" ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
@@ -1709,7 +1783,8 @@ export default function AutomationsPage() {
                 triggerOptions={(Object.keys(TRIGGER_LABEL) as AutomationTrigger[])
                   .filter((t) => (automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(t) : true))
                   .filter(triggerAllowed)
-                  .map((t) => ({ value: t, label: TRIGGER_LABEL[t] }))}
+                  .sort((a, b) => GROUP_ORDER.indexOf(TRIGGER_GROUP[a]) - GROUP_ORDER.indexOf(TRIGGER_GROUP[b]))
+                  .map((t) => ({ value: t, label: TRIGGER_LABEL[t], group: TRIGGER_GROUP[t] }))}
                 channelOptions={(Object.keys(CHANNEL_LABEL) as AutomationChannel[]).map((c) => ({ value: c, label: CHANNEL_LABEL[c] }))}
                 onTriggerChange={(next) => {
                   setTrigger(next);
