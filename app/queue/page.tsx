@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Clock, UserPlus, Check, SkipForward, PhoneCall, Sun, Moon, Siren, Lock, LockOpen, Tablet, Copy, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { ReceptionQr } from "@/components/queue/ReceptionQr";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
@@ -295,6 +296,8 @@ export default function QueuePage() {
             );
           })}
         </div>
+
+        <ReceptionQr kioskUrl={kioskUrl} canEdit={supervisor} />
 
         {supervisor && (
         <GlassCard className="p-4">

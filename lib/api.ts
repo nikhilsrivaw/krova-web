@@ -3420,6 +3420,8 @@ export type QueueSettings = {
   enabled: boolean;
   labels: QueueLabels;
   turn_near_threshold: number;
+  /** The message the reception QR types; exactly this message gets a token without the AI. */
+  qr_phrase: string;
 };
 export type QueueStatus = "waiting" | "in_consultation" | "done" | "skipped" | "cancelled";
 
@@ -3530,6 +3532,7 @@ export const queue = {
     enabled?: boolean;
     labels?: Partial<Omit<QueueLabels, "shifts">> & { shifts?: Partial<Record<Shift, string>> };
     turn_near_threshold?: number;
+    qr_phrase?: string;
   }) => api.put<QueueSettings>("/queue/settings", data),
 };
 
