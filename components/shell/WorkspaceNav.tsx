@@ -19,7 +19,7 @@ const GROUPS = [
   { label: "Channels", routes: ["/whatsapp", "/instagram", "/voice"] },
   { label: "Business", routes: [] as string[] },
   { label: "Intelligence & growth", routes: ["/signals", "/automations", "/campaigns", "/knowledge", "/analytics"] },
-  { label: "Manage", routes: ["/team", "/settings"] },
+  { label: "Manage", routes: ["/team", "/settings", "/help"] },
 ];
 
 /** Groups the shell's already capability-filtered items; it does not decide access. */
