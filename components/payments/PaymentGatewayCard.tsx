@@ -14,20 +14,28 @@ export function PaymentGatewayCard() {
   const [keySecret, setKeySecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [auto, setAuto] = useState<PaymentAuto>({ tokens: false, appointments: false, default_fee_paise: null });
+  const [auto, setAuto] = useState<PaymentAuto>({ tokens: false, appointments: false, default_fee_paise: null, advance_paise: null });
   const [feeRupees, setFeeRupees] = useState("");
+  const [advanceRupees, setAdvanceRupees] = useState("");
   const [autoSaved, setAutoSaved] = useState(false);
 
   useEffect(() => {
     payments.gateway().then(setGateway).catch(() => setGateway({ connected: false, gateway: null, key_id_hint: null, connected_at: null }));
-    payments.auto().then((a) => { setAuto(a); setFeeRupees(a.default_fee_paise ? String(a.default_fee_paise / 100) : ""); }).catch(() => {});
+    payments.auto().then((a) => {
+      setAuto(a);
+      setFeeRupees(a.default_fee_paise ? String(a.default_fee_paise / 100) : "");
+      setAdvanceRupees(a.advance_paise ? String(a.advance_paise / 100) : "");
+    }).catch(() => {});
   }, []);
 
   const saveAuto = async (next: PaymentAuto) => {
     setError(null); setAutoSaved(false);
     try {
       const fee = feeRupees.trim() ? Math.round(Number(feeRupees) * 100) : null;
-      const saved = await payments.setAuto({ ...next, default_fee_paise: fee && fee >= 100 ? fee : null });
+      const advance = advanceRupees.trim() ? Math.round(Number(advanceRupees) * 100) : null;
+      const saved = await payments.setAuto({
+        ...next, default_fee_paise: fee && fee >= 100 ? fee : null, advance_paise: advance && advance >= 100 ? advance : null,
+      });
       setAuto(saved); setAutoSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
@@ -102,7 +110,13 @@ export function PaymentGatewayCard() {
             <button type="button" onClick={() => saveAuto(auto)} className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white cursor-pointer">Save</button>
             {autoSaved && <span className="text-emerald-300">Saved</span>}
           </div>
-          <p className="text-os-text-dim">A token the AI books has no doctor yet, so it uses this fee. No fee, no link.</p>
+          <div className="flex flex-wrap items-center gap-2 text-os-text-dim">
+            Collect online only: ₹
+            <input type="number" min="1" value={advanceRupees} onChange={(e) => setAdvanceRupees(e.target.value)} placeholder="full fee"
+              className="w-24 px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
+            <span>the rest at the counter (shows as balance)</span>
+          </div>
+          <p className="text-os-text-dim">A token the AI books has no doctor yet, so it uses this fee. No fee, no link. Leave the online box empty to collect the full fee.</p>
         </div>
       )}
 

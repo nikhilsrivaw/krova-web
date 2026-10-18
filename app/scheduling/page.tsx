@@ -280,10 +280,27 @@ export default function SchedulingPage() {
       });
       setExceptions((prev) => [...prev, created].sort((a, b) => a.date.localeCompare(b.date)));
       setExcReason("");
+      setAffected(created.affected?.length ? { exceptionId: created.id, rows: created.affected } : null);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not mark this date off.");
     } finally {
       setIsSavingException(false);
+    }
+  };
+
+  // Bookings already made for a day just marked off - shown so staff can cancel them (and the patients be told).
+  const [affected, setAffected] = useState<{ exceptionId: string; rows: NonNullable<AvailabilityException["affected"]> } | null>(null);
+  const [cancelNote, setCancelNote] = useState<string | null>(null);
+
+  const cancelAffected = async () => {
+    if (!affected) return;
+    setActionError(null);
+    try {
+      const out = await scheduling.cancelBookingsForException(affected.exceptionId);
+      setCancelNote(`${out.cancelled} booking(s) cancelled. Your "appointment cancelled" automations tell the patients.`);
+      setAffected(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not cancel these bookings.");
     }
   };
 
@@ -710,6 +727,31 @@ export default function SchedulingPage() {
                   ))}
                 </div>
               )}
+
+              {affected && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+                  <p className="text-xs text-amber-200 font-semibold">
+                    {affected.rows.length} {affected.rows.length === 1 ? "patient is" : "patients are"} already booked for this time:
+                  </p>
+                  <ul className="text-[11px] text-amber-100 space-y-0.5">
+                    {affected.rows.map((r) => (
+                      <li key={r.id}>
+                        {new Date(r.starts_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} · {r.customer_name || "Patient"}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={cancelAffected} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold cursor-pointer">
+                      Cancel these bookings
+                    </button>
+                    <button type="button" onClick={() => setAffected(null)} className="px-3 py-1.5 rounded-lg text-xs text-amber-200 hover:text-white cursor-pointer">
+                      Keep them
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-amber-200/80">Cancelling frees the slots and runs your &quot;appointment cancelled&quot; automations - set one in Automations to message the patient.</p>
+                </div>
+              )}
+              {cancelNote && <p className="text-[11px] text-emerald-300">{cancelNote}</p>}
 
               <form onSubmit={handleAddException} className="grid grid-cols-2 gap-3 pt-1">
                 <div>

@@ -2304,7 +2304,11 @@ export const payments = {
   setAuto: (s: PaymentAuto) => api.put<PaymentAuto>("/payments/auto", s),
 };
 
-export type PaymentAuto = { tokens: boolean; appointments: boolean; default_fee_paise: number | null };
+export type PaymentAuto = {
+  tokens: boolean; appointments: boolean; default_fee_paise: number | null;
+  /** Collect only this much online; the rest at the counter, shown as the balance. null = the full fee. */
+  advance_paise: number | null;
+};
 
 // ── Campaigns ─────────────────────────────────────────────────────────────────
 // audience values are fixed by the backend's Audience enum - not free text.
@@ -3208,6 +3212,8 @@ export type AvailabilityException = {
   start_time: string | null; // set only when is_unavailable is false
   end_time: string | null;
   reason: string | null;
+  /** Bookings already made for the time this takes away (returned when it is created). */
+  affected?: { id: string; customer_name: string | null; starts_at: string }[];
 };
 
 export type Slot = { starts_at: string; ends_at: string };
@@ -3270,6 +3276,10 @@ export const scheduling = {
     doctorId: string,
     data: { date: string; is_unavailable?: boolean; start_time?: string; end_time?: string; reason?: string },
   ) => api.post<AvailabilityException>(`/scheduling/doctors/${doctorId}/availability-exceptions`, data),
+
+  /** Cancel the bookings a day off takes away (normal cancel: slot freed, calendar and automations run). */
+  cancelBookingsForException: (exceptionId: string) =>
+    api.post<{ cancelled: number }>(`/scheduling/availability-exceptions/${exceptionId}/cancel-bookings`),
 
   deleteException: (exceptionId: string) =>
     api.delete<void>(`/scheduling/availability-exceptions/${exceptionId}`),
