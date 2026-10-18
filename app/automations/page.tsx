@@ -232,6 +232,10 @@ const ACTION_LABEL: Record<AutomationAction, string> = {
 
 // A payment link needs a booking to charge for; the backend refuses it on any other trigger.
 const BOOKING_TRIGGERS = new Set(["appointment.booked", "queue_token.issued"]);
+// ...or the promise that is due / overdue: the link is for what is still owed on it.
+const PAYMENT_LINK_TRIGGERS = new Set([...BOOKING_TRIGGERS, "commitment.due_soon", "commitment.overdue"]);
+// On every trigger: when it is happening, in the business's own time.
+const CLOCK_FIELDS = ["hour_of_day", "weekday"];
 
 // Offered when building a NEW rule. send_sms and send_email stay out of this
 // list - not deleted from ACTION_LABEL/ACTION_ICON above, since an existing
@@ -304,6 +308,8 @@ const FIELD_LABEL: Record<string, string> = {
   visit_number: "Their visit number (1 = first visit)",
   no_show_count: "How many bookings they have missed",
   fully_paid: "Now fully paid",
+  hour_of_day: "Hour of the day (0-23, e.g. 20 = 8 pm)",
+  weekday: "Day of the week (monday … sunday)",
   reference: "Quote reference",
   // customer.inactive. "Customer" and "either side" are spelled out
   // because the difference is the whole point: a reminder the business
@@ -350,6 +356,7 @@ const FIELD_TYPE: Record<string, "text" | "number" | "boolean"> = {
   visit_number: "number",
   no_show_count: "number",
   fully_paid: "boolean",
+  hour_of_day: "number",
 };
 
 const OPERATOR_LABEL: Record<AutomationOperator, string> = {
@@ -517,6 +524,7 @@ export default function AutomationsPage() {
   const [followupTemplates, setFollowupTemplates] = useState<Template[]>([]);
   // "Stop here if, since the rule started, the customer..." (replied / booked / paid)
   const [stopIf, setStopIf] = useState<string[]>([]);
+  const [reentryDays, setReentryDays] = useState<number | null>(null);
   const [sendTo, setSendTo] = useState<"customer" | "payer">("customer");
   // notify_team / assign_to_agent
   const [notifyTo, setNotifyTo] = useState<"owner" | "admins" | "assigned" | "everyone">("admins");
@@ -701,6 +709,7 @@ export default function AutomationsPage() {
     setTrigger("message.received");
     setChannel("");
     setChannelTouched(false);
+    setReentryDays(null);
     setSteps([]);
     setOpenIndex(null);
     setIsNewStep(false);
@@ -748,6 +757,7 @@ export default function AutomationsPage() {
     setTrigger(rule.trigger_type);
     setChannel(rule.channel ?? "");
     setChannelTouched(true);
+    setReentryDays(rule.reentry_days ?? null);
     setSteps(rule.steps);
     setOpenIndex(null);
     setIsNewStep(false);
@@ -769,7 +779,7 @@ export default function AutomationsPage() {
     return required.some((cap) => capabilities.includes(cap));
   };
 
-  const availableFields = CONDITION_FIELDS[trigger] ?? [];
+  const availableFields = [...(CONDITION_FIELDS[trigger] ?? []), ...CLOCK_FIELDS];
   const fieldTypeOf = (field: string) => FIELD_TYPE[field] ?? "text";
   const operatorsFor = (field: string): AutomationOperator[] => {
     const kind = fieldTypeOf(field);
@@ -974,12 +984,13 @@ export default function AutomationsPage() {
         const original = rules.find((r) => r.id === editingRuleId);
         const updated = await postCallRules.update(editingRuleId, {
           name: ruleName.trim() || null, trigger_type: trigger, channel: channel || null, steps,
-          is_active: original?.is_active ?? true,
+          is_active: original?.is_active ?? true, reentry_days: reentryDays,
         });
         setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)));
       } else {
         const created = await postCallRules.create({
           name: ruleName.trim() || null, trigger_type: trigger, channel: channel || null, steps,
+          reentry_days: reentryDays,
         });
         setRules((prev) => [...prev, created]);
       }
@@ -1000,6 +1011,7 @@ export default function AutomationsPage() {
       trigger_type: rule.trigger_type,
       is_active: !rule.is_active,
       channel: rule.channel ?? null,
+      reentry_days: rule.reentry_days ?? null,
       steps: rule.steps,
     });
     setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
@@ -1026,7 +1038,7 @@ export default function AutomationsPage() {
           }}
           className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
         >
-          {SELECTABLE_ACTIONS.filter((a) => a !== "send_payment_link" || BOOKING_TRIGGERS.has(trigger)).map((a) => (
+          {SELECTABLE_ACTIONS.filter((a) => a !== "send_payment_link" || PAYMENT_LINK_TRIGGERS.has(trigger)).map((a) => (
             <option key={a} value={a}>{ACTION_LABEL[a]}</option>
           ))}
         </select>
@@ -1455,7 +1467,7 @@ export default function AutomationsPage() {
               min="1"
               value={linkRupees}
               onChange={(e) => setLinkRupees(e.target.value)}
-              placeholder="Blank = the doctor's fee, else the default fee in Settings"
+              placeholder={BOOKING_TRIGGERS.has(trigger) ? "Blank = the doctor's fee, else the default fee in Settings" : "Blank = everything still owed"}
               className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
             />
           </div>
@@ -1470,8 +1482,9 @@ export default function AutomationsPage() {
             />
           </div>
           <p className="text-[11px] text-os-text-dim">
-            Uses your Razorpay from Settings. One fee and one link per booking, even if the AI, this rule and the desk all
-            send it. Marked paid by itself once Razorpay confirms.
+            {BOOKING_TRIGGERS.has(trigger)
+              ? "Uses your Razorpay from Settings. One fee and one link per booking, even if the AI, this rule and the desk all send it. Marked paid by itself once Razorpay confirms."
+              : "Uses your Razorpay from Settings. A link for what is still owed on this promise (or the amount above, as a part payment); it is marked paid on the Ledger by itself once Razorpay confirms."}
           </p>
         </div>
       )}
@@ -1914,6 +1927,8 @@ export default function AutomationsPage() {
                   setChannel(next);
                   setChannelTouched(true);
                 }}
+                reentryDays={reentryDays}
+                onReentryChange={setReentryDays}
                 steps={steps}
                 openIndex={openIndex}
                 isNewStep={isNewStep}

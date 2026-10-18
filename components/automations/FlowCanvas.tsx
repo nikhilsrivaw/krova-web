@@ -89,6 +89,7 @@ const hidden = { opacity: 0, pointerEvents: "none" as const };
 type TriggerNodeData = {
   ruleName: string;
   label: string;
+  often: string;
   needsChannel: boolean;
   selected: boolean;
   locked: boolean;
@@ -117,7 +118,7 @@ function TriggerNode({ data }: NodeProps) {
         </div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] text-os-text-dim truncate">{d.ruleName || "Untitled rule"}</p>
+        <p className="text-[10px] text-os-text-dim truncate">{d.ruleName || "Untitled rule"}{d.often && ` · ${d.often}`}</p>
         {d.needsChannel && <span className="text-[10px] text-amber-300 shrink-0">Choose channel</span>}
       </div>
       <Handle type="source" position={Position.Bottom} style={hidden} />
@@ -295,6 +296,9 @@ export type FlowCanvasProps = {
   channelOptions: { value: AutomationChannel; label: string }[];
   onTriggerChange: (t: AutomationTrigger) => void;
   onChannelChange: (c: AutomationChannel | "") => void;
+  // null = every time, 0 = once per customer, N = at most once every N days
+  reentryDays: number | null;
+  onReentryChange: (days: number | null) => void;
 
   steps: AutomationStepConfig[];
   openIndex: number | null;
@@ -344,6 +348,7 @@ function CanvasInner(props: FlowCanvasProps & { triggerOpen: boolean; onOpenTrig
     if (item.kind === "trigger") {
       const data: TriggerNodeData = {
         ruleName: props.ruleName, label: triggerLabel, needsChannel: props.showChannel && !props.channelTouched,
+        often: props.reentryDays === null ? "" : props.reentryDays === 0 ? "once per customer" : `once every ${props.reentryDays} days`,
         selected: props.triggerOpen && props.openIndex === null, locked: props.locked, onOpen: props.onOpenTrigger,
       };
       return { id: item.id, type: "trigger", position, data: data as unknown as Record<string, unknown>, draggable: false };
@@ -482,6 +487,33 @@ function TriggerPanel(props: FlowCanvasProps & { onClose: () => void }) {
           )}
         </div>
       )}
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-os-text-dim mb-1.5">How often for one customer</label>
+        <select
+          value={props.reentryDays === null ? "every" : props.reentryDays === 0 ? "once" : "days"}
+          onChange={(e) => props.onReentryChange(e.target.value === "every" ? null : e.target.value === "once" ? 0 : 7)}
+          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+        >
+          <option value="every">Every time this happens</option>
+          <option value="once">Only once per customer</option>
+          <option value="days">At most once every few days</option>
+        </select>
+        {props.reentryDays !== null && props.reentryDays > 0 && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-os-text-dim">
+            At most once every
+            <input
+              type="number" min={1} max={365}
+              value={props.reentryDays}
+              onChange={(e) => props.onReentryChange(Math.min(365, Math.max(1, Number(e.target.value) || 1)))}
+              className="w-16 px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+            />
+            days
+          </div>
+        )}
+        <p className="mt-1.5 text-[11px] text-os-text-dim leading-snug">
+          Stops one customer getting the same thing again and again - e.g. a price-question reply on every message.
+        </p>
+      </div>
       <button
         type="button"
         onClick={props.onClose}

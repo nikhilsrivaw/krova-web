@@ -2024,6 +2024,9 @@ export type AutomationRule = {
   // in mind doesn't also fire on every utterance of a live voice call -
   // message.received fires identically for both (and Instagram, email).
   channel?: AutomationChannel | null;
+  // How often this rule may run for one customer: null = every time,
+  // 0 = only once, N = at most once every N days.
+  reentry_days?: number | null;
   steps: AutomationStepConfig[];
 };
 
@@ -2119,6 +2122,7 @@ export const postCallRules = {
     trigger_type: AutomationTrigger;
     is_active?: boolean;
     channel?: AutomationChannel | null;
+    reentry_days?: number | null;
     steps: AutomationStepConfig[];
   }) => api.post<AutomationRule>("/post-call-rules", data),
 
@@ -2129,6 +2133,7 @@ export const postCallRules = {
       trigger_type: AutomationTrigger;
       is_active: boolean;
       channel?: AutomationChannel | null;
+      reentry_days?: number | null;
       steps: AutomationStepConfig[];
     },
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),

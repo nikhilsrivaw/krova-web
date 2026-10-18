@@ -54,7 +54,7 @@ export function RuleTester({
   fieldType: Record<string, "text" | "number" | "boolean">;
   actionLabel: Record<AutomationAction, string>;
 }) {
-  const fields = useMemo(() => CONDITION_FIELDS[trigger] ?? [], [trigger]);
+  const fields = useMemo(() => [...(CONDITION_FIELDS[trigger] ?? []), "hour_of_day", "weekday"], [trigger]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<AutomationTestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
