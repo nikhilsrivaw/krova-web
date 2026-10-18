@@ -2114,6 +2114,24 @@ export type AutomationTemplate = {
   purpose: string;
 };
 
+export type RuleDraftTurn = { role: "owner" | "ai"; text: string };
+
+export type RuleDraftOut = {
+  kind: "ask" | "rule";
+  text: string;
+  options: string[];
+  rule: {
+    name?: string | null;
+    trigger_type: AutomationTrigger;
+    channel?: AutomationChannel | null;
+    reentry_days?: number | null;
+    steps: AutomationStepConfig[];
+  } | null;
+  // AI replies used this month, and the month's allowance
+  used: number;
+  limit: number;
+};
+
 export const postCallRules = {
   list: () => api.get<AutomationRule[]>("/post-call-rules"),
 
@@ -2139,6 +2157,9 @@ export const postCallRules = {
   ) => api.patch<AutomationRule>(`/post-call-rules/${id}`, data),
 
   remove: (id: string) => api.delete<void>(`/post-call-rules/${id}`),
+
+  // "Describe it": the next AI turn - a question, or a whole rule to open on the canvas unsaved. Owner/admin only.
+  aiDraft: (turns: RuleDraftTurn[]) => api.post<RuleDraftOut>("/post-call-rules/ai-draft", { turns }),
 
   // The WhatsApp template(s) Automations' own actions need - today the one behind every
   // "Send a WhatsApp follow-up" step - and where each stands with Meta.

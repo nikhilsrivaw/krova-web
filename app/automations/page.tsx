@@ -18,6 +18,7 @@ import { RuleTester } from "@/components/automations/RuleTester";
 import { Recipes } from "@/components/automations/Recipes";
 import { TemplateNotice } from "@/components/automations/TemplateNotice";
 import { SendingLimitsCard } from "@/components/automations/SendingLimits";
+import { DescribeRule } from "@/components/automations/DescribeRule";
 import {
   postCallRules,
   flows as flowsApi,
@@ -749,6 +750,23 @@ export default function AutomationsPage() {
     } finally {
       setIsCreatingQuickRule(false);
     }
+  };
+
+  // A rule KROVA drafted from the owner's words: opened on the canvas as a NEW, unsaved rule - Save is what creates
+  // it, through the same checks as one built by hand.
+  const openDrafted = (rule: Omit<AutomationRule, "id" | "is_active">) => {
+    closeBuilder();
+    setAutomationsTab(SCHEDULING_TRIGGERS.has(rule.trigger_type) ? "scheduling" : "rules");
+    setRuleName(rule.name ?? "");
+    setTrigger(rule.trigger_type);
+    setChannel(rule.channel ?? "");
+    setChannelTouched(true);
+    setReentryDays(rule.reentry_days ?? null);
+    setSteps(rule.steps);
+    setBuilderOpen(true);
+    setTimeout(() => {
+      document.querySelector(".workspace-automation-builder")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   const openForEdit = (rule: AutomationRule) => {
@@ -1811,6 +1829,12 @@ export default function AutomationsPage() {
             ))}
           </div>
 
+          {/* kept mounted while the canvas is open, so closing it comes back to the same conversation */}
+          {automationsTab !== "activity" && canEditTemplates && (
+            <div className={builderOpen ? "hidden" : undefined}>
+              <DescribeRule triggerLabel={TRIGGER_LABEL} actionLabel={ACTION_LABEL} onOpen={openDrafted} />
+            </div>
+          )}
           {automationsTab !== "activity" && (
             <TemplateNotice templates={autoTemplates} canEdit={canEditTemplates} onChanged={loadAutoTemplates} />
           )}
