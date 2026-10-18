@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles, Terminal,
-  CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText,
+  CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText, LifeBuoy,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -32,6 +32,7 @@ const ITEMS: Item[] = [
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
   { label: "Customers", href: "/customers", icon: Users, native: true },
   { label: "Settings", href: "/settings", icon: Settings, native: true },
+  { label: "Help", href: "/help", icon: LifeBuoy, native: true },
 ];
 
 export default function MorePage() {
@@ -46,7 +47,7 @@ export default function MorePage() {
     (item) =>
       (!item.requiresCapability || profile?.capabilities.includes(item.requiresCapability)) &&
       // Command runs owner commands and Ask KROVA answers from the business's money ledger.
-      (supervisor || (item.href !== "/command" && item.href !== "/ask")),
+      (supervisor || (item.href !== "/command" && item.href !== "/ask" && item.href !== "/help")),
   );
 
   return (

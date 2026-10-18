@@ -40,7 +40,20 @@ const when = (iso: string) =>
  * something is broken) offers a ticket to KROVA's team, prefilled from the chat. The team's reply shows here.
  * Owner and admins only - the API refuses everyone else.
  */
-export function HelpCenter() {
+// Inside the phone app the app's own shell is already around it - no desktop sidebar. Defined here, not inside
+// HelpCenter, so it keeps one identity across renders (a component made during render remounts everything below
+// it on every keystroke).
+function EmbeddedShell({ children }: { children: React.ReactNode; title?: string; subtitle?: string }) {
+  return (
+    <div className="px-4 pt-5 pb-6 max-w-md mx-auto space-y-4">
+      <h1 className="text-lg font-semibold text-os-ink">Help</h1>
+      {children}
+    </div>
+  );
+}
+
+export function HelpCenter({ embedded = false }: { embedded?: boolean }) {
+  const Shell = embedded ? EmbeddedShell : AppLayout;
   const [role, setRole] = useState<string | null | undefined>(undefined);
   const [from, setFrom] = useState<string | null>(null);
 
@@ -129,20 +142,20 @@ export function HelpCenter() {
   };
 
   if (role === undefined) {
-    return <AppLayout title="Help" subtitle="Loading…"><div /></AppLayout>;
+    return <Shell title="Help" subtitle="Loading…"><div /></Shell>;
   }
   if (role !== "owner" && role !== "admin") {
     return (
-      <AppLayout title="Help" subtitle="Questions about KROVA, and issues for KROVA's team">
+      <Shell title="Help" subtitle="Questions about KROVA, and issues for KROVA's team">
         <GlassCard className="p-6 text-sm text-os-text-dim">
           Help is for the owner and admins. Ask one of them, or write to support@aqirox.com.
         </GlassCard>
-      </AppLayout>
+      </Shell>
     );
   }
 
   return (
-    <AppLayout title="Help" subtitle="Ask KROVA Buddy how to do anything in KROVA, or raise an issue with KROVA's team">
+    <Shell title="Help" subtitle="Ask KROVA Buddy how to do anything in KROVA, or raise an issue with KROVA's team">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* KROVA Buddy */}
         <GlassCard className="p-4 sm:p-5 flex flex-col min-h-[520px]">
@@ -356,6 +369,6 @@ export function HelpCenter() {
           </GlassCard>
         </div>
       </div>
-    </AppLayout>
+    </Shell>
   );
 }

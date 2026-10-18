@@ -15,6 +15,9 @@ import {
   Pencil,
   AlertTriangle,
   Layers,
+  BookmarkCheck,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import {
   assignedToOther,
@@ -31,6 +34,9 @@ import { useThreadPresence } from "@/lib/useThreadPresence";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 import { CallCustomer } from "@/components/team/CallCustomer";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { TemplateSheet } from "@/components/app-shell/TemplateSheet";
+import { SavedRepliesSheet } from "@/components/app-shell/SavedRepliesSheet";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -76,6 +82,8 @@ export default function AppConversationThreadPage() {
   const [replyError, setReplyError] = useState<string | null>(null);
 
   const [showCommitments, setShowCommitments] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
 
   // A teammate owns this chat: the server refused, and we offer to take it over.
   const [conflict, setConflict] = useState<{ id: string; name: string } | null>(null);
@@ -157,27 +165,7 @@ export default function AppConversationThreadPage() {
         setReplyError("No WhatsApp or Instagram identity on this conversation.");
         return;
       }
-      const sentAt = new Date().toISOString();
-      setThread((prev) =>
-        prev
-          ? {
-              ...prev,
-              messages: [
-                ...prev.messages,
-                {
-                  id: `local-${sentAt}`,
-                  channel: phone ? "whatsapp" : "instagram",
-                  direction: "outbound",
-                  text: replyBody.trim(),
-                  subject: null,
-                  media: {},
-                  occurred_at: sentAt,
-                  analysed: false,
-                },
-              ],
-            }
-          : prev,
-      );
+      echoOutbound(replyBody.trim(), phone ? "whatsapp" : "instagram");
       setReplyBody("");
     } catch (err) {
       const other = assignedToOther(err);
@@ -186,6 +174,25 @@ export default function AppConversationThreadPage() {
     } finally {
       setIsSendingReply(false);
     }
+  };
+
+  // What was just sent, shown at once - the next load brings the real row.
+  const echoOutbound = (text: string, channel: "whatsapp" | "instagram") => {
+    const sentAt = new Date().toISOString();
+    setThread((prev) =>
+      prev
+        ? {
+            ...prev,
+            messages: [
+              ...prev.messages,
+              {
+                id: `local-${sentAt}`, channel, direction: "outbound", text, subject: null, media: {},
+                occurred_at: sentAt, analysed: false,
+              },
+            ],
+          }
+        : prev,
+    );
   };
 
   const handleTakeOver = async () => {
@@ -217,10 +224,11 @@ export default function AppConversationThreadPage() {
         >
           <ArrowLeft className="w-4 h-4 text-os-ink" />
         </button>
-        <div className="min-w-0 flex-1">
+        <a href={appPath(`/customers/${customerId}`)} className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-os-ink truncate flex items-center gap-1.5">
             {thread?.is_private && <Lock className="w-3 h-3 text-os-text-dim shrink-0" />}
             {thread?.name || "Customer"}
+            <ChevronRight className="w-3 h-3 text-os-text-dim shrink-0" />
           </p>
           {thread && (
             <p className="text-[10px] text-os-text-dim">
@@ -232,7 +240,7 @@ export default function AppConversationThreadPage() {
               {viewers.map((v) => `${v.name} ${v.typing ? "is replying..." : "is here"}`).join(" - ")}
             </p>
           )}
-        </div>
+        </a>
         {thread && thread.commitments.length > 0 && (
           <button
             type="button"
@@ -307,6 +315,11 @@ export default function AppConversationThreadPage() {
                 <span>{c.direction === "they_owe" ? "They owe" : "We owe"}</span>
                 {c.amount_paise != null && <span className="text-os-ink">{formatPaise(c.amount_paise)}</span>}
               </div>
+              {c.direction === "they_owe" && c.status === "open" && phoneOf(thread.identities) && (
+                <div className="pt-1.5">
+                  <PaymentLinkButton target={{ kind: "commitment", id: c.id }} compact />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -433,11 +446,34 @@ export default function AppConversationThreadPage() {
         )}
       </div>
 
-      {canReply && (
+      {canReply && thread && phoneOf(thread.identities) && !thread.window_open && (
+        <div className="sticky bottom-20 border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3 space-y-2">
+          <p className="text-[11px] text-os-text-dim">
+            They haven&apos;t written in 24 hours - WhatsApp only allows an approved template until they reply.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTemplateOpen(true)}
+            className="w-full py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98]"
+          >
+            <FileText className="w-3.5 h-3.5" /> Send a template
+          </button>
+        </div>
+      )}
+
+      {canReply && thread && (thread.window_open || !phoneOf(thread.identities)) && (
         <div className="sticky bottom-20 border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3">
           {/* bottom-20 sits this right above the fixed BottomNav (app/app/layout.tsx's main has pb-20 reserved for it) */}
           {replyError && <p className="text-[11px] text-rose-400 mb-2">{replyError}</p>}
           <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSavedOpen(true)}
+              aria-label="Saved replies"
+              className="shrink-0 w-10 h-10 rounded-full bg-os-card border border-os-border flex items-center justify-center active:scale-95"
+            >
+              <BookmarkCheck className="w-4 h-4 text-os-text-dim" />
+            </button>
             <textarea
               rows={1}
               value={replyBody}
@@ -456,6 +492,20 @@ export default function AppConversationThreadPage() {
           </div>
         </div>
       )}
+
+      {thread && phoneOf(thread.identities) && (
+        <TemplateSheet
+          open={templateOpen}
+          phone={phoneOf(thread.identities) as string}
+          onClose={() => setTemplateOpen(false)}
+          onSent={(text) => echoOutbound(text, "whatsapp")}
+        />
+      )}
+      <SavedRepliesSheet
+        open={savedOpen}
+        onClose={() => setSavedOpen(false)}
+        onPick={(body) => setReplyBody((prev) => (prev.trim() ? `${prev.trim()}\n${body}` : body))}
+      />
     </div>
   );
 }

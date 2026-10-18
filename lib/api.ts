@@ -235,7 +235,15 @@ export const ledger = {
       template_language: templateLanguage,
     }),
 
-  customers: () => api.get<CustomerSummary[]>("/ledger/customers"),
+  // `q` searches every customer (name, phone, handle) on the server; `customer_id` returns just that one.
+  customers: (params?: { q?: string; customer_id?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set("q", params.q);
+    if (params?.customer_id) qs.set("customer_id", params.customer_id);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<CustomerSummary[]>(`/ledger/customers${suffix}`);
+  },
 
   // Sent in batches of 1,000 so a large file never sits in one long request; `total` lets the server
   // check the whole file against the plan's import size, not just each batch.

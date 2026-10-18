@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wallet, ChevronDown, Check, X, IndianRupee } from "lucide-react";
+import { Wallet, ChevronDown, Check, X, IndianRupee, MessageSquare } from "lucide-react";
 import { ledger, formatPaise, type Commitment, type LedgerSummary } from "@/lib/api";
+import { appPath } from "@/lib/app-nav";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 
 type DirectionFilter = "they_owe" | "we_owe";
 
@@ -187,6 +189,24 @@ export default function AppLedgerPage() {
 
                 {isExpanded && (
                   <div className="px-4 pb-4 pt-1 border-t border-os-border space-y-3">
+                    <div className="flex flex-wrap items-start gap-2 pt-2">
+                      {direction === "they_owe" && (
+                        <PaymentLinkButton
+                          target={{ kind: "commitment", id: c.id }}
+                          compact
+                          onPaid={() => {
+                            setCommitments((prev) => prev.filter((x) => x.id !== c.id));
+                            refreshSummary();
+                          }}
+                        />
+                      )}
+                      <a
+                        href={appPath(`/inbox/${c.customer_id}`)}
+                        className="ml-auto px-2.5 py-1.5 rounded-lg bg-white/[0.06] text-[11px] font-semibold text-os-ink flex items-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Open chat
+                      </a>
+                    </div>
                     {direction === "they_owe" && (
                       <div className="flex gap-2">
                         <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-black/30 border border-os-border">
