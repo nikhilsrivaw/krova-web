@@ -1054,6 +1054,9 @@ export default function SettingsPage() {
         </div>
 
         {tab === "business" && (<>
+        {/* The one money choice a clinic must make - kept first, not buried in Leads & payments. */}
+        <BookingPaymentCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+
         {/* SECTION 1: BUSINESS PROFILE & VERTICAL */}
         <form onSubmit={handleSaveProfile}>
           <GlassCard className="p-6 space-y-6">

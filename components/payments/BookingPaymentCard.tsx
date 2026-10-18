@@ -16,7 +16,7 @@ function modeOf(a: PaymentAuto): Mode {
  * One choice: how money is taken when a token or appointment is booked. Counter (the default) needs nothing set up;
  * the two online choices send a Razorpay link right after the booking - from the AI, an automation, or the QR.
  */
-export function BookingPaymentCard({ canEdit }: { canEdit: boolean }) {
+export function BookingPaymentCard({ canEdit, onSaved }: { canEdit: boolean; onSaved?: () => void }) {
   const [mode, setMode] = useState<Mode>("counter");
   const [fee, setFee] = useState("");
   const [advance, setAdvance] = useState("");
@@ -49,6 +49,7 @@ export function BookingPaymentCard({ canEdit }: { canEdit: boolean }) {
         advance_paise: mode === "advance" ? paise(advance) : null,
       });
       setSaved(true);
+      onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
     }

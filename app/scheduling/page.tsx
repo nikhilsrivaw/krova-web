@@ -14,6 +14,7 @@ import {
   CalendarOff,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { BookingPaymentStrip } from "@/components/payments/BookingPaymentStrip";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -425,6 +426,7 @@ export default function SchedulingPage() {
       }
     >
       <div className="workspace-scheduling space-y-6">
+        <BookingPaymentStrip />
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}

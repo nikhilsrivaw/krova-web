@@ -6,6 +6,7 @@ import { Clock, UserPlus, Check, SkipForward, PhoneCall, Sun, Moon, Siren, Lock,
 import { AppLayout } from "@/components/shell/AppLayout";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { ReceptionQr } from "@/components/queue/ReceptionQr";
+import { BookingPaymentStrip } from "@/components/payments/BookingPaymentStrip";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
@@ -259,6 +260,7 @@ export default function QueuePage() {
       subtitle={`Who's waiting right now, and how many are ahead of them - a place in the line, not a booked slot.`}
     >
       <div className="workspace-queue space-y-6">
+        <BookingPaymentStrip />
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
