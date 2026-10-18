@@ -2680,7 +2680,8 @@ export type AdminOverview = {
   businesses_total: number; businesses_new_7d: number; businesses_no_plan: number;
   subs_active: number; subs_past_due: number; subs_suspended: number; subs_cancelled: number;
   mrr: string; wallet_total: string; wallets_low: number; wallets_rent_short: number;
-  number_requests_waiting: number; number_requests_with_plivo: number;
+  number_requests_waiting: number;
+  support_tickets_open: number; number_requests_with_plivo: number;
   payments_failed_7d: number; payments_pending_old: number; messages_this_month: number;
 };
 export type AdminBusiness = {
@@ -2744,6 +2745,51 @@ async function adminCall<T>(method: string, path: string, body?: unknown): Promi
   return data as T;
 }
 
+// ── Help page: KROVA Buddy and support tickets ───────────────────────────────
+
+export type HelpTurn = { role: "owner" | "ai"; text: string };
+export type TicketCategory = "bug" | "how_to" | "billing" | "account" | "feature_request" | "other";
+export type TicketStatus = "open" | "in_progress" | "resolved";
+
+export type TicketDraft = { subject: string; category: TicketCategory; details: string; page?: string | null };
+
+export type HelpAnswer = {
+  answer: string;
+  // true when Buddy thinks KROVA's team should look at this - `ticket` is its draft
+  offer_ticket: boolean;
+  ticket: TicketDraft | null;
+  used: number;
+  limit: number;
+};
+
+export type SupportTicket = {
+  id: string;
+  number: string;
+  subject: string;
+  category: TicketCategory;
+  details: string;
+  page: string | null;
+  status: TicketStatus;
+  reply: string | null;
+  replied_at: string | null;
+  created_at: string;
+};
+
+export const help = {
+  ask: (turns: HelpTurn[], page?: string | null) => api.post<HelpAnswer>("/help/ask", { turns, page: page || null }),
+  tickets: () => api.get<SupportTicket[]>("/help/tickets"),
+  raise: (data: TicketDraft & { transcript?: HelpTurn[] }) => api.post<SupportTicket>("/help/tickets", data),
+};
+
+export type AdminTicket = SupportTicket & {
+  business_id: string;
+  business_name: string | null;
+  raised_by: string | null;
+  raised_by_contact: string | null;
+  transcript: HelpTurn[];
+  replied_by: string | null;
+};
+
 export const admin = {
   login: (email: string, password: string) => adminCall<{ token: string; email: string }>("POST", "/login", { email, password }),
   me: () => adminCall<{ email: string }>("GET", "/me"),
@@ -2755,6 +2801,9 @@ export const admin = {
   updateNumberRequest: (
     id: string, data: Partial<{ status: NumberRequestStatus; admin_notes: string; provisioned_number: string }>,
   ) => adminCall<AdminNumberRequest>("PATCH", `/number-requests/${id}`, data),
+  supportTickets: (state?: "open") => adminCall<AdminTicket[]>("GET", `/support-tickets${state ? `?state=${state}` : ""}`),
+  updateSupportTicket: (id: string, data: Partial<{ status: TicketStatus; reply: string }>) =>
+    adminCall<AdminTicket>("PATCH", `/support-tickets/${id}`, data),
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

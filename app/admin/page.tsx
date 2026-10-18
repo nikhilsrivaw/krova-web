@@ -7,15 +7,16 @@ import { Badge } from "@/components/ui/Badge";
 import {
   admin, adminSession, AdminSignedOut,
   type AdminBusiness, type AdminBusinessDetail, type AdminNumberRequest, type AdminOverview, type AdminPayment,
-  type NumberRequestStatus,
+  type AdminTicket, type NumberRequestStatus, type TicketStatus,
 } from "@/lib/api";
 
 // KROVA's own operator panel. Not linked from the app on purpose; open /admin directly.
 // It has its own sign-in (staff emails listed on the server), separate from customer accounts.
 
-type Tab = "overview" | "requests" | "businesses" | "payments";
+type Tab = "overview" | "support" | "requests" | "businesses" | "payments";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "support", label: "Support tickets" },
   { key: "requests", label: "140 / 160 requests" },
   { key: "businesses", label: "Businesses" },
   { key: "payments", label: "Payments" },
@@ -54,6 +55,14 @@ function Overview({ goto }: { goto: (t: Tab) => void }) {
   const waiting = o.number_requests_waiting;
   return (
     <div className="space-y-4">
+      {o.support_tickets_open > 0 && (
+        <button
+          type="button" onClick={() => goto("support")}
+          className="w-full text-left px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 cursor-pointer"
+        >
+          {o.support_tickets_open} support ticket{o.support_tickets_open > 1 ? "s" : ""} not resolved yet. Open them.
+        </button>
+      )}
       {waiting > 0 && (
         <button
           type="button" onClick={() => goto("requests")}
@@ -170,6 +179,105 @@ function Requests() {
           </GlassCard>
         );
       })}
+    </div>
+  );
+}
+
+const TICKET_STATUSES: TicketStatus[] = ["open", "in_progress", "resolved"];
+const TICKET_VARIANT: Record<TicketStatus, "amber" | "cyan" | "emerald"> = { open: "amber", in_progress: "cyan", resolved: "emerald" };
+
+// Issues businesses raised from their Help page. The reply and status show to them there.
+function Support() {
+  const [rows, setRows] = useState<AdminTicket[]>([]);
+  const [replies, setReplies] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [only, setOnly] = useState<"open" | "all">("open");
+  const [chat, setChat] = useState<string | null>(null);
+
+  useEffect(() => {
+    admin.supportTickets().then((d) => {
+      setRows(d);
+      setReplies(Object.fromEntries(d.map((t) => [t.id, t.reply || ""])));
+    }).catch((e) => setErr(e instanceof Error ? e.message : "Could not load."));
+  }, []);
+
+  const save = async (t: AdminTicket, status?: TicketStatus) => {
+    setBusy(t.id);
+    setErr(null);
+    try {
+      const u = await admin.updateSupportTicket(t.id, { ...(status ? { status } : {}), reply: replies[t.id] ?? "" });
+      setRows((p) => p.map((x) => (x.id === t.id ? u : x)));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shown = rows.filter((t) => only === "all" || t.status !== "resolved");
+  return (
+    <div className="space-y-3">
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      <div className="flex gap-2 text-[11px]">
+        {(["open", "all"] as const).map((k) => (
+          <button key={k} type="button" onClick={() => setOnly(k)}
+            className={`px-3 py-1 rounded-md cursor-pointer ${only === k ? "bg-white text-black font-bold" : "bg-white/[0.05] text-os-text-dim"}`}>
+            {k === "open" ? "Not resolved" : "Everything"}
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 && <GlassCard className="p-6 text-xs text-os-text-dim">Nothing here.</GlassCard>}
+      {shown.map((t) => (
+        <GlassCard key={t.id} className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white break-words">{t.subject}</p>
+              <p className="text-xs text-white mt-0.5">{t.business_name || "Unknown business"}</p>
+              <p className="text-[11px] text-os-text-dim">
+                {t.number} · {t.category}{t.page ? ` · ${t.page}` : ""} · {[t.raised_by, t.raised_by_contact].filter(Boolean).join(" · ") || "unknown"} · {when(t.created_at)}
+              </p>
+            </div>
+            <Badge variant={TICKET_VARIANT[t.status]}>{t.status}</Badge>
+          </div>
+          <p className="text-xs text-os-text-dim whitespace-pre-wrap break-words">{t.details}</p>
+          {t.transcript.length > 0 && (
+            <div>
+              <button type="button" onClick={() => setChat(chat === t.id ? null : t.id)} className="text-[11px] text-cyan-300 cursor-pointer">
+                {chat === t.id ? "Hide" : "Show"} the KROVA Buddy chat ({t.transcript.length})
+              </button>
+              {chat === t.id && (
+                <div className="mt-2 space-y-1 rounded-lg bg-black/30 p-2.5">
+                  {t.transcript.map((m, i) => (
+                    <p key={i} className="text-[11px] whitespace-pre-wrap break-words">
+                      <span className={m.role === "owner" ? "text-cyan-300" : "text-os-text-dim"}>{m.role === "owner" ? "Them" : "Buddy"}:</span>{" "}
+                      <span className="text-white/90">{m.text}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <textarea
+            value={replies[t.id] ?? ""} rows={3} placeholder="Your reply - the business sees this on its Help page"
+            onChange={(e) => setReplies((p) => ({ ...p, [t.id]: e.target.value }))}
+            className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
+          />
+          <div className="flex items-center gap-2 flex-wrap">
+            {TICKET_STATUSES.map((s) => (
+              <button key={s} type="button" disabled={busy === t.id} onClick={() => save(t, s)}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-mono cursor-pointer ${t.status === s ? "bg-white text-black font-bold" : "bg-white/[0.05] text-os-text-dim hover:text-white"}`}>
+                {s}
+              </button>
+            ))}
+            {t.replied_at && <span className="text-[10px] text-os-text-dim">replied {when(t.replied_at)}{t.replied_by ? ` by ${t.replied_by}` : ""}</span>}
+            <button type="button" disabled={busy === t.id} onClick={() => save(t)}
+              className="ml-auto px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold cursor-pointer">
+              {busy === t.id ? "Saving..." : "Save reply"}
+            </button>
+          </div>
+        </GlassCard>
+      ))}
     </div>
   );
 }
@@ -442,6 +550,7 @@ export default function AdminPage() {
         ))}
       </div>
       {tab === "overview" && <Overview goto={go} />}
+      {tab === "support" && <Support />}
       {tab === "requests" && <Requests />}
       {tab === "businesses" && <Businesses />}
       {tab === "payments" && <Payments />}

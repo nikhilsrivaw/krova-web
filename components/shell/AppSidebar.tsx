@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
+  LifeBuoy,
   LayoutDashboard,
   MessageSquare,
   Instagram,
@@ -363,6 +364,12 @@ export function AppSidebar({
       href: "/settings",
       icon: Settings,
       shortcut: "G S",
+    },
+    {
+      label: "Help",
+      href: "/help",
+      icon: LifeBuoy,
+      requiresRole: ["owner", "admin"],
     },
   ];
 
