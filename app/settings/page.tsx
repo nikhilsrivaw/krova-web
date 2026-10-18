@@ -90,7 +90,26 @@ import {
 // The backend and the connection code stay in place; flip this to bring the card back.
 const SHOW_GOOGLE_CALENDAR = false;
 
+const SETTINGS_TABS = [
+  { key: "business", label: "Business" },
+  { key: "channels", label: "Channels" },
+  { key: "calls", label: "Calls & queue" },
+  { key: "money", label: "Leads & payments" },
+  { key: "integrations", label: "Integrations" },
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+
 export default function SettingsPage() {
+  const [tab, setTab] = useState<SettingsTab>("business");
+  useEffect(() => {
+    // /settings?tab=money opens that tab (for "connect it in Settings" links)
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (SETTINGS_TABS.some((t) => t.key === wanted)) setTab(wanted as SettingsTab);
+  }, []);
+  const chooseTab = (key: SettingsTab) => {
+    setTab(key);
+    try { window.history.replaceState(null, "", `?tab=${key}`); } catch { /* ignore */ }
+  };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   // Real verticals from GET /auth/verticals (shared/verticals/templates/*.json)
   // - was a hardcoded 5-item list here (coaching/salon/agency, which the
@@ -1006,21 +1025,34 @@ export default function SettingsPage() {
 
   return (
     <AppLayout
-      title="Settings & Connectors"
-      subtitle="Business profile, vertical defaults, autonomy level & channel credentials"
+      title="Settings"
+      subtitle="Your business, channels, calls, payments and connected tools"
     >
       <div className="workspace-settings space-y-6">
-        <WorkspaceSectionNav />
         {loadError && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
             {loadError}
           </div>
         )}
-        {/* BUSINESS RULES: owner commands, each change confirmed first */}
-        <GlassCard className="p-6">
-          <SettingsControls canEdit={profile?.role === "owner" || profile?.role === "admin"} />
-        </GlassCard>
+        {/* Five tabs instead of one long page; every section is still here, in the tab it belongs to. */}
+        <div role="tablist" aria-label="Settings" className="workspace-tabs sticky top-[72px] z-20 flex gap-1 overflow-x-auto rounded-xl border border-white/[0.08] bg-[#101010] p-1.5">
+          {SETTINGS_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.key}
+              onClick={() => chooseTab(t.key)}
+              className={`shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                tab === t.key ? "bg-white/[0.08] text-white" : "text-os-text-dim hover:text-white hover:bg-white/[0.03]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
+        {tab === "business" && (<>
         {/* SECTION 1: BUSINESS PROFILE & VERTICAL */}
         <form onSubmit={handleSaveProfile}>
           <GlassCard className="p-6 space-y-6">
@@ -1170,6 +1202,11 @@ export default function SettingsPage() {
         {/* SECTION 1b: FEATURES - which optional modules this business uses */}
         <FeaturesCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />
 
+        {/* BUSINESS RULES: owner commands, each change confirmed first */}
+        <GlassCard className="p-6">
+          <SettingsControls canEdit={profile?.role === "owner" || profile?.role === "admin"} />
+        </GlassCard>
+
         {/* SECTION 1a: LOGIN & SECURITY - linking a phone number for
             OTP-via-call login (lib/auth.ts's otpLogin), alongside the
             email you already sign in with. Never SMS - see shared/auth/
@@ -1271,6 +1308,473 @@ export default function SettingsPage() {
               </div>
             </form>
           )}
+        </GlassCard>
+
+        </>)}
+
+        {tab === "channels" && (<>
+        {/* SECTION 2: CONNECTED CHANNELS */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+            <div>
+              <h3 className="text-sm font-bold text-white">Connected Channels & Trunks</h3>
+              <p className="text-xs text-os-text-dim">
+                Real-time ingestion pipelines feeding the unified customer timeline.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {/* WhatsApp */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-seal/10 border border-seal/20 text-seal-bright">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">WhatsApp Business API (Meta)</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {waConnection
+                      ? `Quality Rating: ${waConnection.quality_rating || "—"} • WABA ID: ${waConnection.waba_id || "—"}`
+                      : "Not connected"}
+                  </p>
+                </div>
+              </div>
+              {waConnection ? (
+                <Badge variant={waConnection.status === "active" ? "emerald" : "amber"} dot>
+                  {waConnection.status === "active" ? "Connected" : waConnection.status}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Not connected</Badge>
+              )}
+            </div>
+
+            {/* Voice */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Voice Inbound Trunk</h4>
+                  <p className="text-[11px] text-os-text-dim font-mono">
+                    {voiceConnection ? `Number: ${voiceConnection.external_account_id}` : "Not connected"}
+                  </p>
+                </div>
+              </div>
+              {voiceConnection ? (
+                <Badge variant={voiceConnection.status === "active" ? "cyan" : "amber"} dot>
+                  {voiceConnection.status === "active" ? "Active" : voiceConnection.status}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Not connected</Badge>
+              )}
+            </div>
+
+            {/* Gmail - hidden from new connections. Google's restricted-scope
+                verification (CASA security assessment, real recurring cost)
+                isn't worth it yet - see docs/... decision. Only rendered for
+                a business that already has one connected, so nobody loses
+                an existing connection; the "Connect" entry point that would
+                invite a new one - which Google blocks in Testing mode for
+                any account outside the console's own test-user list anyway -
+                is gone. Backend (gmail_channel.py, backfill.py) is untouched,
+                so this is reversible by restoring this block alone. */}
+            {emailConnection && (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
+                    <p className="text-[11px] text-os-text-dim">
+                      {emailConnection.handle || "Connected"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={emailConnection.status === "active" ? "emerald" : "amber"} dot>
+                    {emailConnection.status === "active" ? "Connected" : emailConnection.status}
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={handleGmailBackfill}
+                    disabled={isBackfilling}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isBackfilling ? "animate-spin" : ""}`} />
+                    {isBackfilling ? "Reading..." : "Backfill Now"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {backfillResult && (
+              <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
+            )}
+
+            {/* Instagram connection & sender have moved to their own page
+                (app/instagram/page.tsx) - see this settings page's own
+                channel cards for WhatsApp/Gmail/etc. above and below for
+                the ones still managed from here. */}
+          </div>
+        </GlassCard>
+
+        {/* SECTION 2b: WHATSAPP ACCOUNT HEALTH */}
+        {waConnection && (waHealth || waReadiness) && (
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+              <div className="p-2 rounded-lg bg-seal/10 border border-seal/20 text-seal-bright">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">WhatsApp Account Health</h3>
+                <p className="text-xs text-os-text-dim">
+                  What Meta itself says about this number - quality falls before a restriction, and a restriction happens before messages visibly stop.
+                </p>
+              </div>
+            </div>
+
+            {waReadiness && !waReadiness.ready && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-300">Can send: {waReadiness.can_send}</p>
+                  {waReadiness.action_required && (
+                    <p className="text-xs text-amber-200/90 mt-1">{waReadiness.action_required}</p>
+                  )}
+                  {waReadiness.billing_url && (
+                    <a
+                      href={waReadiness.billing_url} target="_blank" rel="noreferrer"
+                      className="text-xs text-brass-bright hover:text-brass inline-flex items-center gap-1 mt-2"
+                    >
+                      Open Meta Billing <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {waReadiness.blockers.map((b, i) => (
+                    <p key={i} className="text-[11px] text-amber-200/80 mt-1">
+                      {b.entity}: {b.message}{b.fix ? ` — ${b.fix}` : ""}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {waHealth && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Quality</p>
+                    <p className="text-sm font-bold text-white">{waHealth.quality_rating || "—"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Daily Limit</p>
+                    <p className="text-sm font-bold text-white">{waHealth.daily_recipient_limit ?? "Unlimited"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Status</p>
+                    <p className="text-sm font-bold text-white">{waHealth.status || "—"}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Official Badge</p>
+                    <p className="text-sm font-bold text-white">{waHealth.is_official_business_account ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+                {waHealth.warnings.length > 0 && (
+                  <div className="space-y-1.5">
+                    {waHealth.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-300 flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {w}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </GlassCard>
+        )}
+
+        {/* SECTION 2c: WHATSAPP BUSINESS PROFILE */}
+        {waConnection && waProfile && (
+          <form onSubmit={handleSaveWaProfile}>
+            <GlassCard className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+                <div>
+                  <h3 className="text-sm font-bold text-white">WhatsApp Business Profile</h3>
+                  <p className="text-xs text-os-text-dim">
+                    What a customer sees when they open this chat - the most visible thing on the account.
+                  </p>
+                </div>
+                {waProfileSaved && (
+                  <span className="text-xs font-mono text-seal-bright flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Saved!
+                  </span>
+                )}
+                {waProfileError && <span className="text-xs font-mono text-red-400">{waProfileError}</span>}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {waProfile.profile_picture_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={waProfile.profile_picture_url}
+                    alt="WhatsApp profile icon"
+                    className="h-14 w-14 rounded-full object-cover border border-white/[0.12]"
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-full bg-white/[0.04] border border-white/[0.12] flex items-center justify-center text-os-text-dim">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => waPictureInputRef.current?.click()}
+                    disabled={isUploadingWaPicture}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {isUploadingWaPicture ? "Uploading..." : waProfile.profile_picture_url ? "Change icon" : "Upload icon"}
+                  </button>
+                  <input
+                    ref={waPictureInputRef} type="file" accept="image/jpeg,image/png"
+                    className="hidden" onChange={handleUploadWaPicture}
+                  />
+                  <p className="text-[11px] text-os-text-dim">JPG or PNG, up to 5MB. This is the icon customers see next to this number on WhatsApp.</p>
+                  {waPictureError && <p className="text-xs text-red-400">{waPictureError}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">About (short status line)</label>
+                  <input
+                    type="text" value={waAbout} onChange={(e) => setWaAbout(e.target.value)} maxLength={139}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Email</label>
+                  <input
+                    type="email" value={waEmail} onChange={(e) => setWaEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Description</label>
+                <textarea
+                  rows={2} value={waDescription} onChange={(e) => setWaDescription(e.target.value)} maxLength={512}
+                  className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Address</label>
+                <input
+                  type="text" value={waAddress} onChange={(e) => setWaAddress(e.target.value)} maxLength={256}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                  Business Category (Meta&apos;s classification)
+                </label>
+                <select
+                  value={waCategory}
+                  onChange={(e) => setWaCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                >
+                  <option value="">Not set</option>
+                  {waCategoryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-os-text-dim mt-1">
+                  Shown to customers as your business type in WhatsApp - separate from Krova&apos;s own vertical setting above.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit" disabled={isSavingWaProfile}
+                  className="px-5 py-2 rounded-xl bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  {isSavingWaProfile ? "Saving..." : "Save Profile"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
+
+        {/* SECTION 2c-2: NUMBER VERIFICATION & TWO-STEP PIN */}
+        {waConnection && (
+          <GlassCard className="p-6 space-y-5">
+            <div className="flex items-center gap-3 pb-2 border-b border-white/[0.06]">
+              <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Number Verification & Security PIN</h3>
+                <p className="text-xs text-os-text-dim">
+                  Whoever is holding this phone needs to read the code Meta sends.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form onSubmit={handleVerifyCode} className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={verifyMethod} onChange={(e) => setVerifyMethod(e.target.value as "SMS" | "VOICE")}
+                    className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
+                  >
+                    <option value="SMS">SMS</option>
+                    <option value="VOICE">Voice call</option>
+                  </select>
+                  <button
+                    type="button" onClick={handleRequestVerifyCode} disabled={isRequestingCode}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
+                  >
+                    {isRequestingCode ? "Sending..." : "Send Code"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)}
+                    placeholder="123456"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="submit" disabled={isVerifyingCode || !verifyCode}
+                    className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifyingCode ? "Verifying..." : "Verify"}
+                  </button>
+                </div>
+                {verifySent && <p className="text-[11px] text-seal-bright">{verifySent}</p>}
+                {verifyError && <p className="text-[11px] text-red-400">{verifyError}</p>}
+              </form>
+
+              <form onSubmit={handleSetPin} className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password" inputMode="numeric" maxLength={6} value={pinValue}
+                    onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+                    placeholder="New 6-digit PIN"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                  />
+                  <button
+                    type="submit" disabled={isSavingPin || pinValue.length !== 6}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingPin ? "Saving..." : "Set PIN"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-os-text-dim">Six digits, this number's two-step verification PIN.</p>
+                {pinResult && <p className="text-[11px] text-seal-bright">{pinResult}</p>}
+              </form>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* SECTION 2d: CLICK-TO-WHATSAPP AD ATTRIBUTION */}
+        {waConnection && (
+          <form onSubmit={handleSaveDataset}>
+            <GlassCard className="p-6 space-y-3">
+              <div className="flex items-center gap-3 pb-2">
+                <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Click-to-WhatsApp Ad Attribution</h3>
+                  <p className="text-xs text-os-text-dim">
+                    Reports Purchase conversions back to Meta for ads that led to a chat, so ad spend attributes to real sales.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text" value={datasetId} onChange={(e) => setDatasetId(e.target.value)}
+                  placeholder="Business Manager Dataset ID (from Events Manager)"
+                  className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
+                />
+                <button
+                  type="submit" disabled={isSavingDataset}
+                  className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer shrink-0"
+                >
+                  {isSavingDataset ? "Saving..." : datasetSaved ? "Saved!" : "Save"}
+                </button>
+              </div>
+            </GlassCard>
+          </form>
+        )}
+
+        </>)}
+
+        {tab === "calls" && (<>
+        {/* SECTION 2y: ESCALATIONS & OUTBOUND CALLING */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Escalations &amp; outbound calls</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Set how long an escalation may stay open before the owner gets an SMS, and which number series outbound calls use. Indian outbound calls must come from the series that matches their purpose.
+          </p>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="sla-hours" className="text-xs font-semibold text-white">
+                Escalation due time (hours)
+              </label>
+              <input
+                id="sla-hours"
+                type="number"
+                min={1}
+                max={168}
+                inputMode="numeric"
+                value={slaHoursInput}
+                onChange={(e) => setSlaHoursInput(e.target.value)}
+                placeholder="Not set - no due-time alerts"
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
+              />
+              <p className="text-[11px] text-os-text-dim font-mono">
+                When an open escalation passes this many hours, the owner gets an SMS. Leave blank to turn this off.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="outbound-series" className="text-xs font-semibold text-white">
+                Outbound number series
+              </label>
+              <select
+                id="outbound-series"
+                value={outboundSeries}
+                onChange={(e) => setOutboundSeries(e.target.value as "" | "080" | "022" | "140")}
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
+              >
+                <option value="">Not set</option>
+                <option value="080">080 - service calls</option>
+                <option value="022">022 - service calls</option>
+                <option value="140">140 - promotional calls</option>
+              </select>
+              <p className="text-[11px] text-os-text-dim font-mono">
+                Campaigns are blocked from sending unless their purpose matches this series. BFSI (160) is not offered here - it needs its own approval.
+              </p>
+            </div>
+
+            {escalationError && <p className="text-xs text-red-400">{escalationError}</p>}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveEscalationSettings}
+                disabled={isSavingEscalation}
+                className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSavingEscalation ? "Saving..." : "Save"}
+              </button>
+              {escalationSaved && <span className="text-xs text-os-accent">Saved</span>}
+            </div>
+          </div>
         </GlassCard>
 
         {/* SECTION 1b: WALK-IN QUEUE */}
@@ -1409,258 +1913,16 @@ export default function SettingsPage() {
           </form>
         )}
 
-        {/* SECTION 2: CONNECTED CHANNELS */}
-        <GlassCard className="p-6 space-y-4">
-          <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
-            <div>
-              <h3 className="text-sm font-bold text-white">Connected Channels & Trunks</h3>
-              <p className="text-xs text-os-text-dim">
-                Real-time ingestion pipelines feeding the unified customer timeline.
-              </p>
-            </div>
-          </div>
+        </>)}
 
-          <div className="space-y-3">
-            {/* WhatsApp */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-seal/10 border border-seal/20 text-seal-bright">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">WhatsApp Business API (Meta)</h4>
-                  <p className="text-[11px] text-os-text-dim font-mono">
-                    {waConnection
-                      ? `Quality Rating: ${waConnection.quality_rating || "—"} • WABA ID: ${waConnection.waba_id || "—"}`
-                      : "Not connected"}
-                  </p>
-                </div>
-              </div>
-              {waConnection ? (
-                <Badge variant={waConnection.status === "active" ? "emerald" : "amber"} dot>
-                  {waConnection.status === "active" ? "Connected" : waConnection.status}
-                </Badge>
-              ) : (
-                <Badge variant="outline">Not connected</Badge>
-              )}
-            </div>
-
-            {/* Voice */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                  <Phone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Voice Inbound Trunk</h4>
-                  <p className="text-[11px] text-os-text-dim font-mono">
-                    {voiceConnection ? `Number: ${voiceConnection.external_account_id}` : "Not connected"}
-                  </p>
-                </div>
-              </div>
-              {voiceConnection ? (
-                <Badge variant={voiceConnection.status === "active" ? "cyan" : "amber"} dot>
-                  {voiceConnection.status === "active" ? "Active" : voiceConnection.status}
-                </Badge>
-              ) : (
-                <Badge variant="outline">Not connected</Badge>
-              )}
-            </div>
-
-            {/* Gmail - hidden from new connections. Google's restricted-scope
-                verification (CASA security assessment, real recurring cost)
-                isn't worth it yet - see docs/... decision. Only rendered for
-                a business that already has one connected, so nobody loses
-                an existing connection; the "Connect" entry point that would
-                invite a new one - which Google blocks in Testing mode for
-                any account outside the console's own test-user list anyway -
-                is gone. Backend (gmail_channel.py, backfill.py) is untouched,
-                so this is reversible by restoring this block alone. */}
-            {emailConnection && (
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Gmail Work Inbox</h4>
-                    <p className="text-[11px] text-os-text-dim">
-                      {emailConnection.handle || "Connected"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={emailConnection.status === "active" ? "emerald" : "amber"} dot>
-                    {emailConnection.status === "active" ? "Connected" : emailConnection.status}
-                  </Badge>
-                  <button
-                    type="button"
-                    onClick={handleGmailBackfill}
-                    disabled={isBackfilling}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isBackfilling ? "animate-spin" : ""}`} />
-                    {isBackfilling ? "Reading..." : "Backfill Now"}
-                  </button>
-                </div>
-              </div>
-            )}
-            {backfillResult && (
-              <p className="text-[11px] text-os-text-dim font-mono -mt-2">{backfillResult}</p>
-            )}
-
-            {/* Instagram connection & sender have moved to their own page
-                (app/instagram/page.tsx) - see this settings page's own
-                channel cards for WhatsApp/Gmail/etc. above and below for
-                the ones still managed from here. */}
-          </div>
-        </GlassCard>
-
-        {/* SECTION 2y: ESCALATIONS & OUTBOUND CALLING */}
+        {tab === "money" && (<>
+        {/* Payment links from the business's own Razorpay */}
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">Escalations &amp; outbound calls</h3>
+            <CreditCard className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Payments</h3>
           </div>
-          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Set how long an escalation may stay open before the owner gets an SMS, and which number series outbound calls use. Indian outbound calls must come from the series that matches their purpose.
-          </p>
-
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="sla-hours" className="text-xs font-semibold text-white">
-                Escalation due time (hours)
-              </label>
-              <input
-                id="sla-hours"
-                type="number"
-                min={1}
-                max={168}
-                inputMode="numeric"
-                value={slaHoursInput}
-                onChange={(e) => setSlaHoursInput(e.target.value)}
-                placeholder="Not set - no due-time alerts"
-                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
-              />
-              <p className="text-[11px] text-os-text-dim font-mono">
-                When an open escalation passes this many hours, the owner gets an SMS. Leave blank to turn this off.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="outbound-series" className="text-xs font-semibold text-white">
-                Outbound number series
-              </label>
-              <select
-                id="outbound-series"
-                value={outboundSeries}
-                onChange={(e) => setOutboundSeries(e.target.value as "" | "080" | "022" | "140")}
-                className="w-full max-w-xs px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-os-accent"
-              >
-                <option value="">Not set</option>
-                <option value="080">080 - service calls</option>
-                <option value="022">022 - service calls</option>
-                <option value="140">140 - promotional calls</option>
-              </select>
-              <p className="text-[11px] text-os-text-dim font-mono">
-                Campaigns are blocked from sending unless their purpose matches this series. BFSI (160) is not offered here - it needs its own approval.
-              </p>
-            </div>
-
-            {escalationError && <p className="text-xs text-red-400">{escalationError}</p>}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSaveEscalationSettings}
-                disabled={isSavingEscalation}
-                className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isSavingEscalation ? "Saving..." : "Save"}
-              </button>
-              {escalationSaved && <span className="text-xs text-os-accent">Saved</span>}
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* SECTION 2w: RECEIVABLES IMPORT */}
-        <GlassCard className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-os-accent" />
-            <h3 className="text-sm font-bold text-white">Unpaid invoices (import)</h3>
-          </div>
-          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
-            Export your unpaid invoices from any accounting software as CSV or Excel (.xlsx), then upload it here. Each row becomes a payment in the ledger that can be followed up.
-          </p>
-
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={downloadImportTemplate}
-              className="text-xs text-os-accent hover:underline cursor-pointer"
-            >
-              Download the CSV template
-            </button>
-
-            <p className="text-[11px] text-os-text-dim font-mono">
-              Columns: customer, invoice_number, due_date (YYYY-MM-DD or DD/MM/YYYY), amount (rupees).
-            </p>
-
-            <input
-              type="file"
-              accept=".csv,.xlsx"
-              onChange={(e) => {
-                setImportFile(e.target.files?.[0] ?? null);
-                setImportResult(null);
-                setImportError(null);
-              }}
-              className="text-xs text-os-text-dim"
-            />
-
-            <label className="flex items-start gap-2 text-[11px] text-os-text-dim font-mono">
-              <input
-                type="checkbox"
-                checked={markMissingPaid}
-                onChange={(e) => setMarkMissingPaid(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                This file is my full list of unpaid invoices. Anything missing from it gets marked as paid. Untick this for a partial file.
-              </span>
-            </label>
-
-            <button
-              type="button"
-              onClick={handleImportReceivables}
-              disabled={!importFile || isImporting}
-              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
-            >
-              {isImporting ? "Importing..." : "Import file"}
-            </button>
-          </div>
-
-          {importResult && (
-            <div className="space-y-2">
-              <p className="text-xs text-os-accent">
-                Imported {importResult.rows} rows: {importResult.created} new, {importResult.updated} updated, {importResult.resolved} marked paid, {importResult.skipped} skipped.
-              </p>
-              {importResult.errors.slice(0, 5).map((err) => (
-                <p key={err.line} className="text-[11px] text-red-400 font-mono">
-                  Line {err.line}: {err.reason}
-                </p>
-              ))}
-            </div>
-          )}
-          {importHistory.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-white">Recent imports</p>
-              {importHistory.slice(0, 5).map((run) => (
-                <p key={run.id} className="text-[11px] text-os-text-dim font-mono">
-                  {run.at ? new Date(run.at).toLocaleString() : ""} - {run.filename || run.source}: {run.created} new, {run.updated} updated, {run.resolved} marked paid, {run.skipped} skipped
-                </p>
-              ))}
-            </div>
-          )}
-          {importError && <p className="text-xs text-red-400">{importError}</p>}
+          <PaymentGatewayCard />
         </GlassCard>
 
         {/* Leads & forms is a switchable feature (off by default for healthcare) - its settings go with it. */}
@@ -1922,6 +2184,90 @@ export default function SettingsPage() {
 
         </>)}
 
+        {/* SECTION 2w: RECEIVABLES IMPORT */}
+        <GlassCard className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-os-accent" />
+            <h3 className="text-sm font-bold text-white">Unpaid invoices (import)</h3>
+          </div>
+          <p className="text-[11px] text-os-text-dim font-mono -mt-2">
+            Export your unpaid invoices from any accounting software as CSV or Excel (.xlsx), then upload it here. Each row becomes a payment in the ledger that can be followed up.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={downloadImportTemplate}
+              className="text-xs text-os-accent hover:underline cursor-pointer"
+            >
+              Download the CSV template
+            </button>
+
+            <p className="text-[11px] text-os-text-dim font-mono">
+              Columns: customer, invoice_number, due_date (YYYY-MM-DD or DD/MM/YYYY), amount (rupees).
+            </p>
+
+            <input
+              type="file"
+              accept=".csv,.xlsx"
+              onChange={(e) => {
+                setImportFile(e.target.files?.[0] ?? null);
+                setImportResult(null);
+                setImportError(null);
+              }}
+              className="text-xs text-os-text-dim"
+            />
+
+            <label className="flex items-start gap-2 text-[11px] text-os-text-dim font-mono">
+              <input
+                type="checkbox"
+                checked={markMissingPaid}
+                onChange={(e) => setMarkMissingPaid(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                This file is my full list of unpaid invoices. Anything missing from it gets marked as paid. Untick this for a partial file.
+              </span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleImportReceivables}
+              disabled={!importFile || isImporting}
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isImporting ? "Importing..." : "Import file"}
+            </button>
+          </div>
+
+          {importResult && (
+            <div className="space-y-2">
+              <p className="text-xs text-os-accent">
+                Imported {importResult.rows} rows: {importResult.created} new, {importResult.updated} updated, {importResult.resolved} marked paid, {importResult.skipped} skipped.
+              </p>
+              {importResult.errors.slice(0, 5).map((err) => (
+                <p key={err.line} className="text-[11px] text-red-400 font-mono">
+                  Line {err.line}: {err.reason}
+                </p>
+              ))}
+            </div>
+          )}
+          {importHistory.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-white">Recent imports</p>
+              {importHistory.slice(0, 5).map((run) => (
+                <p key={run.id} className="text-[11px] text-os-text-dim font-mono">
+                  {run.at ? new Date(run.at).toLocaleString() : ""} - {run.filename || run.source}: {run.created} new, {run.updated} updated, {run.resolved} marked paid, {run.skipped} skipped
+                </p>
+              ))}
+            </div>
+          )}
+          {importError && <p className="text-xs text-red-400">{importError}</p>}
+        </GlassCard>
+
+        </>)}
+
+        {tab === "integrations" && (<>
         {/* SECTION 2z: OUTBOUND INTEGRATIONS */}
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -1933,7 +2279,6 @@ export default function SettingsPage() {
           </p>
 
           <div className="space-y-3">
-            <PaymentGatewayCard />
             {SHOW_GOOGLE_CALENDAR && (
             <CapabilityFold have={profile?.capabilities} anyOf={["scheduling", "opd_queue"]} keepOpen={!!calendarStatus?.connected} label="Google Calendar">
             {/* Google Calendar */}
@@ -2358,294 +2703,6 @@ export default function SettingsPage() {
           </div>
         </GlassCard>
 
-        {/* SECTION 2b: WHATSAPP ACCOUNT HEALTH */}
-        {waConnection && (waHealth || waReadiness) && (
-          <GlassCard className="p-6 space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
-              <div className="p-2 rounded-lg bg-seal/10 border border-seal/20 text-seal-bright">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">WhatsApp Account Health</h3>
-                <p className="text-xs text-os-text-dim">
-                  What Meta itself says about this number - quality falls before a restriction, and a restriction happens before messages visibly stop.
-                </p>
-              </div>
-            </div>
-
-            {waReadiness && !waReadiness.ready && (
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-amber-300">Can send: {waReadiness.can_send}</p>
-                  {waReadiness.action_required && (
-                    <p className="text-xs text-amber-200/90 mt-1">{waReadiness.action_required}</p>
-                  )}
-                  {waReadiness.billing_url && (
-                    <a
-                      href={waReadiness.billing_url} target="_blank" rel="noreferrer"
-                      className="text-xs text-brass-bright hover:text-brass inline-flex items-center gap-1 mt-2"
-                    >
-                      Open Meta Billing <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                  {waReadiness.blockers.map((b, i) => (
-                    <p key={i} className="text-[11px] text-amber-200/80 mt-1">
-                      {b.entity}: {b.message}{b.fix ? ` — ${b.fix}` : ""}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {waHealth && (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Quality</p>
-                    <p className="text-sm font-bold text-white">{waHealth.quality_rating || "—"}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Daily Limit</p>
-                    <p className="text-sm font-bold text-white">{waHealth.daily_recipient_limit ?? "Unlimited"}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Status</p>
-                    <p className="text-sm font-bold text-white">{waHealth.status || "—"}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                    <p className="text-[10px] font-mono uppercase text-os-text-dim mb-1">Official Badge</p>
-                    <p className="text-sm font-bold text-white">{waHealth.is_official_business_account ? "Yes" : "No"}</p>
-                  </div>
-                </div>
-                {waHealth.warnings.length > 0 && (
-                  <div className="space-y-1.5">
-                    {waHealth.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-300 flex items-start gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {w}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </GlassCard>
-        )}
-
-        {/* SECTION 2c: WHATSAPP BUSINESS PROFILE */}
-        {waConnection && waProfile && (
-          <form onSubmit={handleSaveWaProfile}>
-            <GlassCard className="p-6 space-y-4">
-              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
-                <div>
-                  <h3 className="text-sm font-bold text-white">WhatsApp Business Profile</h3>
-                  <p className="text-xs text-os-text-dim">
-                    What a customer sees when they open this chat - the most visible thing on the account.
-                  </p>
-                </div>
-                {waProfileSaved && (
-                  <span className="text-xs font-mono text-seal-bright flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Saved!
-                  </span>
-                )}
-                {waProfileError && <span className="text-xs font-mono text-red-400">{waProfileError}</span>}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {waProfile.profile_picture_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={waProfile.profile_picture_url}
-                    alt="WhatsApp profile icon"
-                    className="h-14 w-14 rounded-full object-cover border border-white/[0.12]"
-                  />
-                ) : (
-                  <div className="h-14 w-14 rounded-full bg-white/[0.04] border border-white/[0.12] flex items-center justify-center text-os-text-dim">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => waPictureInputRef.current?.click()}
-                    disabled={isUploadingWaPicture}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    {isUploadingWaPicture ? "Uploading..." : waProfile.profile_picture_url ? "Change icon" : "Upload icon"}
-                  </button>
-                  <input
-                    ref={waPictureInputRef} type="file" accept="image/jpeg,image/png"
-                    className="hidden" onChange={handleUploadWaPicture}
-                  />
-                  <p className="text-[11px] text-os-text-dim">JPG or PNG, up to 5MB. This is the icon customers see next to this number on WhatsApp.</p>
-                  {waPictureError && <p className="text-xs text-red-400">{waPictureError}</p>}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">About (short status line)</label>
-                  <input
-                    type="text" value={waAbout} onChange={(e) => setWaAbout(e.target.value)} maxLength={139}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Email</label>
-                  <input
-                    type="email" value={waEmail} onChange={(e) => setWaEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Description</label>
-                <textarea
-                  rows={2} value={waDescription} onChange={(e) => setWaDescription(e.target.value)} maxLength={512}
-                  className="w-full p-3 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">Address</label>
-                <input
-                  type="text" value={waAddress} onChange={(e) => setWaAddress(e.target.value)} maxLength={256}
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
-                  Business Category (Meta&apos;s classification)
-                </label>
-                <select
-                  value={waCategory}
-                  onChange={(e) => setWaCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                >
-                  <option value="">Not set</option>
-                  {waCategoryOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-os-text-dim mt-1">
-                  Shown to customers as your business type in WhatsApp - separate from Krova&apos;s own vertical setting above.
-                </p>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit" disabled={isSavingWaProfile}
-                  className="px-5 py-2 rounded-xl bg-brass hover:bg-brass-dim text-white text-xs font-bold transition-all shadow-md cursor-pointer"
-                >
-                  {isSavingWaProfile ? "Saving..." : "Save Profile"}
-                </button>
-              </div>
-            </GlassCard>
-          </form>
-        )}
-
-        {/* SECTION 2c-2: NUMBER VERIFICATION & TWO-STEP PIN */}
-        {waConnection && (
-          <GlassCard className="p-6 space-y-5">
-            <div className="flex items-center gap-3 pb-2 border-b border-white/[0.06]">
-              <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
-                <Shield className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">Number Verification & Security PIN</h3>
-                <p className="text-xs text-os-text-dim">
-                  Whoever is holding this phone needs to read the code Meta sends.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <form onSubmit={handleVerifyCode} className="space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <select
-                    value={verifyMethod} onChange={(e) => setVerifyMethod(e.target.value as "SMS" | "VOICE")}
-                    className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
-                  >
-                    <option value="SMS">SMS</option>
-                    <option value="VOICE">Voice call</option>
-                  </select>
-                  <button
-                    type="button" onClick={handleRequestVerifyCode} disabled={isRequestingCode}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
-                  >
-                    {isRequestingCode ? "Sending..." : "Send Code"}
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)}
-                    placeholder="123456"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
-                  />
-                  <button
-                    type="submit" disabled={isVerifyingCode || !verifyCode}
-                    className="px-3 py-1.5 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    {isVerifyingCode ? "Verifying..." : "Verify"}
-                  </button>
-                </div>
-                {verifySent && <p className="text-[11px] text-seal-bright">{verifySent}</p>}
-                {verifyError && <p className="text-[11px] text-red-400">{verifyError}</p>}
-              </form>
-
-              <form onSubmit={handleSetPin} className="space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password" inputMode="numeric" maxLength={6} value={pinValue}
-                    onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
-                    placeholder="New 6-digit PIN"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
-                  />
-                  <button
-                    type="submit" disabled={isSavingPin || pinValue.length !== 6}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] cursor-pointer disabled:opacity-50"
-                  >
-                    {isSavingPin ? "Saving..." : "Set PIN"}
-                  </button>
-                </div>
-                <p className="text-[11px] text-os-text-dim">Six digits, this number's two-step verification PIN.</p>
-                {pinResult && <p className="text-[11px] text-seal-bright">{pinResult}</p>}
-              </form>
-            </div>
-          </GlassCard>
-        )}
-
-        {/* SECTION 2d: CLICK-TO-WHATSAPP AD ATTRIBUTION */}
-        {waConnection && (
-          <form onSubmit={handleSaveDataset}>
-            <GlassCard className="p-6 space-y-3">
-              <div className="flex items-center gap-3 pb-2">
-                <div className="p-2 rounded-lg bg-brass/10 border border-brass/20 text-brass">
-                  <Megaphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Click-to-WhatsApp Ad Attribution</h3>
-                  <p className="text-xs text-os-text-dim">
-                    Reports Purchase conversions back to Meta for ads that led to a chat, so ad spend attributes to real sales.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text" value={datasetId} onChange={(e) => setDatasetId(e.target.value)}
-                  placeholder="Business Manager Dataset ID (from Events Manager)"
-                  className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none"
-                />
-                <button
-                  type="submit" disabled={isSavingDataset}
-                  className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer shrink-0"
-                >
-                  {isSavingDataset ? "Saving..." : datasetSaved ? "Saved!" : "Save"}
-                </button>
-              </div>
-            </GlassCard>
-          </form>
-        )}
-
         {/* SECTION 2e: PHOTO -> PRODUCT MATCH (stores only) */}
         {waConnection && (
           <CapabilityFold have={profile?.capabilities} anyOf={["photo_product_match"]} keepOpen={!!catalogId.trim()} label="Photo → Product Match">
@@ -2682,19 +2739,8 @@ export default function SettingsPage() {
           </CapabilityFold>
         )}
 
-        {/* SECTION 3: METERED USAGE & BILLING (STUBBED PER UI_SPEC) */}
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-os-text-dim" />
-              <h4 className="text-sm font-bold text-white">Metered Usage & Billing</h4>
-            </div>
-            <Badge variant="outline">Backend In Progress</Badge>
-          </div>
-          <p className="text-xs text-os-text-dim leading-relaxed">
-            Per-event usage telemetry (WhatsApp messages, voice minutes, and AI draft completions) is recorded in paise. Enterprise billing and Razorpay invoicing dashboard is actively being built.
-          </p>
-        </GlassCard>
+        </>)}
+
       </div>
     </AppLayout>
   );
