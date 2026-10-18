@@ -2114,7 +2114,8 @@ export type AutomationTemplate = {
   purpose: string;
 };
 
-export type RuleDraftTurn = { role: "owner" | "ai"; text: string };
+// An AI turn carries the rule it drafted, so the owner can ask for a change to it.
+export type RuleDraftTurn = { role: "owner" | "ai"; text: string; rule?: RuleDraftOut["rule"] };
 
 export type RuleDraftOut = {
   kind: "ask" | "rule";

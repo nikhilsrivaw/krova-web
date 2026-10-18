@@ -53,11 +53,14 @@ export function DescribeRule({
     setBusy(true);
     try {
       const out = await postCallRules.aiDraft(next.slice(-16));
-      setTurns([...next, { role: "ai", text: out.text }]);
+      setTurns([...next, { role: "ai", text: out.text.slice(0, 1000), rule: out.kind === "rule" ? out.rule : null }]);
       setOptions(out.kind === "ask" ? out.options : []);
       setRule(out.kind === "rule" ? out.rule : null);
       setLeft(`${Math.max(0, out.limit - out.used)} of ${out.limit} AI replies left this month`);
     } catch (err) {
+      // nothing was answered: take the message back off the chat and into the box, so sending again is one tap
+      setTurns(turns);
+      setInput(said);
       setError(err instanceof Error ? err.message : "Could not reach KROVA - try again.");
     } finally {
       setBusy(false);
