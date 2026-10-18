@@ -1663,6 +1663,8 @@ export default function SettingsPage() {
           {importError && <p className="text-xs text-red-400">{importError}</p>}
         </GlassCard>
 
+        {/* Leads & forms is a switchable feature (off by default for healthcare) - its settings go with it. */}
+        {profile?.capabilities?.includes("lead_capture") && (<>
         {/* SECTION 2z00: ADD LEADS BY HAND */}
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -1917,6 +1919,8 @@ export default function SettingsPage() {
             {emailLeadsError && <p className="text-xs text-red-400">{emailLeadsError}</p>}
           </div>
         </GlassCard>
+
+        </>)}
 
         {/* SECTION 2z: OUTBOUND INTEGRATIONS */}
         <GlassCard className="p-6 space-y-4">

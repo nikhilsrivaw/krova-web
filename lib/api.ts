@@ -2999,7 +2999,9 @@ export type Capability =
   | "tpa_claim_tracking"
   | "photo_product_match"
   // Type 1 (B2B): quotations sent, chased, and won or lost.
-  | "quotations";
+  | "quotations"
+  // Leads page and Forms page - off by default for the healthcare types, switchable in Features.
+  | "lead_capture";
 
 export type UserProfile = {
   user_id: string;

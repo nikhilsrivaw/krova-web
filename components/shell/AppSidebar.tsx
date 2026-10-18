@@ -307,6 +307,8 @@ export function AppSidebar({
       href: "/leads",
       icon: UserPlus,
       accent: "text-brass-bright",
+      // Only where enquiries are chased; off by default for the healthcare types (switch in Features).
+      requiresCapability: "lead_capture",
     },
     {
       label: "Forms",
@@ -314,6 +316,7 @@ export function AppSidebar({
       href: "/forms",
       icon: ClipboardList,
       accent: "text-brass-bright",
+      requiresCapability: "lead_capture",
     },
     {
       label: "Customers",
