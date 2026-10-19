@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, LogOut, Copy, Check } from "lucide-react";
-import { account, approvals, type AutonomyLevel, type UserProfile } from "@/lib/api";
+import { account, approvals, push, type AutonomyLevel, type PushKind, type UserProfile } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { appPath, installUrl } from "@/lib/app-nav";
 import { disableNotifications, enableNotifications, notificationsEnabled, notificationsSupported } from "@/lib/push";
@@ -35,6 +35,7 @@ export default function AppSettingsPage() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [kinds, setKinds] = useState<PushKind[]>([]);
 
   useEffect(() => {
     account
@@ -46,7 +47,20 @@ export default function AppSettingsPage() {
       .catch(() => setError("Could not load your settings."));
     setLink(installUrl());
     notificationsEnabled().then(setPushOn).catch(() => {});
+    push.preferences().then(setKinds).catch(() => {});
   }, []);
+
+  const toggleKind = async (key: string) => {
+    const next = kinds.map((k) => (k.key === key ? { ...k, on: !k.on } : k));
+    setKinds(next);
+    setPushError(null);
+    try {
+      setKinds(await push.setPreferences(next.filter((k) => !k.on).map((k) => k.key)));
+    } catch (err) {
+      setKinds(kinds);
+      setPushError(err instanceof Error ? err.message : "Could not save that.");
+    }
+  };
 
   const togglePush = async () => {
     setPushBusy(true);
@@ -169,6 +183,18 @@ export default function AppSettingsPage() {
             {pushBusy ? "…" : pushOn ? "Turn off" : "Turn on"}
           </button>
         </div>
+        {pushOn && kinds.length > 0 && (
+          <div className="rounded-2xl bg-os-card border border-os-border divide-y divide-os-border">
+            {kinds
+              .filter((k) => k.key !== "wallet" || profile?.role === "owner" || profile?.role === "admin")
+              .map((k) => (
+                <label key={k.key} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-os-ink">{k.label}</span>
+                  <input type="checkbox" checked={k.on} onChange={() => toggleKind(k.key)} className="w-5 h-5 accent-teal shrink-0" />
+                </label>
+              ))}
+          </div>
+        )}
         {pushError && <p className="text-xs text-rose-400">{pushError}</p>}
       </section>
 

@@ -4255,7 +4255,13 @@ export const push = {
 
   unsubscribe: (endpoint: string) =>
     api.delete<void>(`/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`),
+
+  /** Each kind of phone notification and whether I get it - my own choice, for this business. */
+  preferences: () => api.get<PushKind[]>("/push/preferences"),
+  setPreferences: (muted: string[]) => api.put<PushKind[]>("/push/preferences", { muted }),
 };
+
+export type PushKind = { key: string; label: string; on: boolean };
 
 // ── Owner commands (command layer, phase 1) ───────────────────────────────────
 

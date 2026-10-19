@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles, Terminal,
-  CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText, LifeBuoy,
+  CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText, LifeBuoy, Megaphone, Zap,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -33,6 +33,10 @@ const ITEMS: Item[] = [
   { label: "Leads", href: "/leads", icon: Users, requiresCapability: "lead_capture", native: true },
   { label: "Orders", href: "/orders", icon: Package, requiresCapability: "order_sync", native: true },
   { label: "Quotations", href: "/quotations", icon: FileText, requiresCapability: "quotations", native: true },
+  // Owner and admins: the business, broadcasts, automations.
+  { label: "Business at a glance", href: "/business", icon: BarChart3, native: true },
+  { label: "Quick broadcast", href: "/broadcast", icon: Megaphone, native: true },
+  { label: "Automations", href: "/automations", icon: Zap, native: true },
   { label: "Command", href: "/command", icon: Terminal, native: true },
   { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
@@ -53,7 +57,7 @@ export default function MorePage() {
     (item) =>
       (!item.requiresCapability || profile?.capabilities.includes(item.requiresCapability)) &&
       // Command runs owner commands and Ask KROVA answers from the business's money ledger.
-      (supervisor || (item.href !== "/command" && item.href !== "/ask" && item.href !== "/help")),
+      (supervisor || !["/command", "/ask", "/help", "/business", "/broadcast", "/automations"].includes(item.href)),
   );
 
   return (
