@@ -3382,6 +3382,7 @@ export type Appointment = {
   status: AppointmentStatus;
   intake_channel: IntakeChannel;
   notes: string | null;
+  customer_name?: string | null;
 };
 
 export const scheduling = {
@@ -3603,6 +3604,7 @@ export type QueueEntry = {
   checked_in_at: string;
   called_at: string | null;
   completed_at: string | null;
+  customer_name?: string | null;
 };
 
 // ── Features (optional modules a business has switched on) ─────────────────

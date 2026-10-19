@@ -185,20 +185,20 @@ export default function TodayPage() {
           {(bookings || waiting !== null) && (
             <div className="grid grid-cols-2 gap-3">
               {bookings && (
-                <div className="p-4 rounded-2xl bg-os-card border border-os-border">
+                <Link href={appPath("/bookings")} className="p-4 rounded-2xl bg-os-card border border-os-border active:scale-[0.98]">
                   <CalendarDays className="w-4 h-4 text-teal mb-2" />
                   <p className="text-lg font-semibold text-os-ink font-mono">{bookings.count}</p>
                   <p className="text-[10px] text-os-text-dim">
                     Booking{bookings.count === 1 ? "" : "s"} today{bookings.next ? ` · next ${bookings.next}` : ""}
                   </p>
-                </div>
+                </Link>
               )}
               {waiting !== null && (
-                <div className="p-4 rounded-2xl bg-os-card border border-os-border">
+                <Link href={appPath("/queue")} className="p-4 rounded-2xl bg-os-card border border-os-border active:scale-[0.98]">
                   <Ticket className="w-4 h-4 text-teal mb-2" />
                   <p className="text-lg font-semibold text-os-ink font-mono">{waiting}</p>
                   <p className="text-[10px] text-os-text-dim">Waiting in the queue</p>
-                </div>
+                </Link>
               )}
             </div>
           )}

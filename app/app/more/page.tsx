@@ -27,6 +27,12 @@ type Item = {
 // desktop pages for now (they already work on a phone's viewport, just
 // not redesigned mobile-first yet) rather than duplicating each one here.
 const ITEMS: Item[] = [
+  // The business's own day - each shown only when that feature is on.
+  { label: "Bookings", href: "/bookings", icon: CalendarClock, requiresCapability: "scheduling", native: true },
+  { label: "Queue", href: "/queue", icon: Clock, requiresCapability: "opd_queue", native: true },
+  { label: "Leads", href: "/leads", icon: Users, requiresCapability: "lead_capture", native: true },
+  { label: "Orders", href: "/orders", icon: Package, requiresCapability: "order_sync", native: true },
+  { label: "Quotations", href: "/quotations", icon: FileText, requiresCapability: "quotations", native: true },
   { label: "Command", href: "/command", icon: Terminal, native: true },
   { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
