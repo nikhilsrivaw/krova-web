@@ -10,6 +10,7 @@ import { appPath } from "@/lib/app-nav";
 import { Sheet } from "@/components/app-shell/Sheet";
 import { CustomerPicker } from "@/components/app-shell/CustomerPicker";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { EditFees, FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const addDays = (key: string, n: number) => { const d = new Date(`${key}T12:00:00`); d.setDate(d.getDate() + n); return dayKey(d); };
@@ -60,6 +61,7 @@ function SlotChips({ doctorId, date, picked, onPick }: { doctorId: string; date:
 export default function AppBookingsPage() {
   const [day, setDay] = useState(dayKey(new Date()));
   const [rows, setRows] = useState<Appointment[] | null>(null);
+  const feeRows = useFeeRows();
   const [labels, setLabels] = useState<SchedulingLabels | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +71,8 @@ export default function AppBookingsPage() {
   const [moving, setMoving] = useState<{ id: string; doctorId: string; date: string; slot: string | null } | null>(null);
   const [cancelling, setCancelling] = useState<{ id: string; reason: string } | null>(null);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<{ customer: { id: string; name: string } | null; doctorId: string; date: string; slot: string | null; notes: string }>(
-    { customer: null, doctorId: "", date: dayKey(new Date()), slot: null, notes: "" },
+  const [draft, setDraft] = useState<{ customer: { id: string; name: string } | null; doctorId: string; date: string; slot: string | null; notes: string; feeIds: string[] }>(
+    { customer: null, doctorId: "", date: dayKey(new Date()), slot: null, notes: "", feeIds: [] },
   );
 
   const load = useCallback(() => {
@@ -110,7 +112,7 @@ export default function AppBookingsPage() {
         <h1 className="text-lg font-semibold text-os-ink flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-teal" /> {noun}
         </h1>
-        <button type="button" onClick={() => { setCreating(true); setDraft({ customer: null, doctorId: doctors[0]?.id ?? "", date: day, slot: null, notes: "" }); }}
+        <button type="button" onClick={() => { setCreating(true); setDraft({ customer: null, doctorId: doctors[0]?.id ?? "", date: day, slot: null, notes: "", feeIds: [] }); }}
           className="px-3 py-1.5 rounded-lg bg-teal/10 border border-teal/25 text-[11px] font-semibold text-teal flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> New
         </button>
@@ -141,12 +143,16 @@ export default function AppBookingsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-os-ink truncate">{a.customer_name || "Customer"}</p>
                     <p className="text-[11px] text-os-text-dim truncate">{a.doctor_name}</p>
+                    <FeeItemsLine items={a.fee_items} className="truncate" />
                   </div>
                   <span className={`shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold ${look.cls}`}>{look.label}</span>
                 </button>
                 {isOpen && (
                   <div className="px-4 pb-4 pt-1 border-t border-os-border space-y-2.5">
                     {a.notes && <p className="text-xs text-os-text-dim pt-2">{a.notes}</p>}
+                    <div className="pt-2">
+                      <EditFees kind="appointment" booking={a} rows={feeRows} onSaved={(u) => setRows((prev) => prev?.map((x) => (x.id === u.id ? u : x)) ?? prev)} />
+                    </div>
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       {!done ? (
                         <>
@@ -218,7 +224,10 @@ export default function AppBookingsPage() {
             if (!draft.customer || !draft.slot) return;
             setBusy("new"); setError(null);
             try {
-              await scheduling.createAppointment({ doctor_id: draft.doctorId, customer_id: draft.customer.id, starts_at: draft.slot, notes: draft.notes.trim() || undefined });
+              await scheduling.createAppointment({
+                doctor_id: draft.doctorId, customer_id: draft.customer.id, starts_at: draft.slot, notes: draft.notes.trim() || undefined,
+                fee_ids: draft.feeIds.length ? draft.feeIds : undefined,
+              });
               setCreating(false);
               setDay(draft.date);
               load();
@@ -236,6 +245,7 @@ export default function AppBookingsPage() {
           <input type="date" value={draft.date} min={today} onChange={(e) => setDraft({ ...draft, date: e.target.value, slot: null })} className={field} />
           <SlotChips doctorId={draft.doctorId} date={draft.date} picked={draft.slot} onPick={(s) => setDraft({ ...draft, slot: s })} />
           <input value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} placeholder="Notes (optional)" className={field} />
+          <FeePicker rows={feeRows} value={draft.feeIds} onChange={(feeIds) => setDraft({ ...draft, feeIds })} />
           {error && <p className="text-xs text-rose-400">{error}</p>}
           <button type="submit" disabled={!draft.customer || !draft.slot || busy === "new"}
             className="w-full py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold disabled:opacity-40">

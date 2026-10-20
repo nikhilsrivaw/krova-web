@@ -2336,6 +2336,15 @@ export type KnowledgeFileReading = {
 /** One Catalogue row. The AI is shown only the rows a customer's message names, never the whole list. */
 export type KnowledgeCatalogueRow = { name: string; price: string; details: string };
 
+/**
+ * One row of the fee list (Knowledge -> Fees / Price list): a test, service or visit and what it costs. Staff tick
+ * rows when making a token or a booking; the AI quotes them when a customer names one. `id` is set by the server.
+ */
+export type FeeRow = { id?: string; name: string; amount_paise: number; details: string };
+/** What a token or booking was made for - a copy of the ticked rows, so a later price change leaves it alone. */
+export type FeeItem = { id: string; name: string; amount_paise: number };
+export const feeTotal = (items?: FeeItem[] | null) => (items ?? []).reduce((sum, i) => sum + i.amount_paise, 0);
+
 export const knowledge = {
   list: () => api.get<KnowledgeItem[]>("/knowledge"),
 
@@ -2356,6 +2365,11 @@ export const knowledge = {
   /** Replace the whole catalogue; no rows removes it. */
   saveCatalogue: (rows: KnowledgeCatalogueRow[]) =>
     api.put<{ rows: KnowledgeCatalogueRow[]; limit: number }>("/knowledge/catalogue", { rows }),
+
+  /** The fee list - open to the whole team, who tick from it. */
+  fees: () => api.get<{ rows: FeeRow[]; limit: number }>("/knowledge/fees"),
+  /** Replace the whole fee list (owner/admin); no rows removes it. */
+  saveFees: (rows: FeeRow[]) => api.put<{ rows: FeeRow[]; limit: number }>("/knowledge/fees", { rows }),
 
   /** Saved answers shown to the AI only when a customer asks something like them. */
   bank: () => api.get<{ items: KnowledgeFaq[]; limit: number }>("/knowledge/bank"),
@@ -3414,6 +3428,7 @@ export type Appointment = {
   intake_channel: IntakeChannel;
   notes: string | null;
   customer_name?: string | null;
+  fee_items?: FeeItem[];
 };
 
 export const scheduling = {
@@ -3482,7 +3497,12 @@ export const scheduling = {
     starts_at: string;
     property_id?: string;
     notes?: string;
+    /** Rows ticked from the fee list. */
+    fee_ids?: string[];
   }) => api.post<Appointment>("/scheduling/appointments", data),
+
+  /** Change what a booking is for. Refused once its payment link has gone out. */
+  setFees: (id: string, fee_ids: string[]) => api.put<Appointment>(`/scheduling/appointments/${id}/fees`, { fee_ids }),
 
   cancelAppointment: (id: string, reason?: string) =>
     api.post<Appointment>(`/scheduling/appointments/${id}/cancel`, { reason }),
@@ -3636,6 +3656,7 @@ export type QueueEntry = {
   called_at: string | null;
   completed_at: string | null;
   customer_name?: string | null;
+  fee_items?: FeeItem[];
 };
 
 // ── Features (optional modules a business has switched on) ─────────────────
@@ -3696,8 +3717,11 @@ export const features = {
 };
 
 export const queue = {
-  checkIn: (data: { shift: Shift; customer_id?: string; doctor_id?: string }) =>
+  checkIn: (data: { shift: Shift; customer_id?: string; doctor_id?: string; fee_ids?: string[] }) =>
     api.post<QueueEntry>("/queue/check-in", data),
+
+  /** Change what a token is for. Refused once its payment link has gone out. */
+  setFees: (id: string, fee_ids: string[]) => api.put<QueueEntry>(`/queue/${id}/fees`, { fee_ids }),
 
   list: (params?: { doctor_id?: string; shift?: Shift; status?: QueueStatus; queue_date?: string }) => {
     const qs = new URLSearchParams();

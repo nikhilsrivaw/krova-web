@@ -53,6 +53,7 @@ import {
   cannedResponses,
   type Capability,
   type Shift,
+  type FeeItem,
   type ShiftSession,
   type ConversationItem,
   type ConversationThread,
@@ -66,6 +67,7 @@ import {
 } from "@/lib/api";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 import { CallCustomer } from "@/components/team/CallCustomer";
+import { FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 
 /** SLA-style countdown for the WhatsApp 24h free-form reply window - same
  * "don't let a deadline pass silently" pattern as the dashboard's pending-
@@ -182,7 +184,9 @@ export default function ConversationsPage() {
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
   const [bookingShift, setBookingShift] = useState<Shift | "">("");
   const [isSubmittingToken, setIsSubmittingToken] = useState(false);
-  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift } | null>(null);
+  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift; fee_items?: FeeItem[] } | null>(null);
+  const [tokenFees, setTokenFees] = useState<string[]>([]);
+  const feeRows = useFeeRows();
   const [tokenError, setTokenError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -330,8 +334,9 @@ export default function ConversationsPage() {
     setIsSubmittingToken(true);
     setTokenError(null);
     try {
-      const entry = await queueApi.checkIn({ customer_id: activeThread.customer_id, shift: bookingShift });
-      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift });
+      const entry = await queueApi.checkIn({ customer_id: activeThread.customer_id, shift: bookingShift, fee_ids: tokenFees.length ? tokenFees : undefined });
+      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift, fee_items: entry.fee_items });
+      setTokenFees([]);
     } catch (err) {
       setTokenError(err instanceof Error ? err.message : "Could not book a token.");
     } finally {
@@ -1342,10 +1347,11 @@ export default function ConversationsPage() {
                   </button>
                 ) : (
                   <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                    {tokenResult ? (
+                    {tokenResult ? (<>
                       <p className="text-xs text-emerald-400 text-center font-semibold">
                         Booked: {tokenResult.shift} #{tokenResult.queue_number}
                       </p>
+                      <FeeItemsLine items={tokenResult.fee_items} className="text-center" /></>
                     ) : (
                       <>
                         {tokenError && <p className="text-[11px] text-red-400">{tokenError}</p>}
@@ -1363,6 +1369,7 @@ export default function ConversationsPage() {
                                 <option key={s.id} value={s.shift}>{s.shift}</option>
                               ))}
                             </select>
+                            <FeePicker rows={feeRows} value={tokenFees} onChange={setTokenFees} />
                             <button
                               type="button"
                               onClick={handleBookToken}

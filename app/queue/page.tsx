@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Clock, UserPlus, Check, SkipForward, PhoneCall, Sun, Moon, Siren, Lock, LockOpen, Tablet, Copy, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { EditFees, FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 import { ReceptionQr } from "@/components/queue/ReceptionQr";
 import { BookingPaymentStrip } from "@/components/payments/BookingPaymentStrip";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -62,6 +63,8 @@ export default function QueuePage() {
   const [checkInShift, setCheckInShift] = useState<Shift | "">("");
   const [checkInCustomerId, setCheckInCustomerId] = useState("");
   const [checkInDoctorId, setCheckInDoctorId] = useState("");
+  const [checkInFees, setCheckInFees] = useState<string[]>([]);
+  const feeRows = useFeeRows();
   const [isCheckingIn, setIsCheckingIn] = useState(false);
 
   const [kioskToken, setKioskToken] = useState<string | null>(null);
@@ -165,15 +168,19 @@ export default function QueuePage() {
         shift: checkInShift,
         customer_id: checkInCustomerId || undefined,
         doctor_id: checkInDoctorId || undefined,
+        fee_ids: checkInFees.length ? checkInFees : undefined,
       });
       setEntries((prev) => [...prev, created]);
       setCheckInCustomerId("");
+      setCheckInFees([]);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : `Could not check this ${labels?.person ?? "customer"} in.`);
     } finally {
       setIsCheckingIn(false);
     }
   };
+
+  const replaceEntry = (updated: QueueEntry) => setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
 
   const advance = async (id: string, status: QueueStatus) => {
     setActionError(null);
@@ -365,7 +372,8 @@ export default function QueuePage() {
           {!anyShiftOpen ? (
             <p className="text-xs text-os-text-dim">Open a shift above before checking anyone in.</p>
           ) : (
-            <form onSubmit={handleCheckIn} className="flex flex-col sm:flex-row gap-3">
+            <form onSubmit={handleCheckIn} className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <select
                 required
                 value={checkInShift}
@@ -402,6 +410,8 @@ export default function QueuePage() {
               >
                 {isCheckingIn ? "Checking in..." : "Check In"}
               </button>
+            </div>
+            <FeePicker rows={feeRows} value={checkInFees} onChange={setCheckInFees} />
             </form>
           )}
         </GlassCard>
@@ -429,6 +439,7 @@ export default function QueuePage() {
                       <div>
                         <p className="text-sm font-semibold text-white">{customerName(entry.customer_id)}</p>
                         {doctorName(entry.doctor_id) && <p className="text-[10px] text-os-text-dim">{doctorName(entry.doctor_id)}</p>}
+                        <EditFees kind="token" booking={entry} rows={feeRows} onSaved={replaceEntry} />
                       </div>
                       <Badge variant={STATUS_BADGE[entry.status]} size="sm">{statusLabel[entry.status]}</Badge>
                     </div>
@@ -457,6 +468,7 @@ export default function QueuePage() {
                       <div>
                         <p className="text-sm font-semibold text-white">{customerName(entry.customer_id)}</p>
                         {doctorName(entry.doctor_id) && <p className="text-[10px] text-os-text-dim">{doctorName(entry.doctor_id)}</p>}
+                        <EditFees kind="token" booking={entry} rows={feeRows} onSaved={replaceEntry} />
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -490,6 +502,7 @@ export default function QueuePage() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-mono text-os-text-dim">{labels.shifts[entry.shift]} #{entry.queue_number}</span>
                       <p className="text-xs text-white">{customerName(entry.customer_id)}</p>
+                      <FeeItemsLine items={entry.fee_items} />
                     </div>
                     <Badge variant={STATUS_BADGE[entry.status]} size="sm">{statusLabel[entry.status]}</Badge>
                   </GlassCard>

@@ -9,6 +9,7 @@ import {
 import { Sheet } from "@/components/app-shell/Sheet";
 import { CustomerPicker } from "@/components/app-shell/CustomerPicker";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { EditFees, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 
 const SHIFTS: Shift[] = ["morning", "evening", "emergency"];
 const POLL_MS = 15000;
@@ -28,9 +29,11 @@ export default function AppQueuePage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const [checking, setChecking] = useState(false);
-  const [draft, setDraft] = useState<{ shift: Shift | ""; customer: { id: string; name: string } | null; doctorId: string }>(
-    { shift: "", customer: null, doctorId: "" },
+  const [draft, setDraft] = useState<{ shift: Shift | ""; customer: { id: string; name: string } | null; doctorId: string; feeIds: string[] }>(
+    { shift: "", customer: null, doctorId: "", feeIds: [] },
   );
+  const feeRows = useFeeRows();
+  const replace = (updated: QueueEntry) => setEntries((prev) => prev?.map((x) => (x.id === updated.id ? updated : x)) ?? prev);
 
   const load = useCallback(async () => {
     try {
@@ -98,7 +101,7 @@ export default function AppQueuePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-os-ink flex items-center gap-2"><Ticket className="w-4 h-4 text-teal" /> Queue</h1>
         <button type="button" disabled={openShifts.length === 0}
-          onClick={() => { setChecking(true); setDraft({ shift: openShifts[0] ?? "", customer: null, doctorId: "" }); }}
+          onClick={() => { setChecking(true); setDraft({ shift: openShifts[0] ?? "", customer: null, doctorId: "", feeIds: [] }); }}
           className="px-3 py-1.5 rounded-lg bg-teal/10 border border-teal/25 text-[11px] font-semibold text-teal flex items-center gap-1.5 disabled:opacity-40">
           <UserPlus className="w-3.5 h-3.5" /> Check in
         </button>
@@ -128,6 +131,7 @@ export default function AppQueuePage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-os-ink truncate">{who(e)}</p>
                 <p className="text-[10px] text-os-text-dim">{shiftName(e.shift)}{doctor(e.doctor_id) ? ` · ${doctor(e.doctor_id)}` : ""}</p>
+                <EditFees kind="token" booking={e} rows={feeRows} onSaved={replace} />
               </div>
               <button type="button" disabled={busy === e.id} onClick={() => move(e.id, "done")}
                 className="px-3.5 py-2 rounded-xl bg-teal text-os-bg text-xs font-bold disabled:opacity-40">Done</button>
@@ -154,6 +158,7 @@ export default function AppQueuePage() {
                   </p>
                 </div>
               </div>
+              <EditFees kind="token" booking={e} rows={feeRows} onSaved={replace} />
               <div className="flex gap-2">
                 <button type="button" disabled={busy === e.id} onClick={() => move(e.id, "in_consultation")}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold disabled:opacity-40 ${i === 0 ? "bg-teal text-os-bg" : "bg-white/[0.06] text-os-ink"}`}>
@@ -176,7 +181,10 @@ export default function AppQueuePage() {
             if (!draft.shift) return;
             setBusy("check"); setError(null);
             try {
-              const created = await queueApi.checkIn({ shift: draft.shift, customer_id: draft.customer?.id, doctor_id: draft.doctorId || undefined });
+              const created = await queueApi.checkIn({
+                shift: draft.shift, customer_id: draft.customer?.id, doctor_id: draft.doctorId || undefined,
+                fee_ids: draft.feeIds.length ? draft.feeIds : undefined,
+              });
               setEntries((prev) => [...(prev ?? []), { ...created, customer_name: draft.customer?.name ?? null }]);
               setChecking(false);
             } catch (err) {
@@ -195,6 +203,7 @@ export default function AppQueuePage() {
               {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           )}
+          <FeePicker rows={feeRows} value={draft.feeIds} onChange={(feeIds) => setDraft({ ...draft, feeIds })} />
           {error && <p className="text-xs text-rose-400">{error}</p>}
           <button type="submit" disabled={!draft.shift || busy === "check"} className="w-full py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold disabled:opacity-40">
             {busy === "check" ? "Checking in…" : `Give ${ticket}`}

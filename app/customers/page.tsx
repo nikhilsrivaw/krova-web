@@ -34,6 +34,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { PipelineBoard } from "@/components/crm/PipelineBoard";
+import { FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 import {
   ledger,
   crm,
@@ -47,6 +48,7 @@ import {
   type CustomerNote,
   type Capability,
   type Shift,
+  type FeeItem,
   type ShiftSession,
 } from "@/lib/api";
 
@@ -115,7 +117,9 @@ export default function CustomersPage() {
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
   const [bookingShift, setBookingShift] = useState<Shift | "">("");
   const [isSubmittingToken, setIsSubmittingToken] = useState(false);
-  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift } | null>(null);
+  const [tokenResult, setTokenResult] = useState<{ queue_number: number; shift: Shift; fee_items?: FeeItem[] } | null>(null);
+  const [tokenFees, setTokenFees] = useState<string[]>([]);
+  const feeRows = useFeeRows();
   const [tokenError, setTokenError] = useState<string | null>(null);
 
   const openBookingPanel = async () => {
@@ -134,8 +138,9 @@ export default function CustomersPage() {
     setIsSubmittingToken(true);
     setTokenError(null);
     try {
-      const entry = await queueApi.checkIn({ customer_id: selectedCustomer.id, shift: bookingShift });
-      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift });
+      const entry = await queueApi.checkIn({ customer_id: selectedCustomer.id, shift: bookingShift, fee_ids: tokenFees.length ? tokenFees : undefined });
+      setTokenResult({ queue_number: entry.queue_number, shift: entry.shift, fee_items: entry.fee_items });
+      setTokenFees([]);
     } catch (err) {
       setTokenError(err instanceof Error ? err.message : "Could not book a token.");
     } finally {
@@ -1233,10 +1238,11 @@ export default function CustomersPage() {
                     </button>
                   ) : (
                     <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
-                      {tokenResult ? (
+                      {tokenResult ? (<>
                         <p className="text-xs text-emerald-400 text-center font-semibold">
                           Booked: {tokenResult.shift} #{tokenResult.queue_number}
                         </p>
+                        <FeeItemsLine items={tokenResult.fee_items} className="text-center" /></>
                       ) : (
                         <>
                           {tokenError && <p className="text-[11px] text-red-400">{tokenError}</p>}
@@ -1254,6 +1260,7 @@ export default function CustomersPage() {
                                   <option key={s.id} value={s.shift}>{s.shift}</option>
                                 ))}
                               </select>
+                              <FeePicker rows={feeRows} value={tokenFees} onChange={setTokenFees} />
                               <button
                                 type="button"
                                 onClick={handleBookToken}

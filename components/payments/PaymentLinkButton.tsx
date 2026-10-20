@@ -121,7 +121,7 @@ export function PaymentLinkButton({
       <div className="flex flex-wrap items-center gap-2">
         {askAmount && (
           <input type="number" min="1" value={rupees} onChange={(e) => setRupees(e.target.value)}
-            placeholder={target.kind === "commitment" ? "" : "₹ amount (blank = doctor's fee)"} className={`${input} w-44`} />
+            placeholder={target.kind === "commitment" ? "" : "₹ amount (blank = ticked tests / usual fee)"} className={`${input} w-60`} />
         )}
         {needsTemplate && (
           templateNames.length ? (

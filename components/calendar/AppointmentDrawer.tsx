@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { CalendarClock, CheckCircle2, Clock, Home, Phone, Repeat, UserX, Undo2, XCircle } from "lucide-react";
 import { Drawer } from "@/components/ui/Drawer";
+import { EditFees, useFeeRows } from "@/components/fees/FeePicker";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { scheduling, type Appointment, type SchedulingLabels, type Slot } from "@/lib/api";
 import { STATUS_LOOK, formatClock, formatDay, dayOf, todayKey } from "./calendarUtils";
 
@@ -28,6 +30,7 @@ export function AppointmentDrawer({ appointment, labels, color, customerName, pr
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slot, setSlot] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const feeRows = useFeeRows();
 
   useEffect(() => {
     setMode("view");
@@ -99,6 +102,14 @@ export function AppointmentDrawer({ appointment, labels, color, customerName, pr
           )}
           {appointment.notes && <Row icon={<CalendarClock className="h-3.5 w-3.5" />} label="Notes">{appointment.notes}</Row>}
         </dl>
+
+        {/* what it is for, from the fee list, and its fee as a payment link */}
+        <div className="space-y-2">
+          <EditFees kind="appointment" booking={appointment} rows={feeRows} onSaved={onChanged} />
+          {appointment.status !== "cancelled" && (
+            <PaymentLinkButton key={appointment.id} target={{ kind: "appointment", id: appointment.id }} askAmount compact />
+          )}
+        </div>
 
         {error && (
           <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>

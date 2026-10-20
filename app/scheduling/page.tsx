@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { BookingPaymentStrip } from "@/components/payments/BookingPaymentStrip";
+import { FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -122,6 +123,8 @@ export default function SchedulingPage() {
   const [openSlots, setOpenSlots] = useState<Slot[]>([]);
   const [bookSlot, setBookSlot] = useState("");
   const [bookNotes, setBookNotes] = useState("");
+  const [bookFees, setBookFees] = useState<string[]>([]);
+  const feeRows = useFeeRows();
   const [isBooking, setIsBooking] = useState(false);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
@@ -324,6 +327,7 @@ export default function SchedulingPage() {
     setOpenSlots([]);
     setBookSlot("");
     setBookNotes("");
+    setBookFees([]);
     setIsBookModalOpen(true);
   };
 
@@ -336,6 +340,7 @@ export default function SchedulingPage() {
     setOpenSlots([]);
     setBookSlot("");
     setBookNotes("");
+    setBookFees([]);
     setIsBookModalOpen(true);
   };
 
@@ -383,6 +388,7 @@ export default function SchedulingPage() {
           starts_at: bookSlot,
           property_id: bookPropertyId || undefined,
           notes: bookNotes || undefined,
+          fee_ids: bookFees.length ? bookFees : undefined,
         });
         setAppointments((prev) => [...prev, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
       }
@@ -554,7 +560,7 @@ export default function SchedulingPage() {
                             })}
                           </td>
                           <td className="px-4 py-3 text-white/90">{a.doctor_name}</td>
-                          <td className="px-4 py-3 text-white/90">{customerName(a.customer_id)}</td>
+                          <td className="px-4 py-3 text-white/90">{customerName(a.customer_id)}<FeeItemsLine items={a.fee_items} /></td>
                           {hasPropertyListings && (
                             <td className="px-4 py-3 text-os-text-dim">
                               {propertyTitle(a.property_id) || "—"}
@@ -846,6 +852,7 @@ export default function SchedulingPage() {
                 <textarea rows={2} value={bookNotes} onChange={(e) => setBookNotes(e.target.value)} className="w-full p-3 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none" />
               </div>
             )}
+            {!reschedulingAppointment && <FeePicker rows={feeRows} value={bookFees} onChange={setBookFees} />}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={closeBookModal} className="px-4 py-2 rounded-lg text-xs font-semibold text-os-text-dim hover:text-white">
                 Cancel
