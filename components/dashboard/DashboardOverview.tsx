@@ -11,6 +11,8 @@ import { formatPaise, type AnalyticsOverview, type Commitment, type MessageDraft
 
 interface DashboardOverviewProps {
   owedToUs: number;
+  /** The owner keeps business totals from team members (Team page) - the totals show as a dash. */
+  moneyHidden?: boolean;
   overduePaise: number;
   overdueCount: number;
   pendingCount: number;
@@ -94,7 +96,7 @@ function DraftText({ body }: { body: string | null }) {
 
 /** Presentation only. Request scopes, review limits and financial calculations stay in the page. */
 export function DashboardOverview({
-  owedToUs, overduePaise, overdueCount, pendingCount, openCount, unconfirmedCount,
+  owedToUs, moneyHidden = false, overduePaise, overdueCount, pendingCount, openCount, unconfirmedCount,
   pendingDrafts, overdueCommitments, overview, waReadiness, isLoading, loadError, expiryUrgency, channelMeta,
 }: DashboardOverviewProps) {
   return (
@@ -127,11 +129,11 @@ export function DashboardOverview({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-sm font-medium text-os-text-dim"><Layers className="h-4 w-4 text-teal-bright" aria-hidden="true" /> Owed to you</p>
               <span className="rounded-full border border-teal/20 bg-teal/[0.07] px-2.5 py-1 text-[11px] text-teal-bright">
-                {isLoading ? "Loading commitments…" : `${openCount} open commitments`}
+                {isLoading ? "Loading commitments…" : moneyHidden ? "Owner and admins only" : `${openCount} open commitments`}
               </span>
             </div>
             <p className="mt-6 break-words text-[clamp(1.8rem,4vw,3rem)] font-medium leading-tight tracking-[-0.04em] text-white tabular-nums">
-              {isLoading ? <Skeleton className="h-12 w-48 max-w-full" /> : formatPaise(owedToUs)}
+              {isLoading ? <Skeleton className="h-12 w-48 max-w-full" /> : moneyHidden ? "—" : formatPaise(owedToUs)}
             </p>
             <p className="mt-2 text-xs leading-5 text-os-text-dim">Total receivables captured from customer commitments.</p>
           </div>
@@ -143,8 +145,8 @@ export function DashboardOverview({
 
         <div className="grid min-w-0 grid-cols-2 gap-3">
           <Link href="/ledger?filter=overdue" className="workspace-panel group col-span-2 flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:border-white/20 sm:px-6">
-            <div className="min-w-0 max-w-full"><p className="text-xs font-medium text-os-text-dim">Overdue receivables</p><p className="mt-1.5 break-words text-2xl font-medium tracking-tight text-rose-300 tabular-nums">{isLoading ? <Skeleton className="h-8 w-28" /> : formatPaise(overduePaise)}</p></div>
-            <div className="flex items-center gap-3"><span className="text-right text-xs leading-5 text-os-text-dim">{isLoading ? "Loading commitments…" : <>{overdueCount} promises<br />past their deadline</>}</span><ArrowUpRight className="h-4 w-4 text-os-text-dim transition-colors group-hover:text-teal-bright" aria-hidden="true" /></div>
+            <div className="min-w-0 max-w-full"><p className="text-xs font-medium text-os-text-dim">Overdue receivables</p><p className="mt-1.5 break-words text-2xl font-medium tracking-tight text-rose-300 tabular-nums">{isLoading ? <Skeleton className="h-8 w-28" /> : moneyHidden ? "—" : formatPaise(overduePaise)}</p></div>
+            <div className="flex items-center gap-3"><span className="text-right text-xs leading-5 text-os-text-dim">{isLoading ? "Loading commitments…" : moneyHidden ? <>Open the ledger<br />for your customers</> : <>{overdueCount} promises<br />past their deadline</>}</span><ArrowUpRight className="h-4 w-4 text-os-text-dim transition-colors group-hover:text-teal-bright" aria-hidden="true" /></div>
           </Link>
           <Link href="/approvals" className="workspace-panel group min-w-0 p-4 transition-colors hover:border-white/20 sm:p-5">
             <div className="flex items-center justify-between gap-2"><p className="text-xs font-medium text-os-text-dim">Drafts to review</p><ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-os-text-dim group-hover:text-teal-bright" aria-hidden="true" /></div>

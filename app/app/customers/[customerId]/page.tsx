@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, MessageSquare, Phone, Plus, Trash2, X } from "lucide-react";
 import {
-  account, crm, formatPaise, ledger,
+  account, crm, dialable, formatPaise, ledger,
   type CustomerDate, type CustomerNote, type CustomerSummary, type CustomerTag,
 } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
@@ -81,7 +81,7 @@ export default function AppCustomerPage() {
           <a href={appPath(`/inbox/${c.id}`)} className="flex-1 py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold flex items-center justify-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" /> Open chat
           </a>
-          {phone && (
+          {dialable(phone) && (
             <a href={`tel:${phone}`} className="flex-1 py-2.5 rounded-xl bg-white/[0.06] text-os-ink text-xs font-semibold flex items-center justify-center gap-1.5">
               <Phone className="w-3.5 h-3.5" /> Call from my phone
             </a>

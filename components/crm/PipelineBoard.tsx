@@ -47,14 +47,14 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
           return {
             ...col,
             customers: col.customers.filter((c) => c.customer_id !== card.customer_id),
-            total_deal_value_paise: col.total_deal_value_paise - (card.deal_value_paise || 0),
+            total_deal_value_paise: col.total_deal_value_paise === null ? null : col.total_deal_value_paise - (card.deal_value_paise || 0),
           };
         }
         if (col.stage === toStage) {
           return {
             ...col,
             customers: [card, ...col.customers],
-            total_deal_value_paise: col.total_deal_value_paise + (card.deal_value_paise || 0),
+            total_deal_value_paise: col.total_deal_value_paise === null ? null : col.total_deal_value_paise + (card.deal_value_paise || 0),
           };
         }
         return col;
@@ -109,10 +109,10 @@ export function PipelineBoard({ onOpenCustomer }: { onOpenCustomer: (customerId:
               <span className="text-xs font-bold text-white">{col.stage ?? "Unstaged"}</span>
               <span className="text-[10px] font-mono text-os-text-dim">{col.customers.length}</span>
             </div>
-            {col.total_deal_value_paise > 0 && (
+            {(col.total_deal_value_paise ?? 0) > 0 && (
               <p className="text-[11px] font-mono text-seal-bright mt-0.5 flex items-center gap-0.5">
                 <IndianRupee className="w-2.5 h-2.5" />
-                {formatPaise(col.total_deal_value_paise)}
+                {formatPaise(col.total_deal_value_paise ?? 0)}
               </p>
             )}
           </div>

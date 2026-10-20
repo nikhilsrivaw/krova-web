@@ -62,6 +62,7 @@ import {
   type CustomerNote,
   type CannedResponse,
   type CustomerSummary,
+  sendAddress,
 } from "@/lib/api";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 import { CallCustomer } from "@/components/team/CallCustomer";
@@ -266,7 +267,7 @@ export default function ConversationsPage() {
   };
 
   const handleSendCanned = async (canned: CannedResponse) => {
-    const to = activeThread ? phoneOf(activeThread.identities) : null;
+    const to = activeThread ? sendAddress(activeThread.identities, activeThread.customer_id) : null;
     if (!to) return;
     setIsSendingCanned(true);
     setCannedError(null);
@@ -284,7 +285,7 @@ export default function ConversationsPage() {
 
   const handleSendReply = async () => {
     if (!activeThread || !replyBody.trim()) return;
-    const phone = phoneOf(activeThread.identities);
+    const phone = sendAddress(activeThread.identities, activeThread.customer_id);
     const igsid = igsidOf(activeThread.identities);
     setIsSendingReply(true);
     setReplyError(null);
@@ -523,7 +524,7 @@ export default function ConversationsPage() {
 
   const handleQuickSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    const to = activeThread ? phoneOf(activeThread.identities) : null;
+    const to = activeThread ? sendAddress(activeThread.identities, activeThread.customer_id) : null;
     if (!to) return;
     setIsSendingQuick(true);
     setQuickSendError(null);

@@ -337,6 +337,39 @@ export function MembersCard() {
               <option value="assigned">Their own and unowned chats</option>
             </select>
           </label>
+          <div className="pt-2 border-t border-white/[0.06] space-y-3">
+            <p className="text-[11px] font-mono uppercase tracking-wide text-os-text-dim">Agents can also</p>
+            {([
+              ["agent_money", false, "See business money", "What you are owed in total, overdue totals, deal values and call costs. Each customer's own dues stay visible."],
+              ["agent_payments", true, "Take payments", "Record a payment and send a payment link."],
+              ["agent_templates", true, "Send templates", "Reach a customer with an approved template after the 24-hour window closes."],
+            ] as const).map(([key, fallback, title, hint]) => (
+              <label key={key} className="flex items-start gap-2.5 text-xs text-white cursor-pointer">
+                <input
+                  type="checkbox" className="mt-0.5 accent-teal" checked={prefs[key] ?? fallback}
+                  onChange={(e) => savePrefs({ ...prefs, [key]: e.target.checked })}
+                />
+                <span>
+                  {title}
+                  <span className="block text-[11px] text-os-text-dim">{hint}</span>
+                </span>
+              </label>
+            ))}
+            <label className="flex items-center justify-between gap-3 text-xs text-white">
+              <span>
+                Customer phone numbers
+                <span className="block text-[11px] text-os-text-dim">Hidden numbers show only the last 4 digits. Agents can still message and call through KROVA.</span>
+              </span>
+              <select
+                value={prefs.agent_phones ?? "shown"}
+                onChange={(e) => savePrefs({ ...prefs, agent_phones: e.target.value as "shown" | "last4" })}
+                className="px-2 py-1 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-teal focus:outline-none"
+              >
+                <option value="shown">Shown</option>
+                <option value="last4">Last 4 digits only</option>
+              </select>
+            </label>
+          </div>
         </GlassCard>
       )}
       <p className="mt-2 text-[11px] text-os-text-dim">

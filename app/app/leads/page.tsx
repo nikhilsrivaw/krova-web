@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquare, Phone, Search, UserPlus2 } from "lucide-react";
-import { leads, type LeadRow } from "@/lib/api";
+import { dialable, leads, type LeadRow } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 
 const ago = (iso: string) => {
@@ -72,7 +72,7 @@ export default function AppLeadsPage() {
               </div>
               {l.query && <p className="text-xs text-os-text-dim line-clamp-3">{l.query}</p>}
               <div className="flex gap-2">
-                {l.phone && (
+                {dialable(l.phone) && (
                   <a href={`tel:${l.phone}`} className="flex-1 py-2 rounded-xl bg-white/[0.06] text-xs font-semibold text-os-ink flex items-center justify-center gap-1.5">
                     <Phone className="w-3.5 h-3.5" /> Call
                   </a>

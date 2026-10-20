@@ -28,7 +28,9 @@ import {
   type ConversationThread,
   type MessageDraft,
   type Identity,
+  sendAddress,
 } from "@/lib/api";
+import { useRole } from "@/lib/useRole";
 import { appPath } from "@/lib/app-nav";
 import { useThreadPresence } from "@/lib/useThreadPresence";
 import { DraftCarouselOption } from "@/components/approvals/DraftCarouselOption";
@@ -61,6 +63,7 @@ function igsidOf(identities: Identity[]): string | null {
  * conversation in the app must stay in the app.
  */
 export default function AppConversationThreadPage() {
+  const { allowed } = useRole();
   const params = useParams<{ customerId: string }>();
   const router = useRouter();
   const customerId = params.customerId;
@@ -152,7 +155,7 @@ export default function AppConversationThreadPage() {
 
   const handleSendReply = async () => {
     if (!thread || !replyBody.trim()) return;
-    const phone = phoneOf(thread.identities);
+    const phone = sendAddress(thread.identities, thread.customer_id);
     const igsid = igsidOf(thread.identities);
     setIsSendingReply(true);
     setReplyError(null);
@@ -451,13 +454,17 @@ export default function AppConversationThreadPage() {
           <p className="text-[11px] text-os-text-dim">
             They haven&apos;t written in 24 hours - WhatsApp only allows an approved template until they reply.
           </p>
-          <button
-            type="button"
-            onClick={() => setTemplateOpen(true)}
-            className="w-full py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98]"
-          >
-            <FileText className="w-3.5 h-3.5" /> Send a template
-          </button>
+          {allowed.send_templates ? (
+            <button
+              type="button"
+              onClick={() => setTemplateOpen(true)}
+              className="w-full py-2.5 rounded-xl bg-teal text-os-bg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            >
+              <FileText className="w-3.5 h-3.5" /> Send a template
+            </button>
+          ) : (
+            <p className="text-[11px] text-os-ink">Only the owner or an admin can send templates here - ask them, or call the customer.</p>
+          )}
         </div>
       )}
 
@@ -496,7 +503,7 @@ export default function AppConversationThreadPage() {
       {thread && phoneOf(thread.identities) && (
         <TemplateSheet
           open={templateOpen}
-          phone={phoneOf(thread.identities) as string}
+          phone={sendAddress(thread.identities, thread.customer_id) as string}
           onClose={() => setTemplateOpen(false)}
           onSent={(text) => echoOutbound(text, "whatsapp")}
         />

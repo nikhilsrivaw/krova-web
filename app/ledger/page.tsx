@@ -28,6 +28,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
+import { useRole } from "@/lib/useRole";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import {
   ledger,
@@ -60,6 +61,8 @@ const FILTERS: { key: FilterType; label: string }[] = [
 ];
 
 export default function LedgerPage() {
+  // The owner can keep payments to the owner and admins (Team page).
+  const { allowed } = useRole();
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -131,6 +134,7 @@ export default function LedgerPage() {
     setIsLoading(true);
     setLoadError(null);
     const [sumRes, comRes] = await Promise.allSettled([
+      // Refused when the owner keeps business totals from team members - the cards then stay hidden.
       ledger.summary(),
       ledger.commitments({
         direction: filter === "they_owe" ? "they_owe" : filter === "we_owe" ? "we_owe" : undefined,
@@ -142,7 +146,7 @@ export default function LedgerPage() {
     if (sumRes.status === "fulfilled") setSummary(sumRes.value);
     if (comRes.status === "fulfilled") setCommitments(comRes.value);
 
-    const failed = [sumRes, comRes].find((r) => r.status === "rejected");
+    const failed = [...(allowed.see_money ? [sumRes] : []), comRes].find((r) => r.status === "rejected");
     if (failed && failed.status === "rejected") {
       setLoadError(
         failed.reason instanceof Error ? failed.reason.message : "Could not load the ledger.",
@@ -262,6 +266,7 @@ export default function LedgerPage() {
         )}
 
         {/* Metric Summary Ribbon */}
+        {allowed.see_money && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
             title="Owed to You"
@@ -297,6 +302,7 @@ export default function LedgerPage() {
             badgeText="Quarantine"
           />
         </div>
+        )}
 
         {/* Filter Navigation Tabs */}
         <div className="workspace-tabs border-b border-white/[0.08]">
@@ -566,6 +572,7 @@ export default function LedgerPage() {
               {selectedCommitment.direction === "they_owe" &&
                 selectedCommitment.status === "open" &&
                 selectedCommitment.amount_paise != null &&
+                allowed.take_payments &&
                 orderDetailsTemplates.length > 0 && (
                   <div className="pt-4 border-t border-white/[0.06] space-y-2">
                     <h5 className="text-xs font-mono uppercase text-os-text-dim flex items-center gap-2">
@@ -609,7 +616,7 @@ export default function LedgerPage() {
                   "baaki next week" are how fees and retainers really get
                   paid; marking the whole thing met or leaving it fully
                   owed both make the Ledger wrong. */}
-              {selectedCommitment.status === "open" && selectedCommitment.kind === "payment" && (
+              {selectedCommitment.status === "open" && selectedCommitment.kind === "payment" && allowed.take_payments && (
                 <div className="pt-4 border-t border-white/[0.06] space-y-2">
                   <h5 className="text-xs font-mono uppercase text-os-text-dim">Record payment received:</h5>
                   <div className="flex gap-2">

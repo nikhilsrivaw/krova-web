@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Check, Copy, Link2, RefreshCw } from "lucide-react";
 import { payments, templates as templatesApi, type PaymentLink, type PaymentLinkSend } from "@/lib/api";
+import { useRole } from "@/lib/useRole";
 
 type Target =
   | { kind: "commitment"; id: string }
@@ -28,6 +29,8 @@ export function PaymentLinkButton({
   const [result, setResult] = useState<PaymentLinkSend | null>(null);
   const [link, setLink] = useState<PaymentLink | null>(null);
   const [copied, setCopied] = useState(false);
+  // The owner can keep payments to the owner and admins (Team page).
+  const { allowed } = useRole();
 
   useEffect(() => {
     if (!needsTemplate) return;
@@ -76,6 +79,8 @@ export function PaymentLinkButton({
     if (!link) return;
     try { await navigator.clipboard.writeText(link.short_url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
+
+  if (!allowed.take_payments) return null;
 
   if (!open && !link) {
     return (

@@ -5,6 +5,7 @@ import { Wallet, ChevronDown, Check, X, IndianRupee, MessageSquare } from "lucid
 import { ledger, formatPaise, type Commitment, type LedgerSummary } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { useRole } from "@/lib/useRole";
 
 type DirectionFilter = "they_owe" | "we_owe";
 
@@ -15,6 +16,7 @@ type DirectionFilter = "they_owe" | "we_owe";
  * "More" with everything else that's fine to open on a bigger screen.
  */
 export default function AppLedgerPage() {
+  const { allowed } = useRole();
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [direction, setDirection] = useState<DirectionFilter>("they_owe");
   const [commitments, setCommitments] = useState<Commitment[]>([]);
@@ -207,7 +209,7 @@ export default function AppLedgerPage() {
                         <MessageSquare className="w-3.5 h-3.5" /> Open chat
                       </a>
                     </div>
-                    {direction === "they_owe" && (
+                    {direction === "they_owe" && allowed.take_payments && (
                       <div className="flex gap-2">
                         <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-black/30 border border-os-border">
                           <IndianRupee className="w-3.5 h-3.5 text-os-text-dim mr-1 shrink-0" />

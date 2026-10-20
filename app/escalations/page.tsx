@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
-import { account, assignedToOther, escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
+import { account, assignedToOther, dialable, escalations, ledger, signals as signalsApi, type EscalationRow, type CustomerSummary } from "@/lib/api";
 import { getUserId } from "@/lib/auth";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -275,11 +275,11 @@ export default function EscalationsPage() {
                       ? e.assigned_to_user_id === myUserId ? "You have this" : `With ${e.assigned_to_name ?? "a teammate"}`
                       : "Nobody has this yet"}
                   </span>
-                  {e.caller_phone && (
+                  {e.caller_phone && (dialable(e.caller_phone) ? (
                     <a href={`tel:${e.caller_phone}`} className="text-brass-bright hover:underline">
                       Call {e.caller_phone}
                     </a>
-                  )}
+                  ) : <span>Caller {e.caller_phone}</span>)}
                   {e.due_at && <span>Due {new Date(e.due_at).toLocaleString()}</span>}
                   {e.resolution_note && <span>Note: {e.resolution_note}</span>}
                 </div>
@@ -358,11 +358,11 @@ export default function EscalationsPage() {
                   {selected.channel === "voice" ? "Call back on" : "Contact"}
                 </div>
                 <div className="text-white">
-                  {selected.caller_phone ? (
+                  {selected.caller_phone ? (dialable(selected.caller_phone) ? (
                     <a href={`tel:${selected.caller_phone}`} className="text-brass-bright hover:underline">
                       {selected.caller_phone}
                     </a>
-                  ) : selected.channel === "voice" ? (
+                  ) : selected.caller_phone) : selected.channel === "voice" ? (
                     "Caller number was not recorded"
                   ) : selected.channel === "whatsapp" ? (
                     "Reply in the WhatsApp chat"

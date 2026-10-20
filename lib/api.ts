@@ -620,7 +620,7 @@ export type ContactImportResult = {
 export type CustomerSummary = {
   id: string;
   name: string | null;
-  identities: { kind: string; value: string }[];
+  identities: Identity[];
   last_contact_at: string | null;
   open_commitments: number;
   is_private: boolean;
@@ -686,7 +686,8 @@ export type PipelineCard = {
 export type PipelineColumn = {
   /** null is the "not staged yet" bucket - always present, always first. */
   stage: string | null;
-  total_deal_value_paise: number;
+  /** null when the owner keeps business money from team members. */
+  total_deal_value_paise: number | null;
   customers: PipelineCard[];
 };
 
@@ -836,7 +837,20 @@ export const approvals = {
 // One row per customer, not per channel - someone who emails Monday and
 // WhatsApps Wednesday is one thread, because they're one person.
 
-export type Identity = { kind: string; value: string };
+/** masked: the owner hides numbers from team members - value is only the last 4 digits; send by customer id. */
+export type Identity = { kind: string; value: string; masked?: boolean };
+/**
+ * Where a WhatsApp send goes: the customer's number - or, when it is masked, "customer:<id>", which the
+ * server turns back into their number (services/api/routers/messages.py::_recipient).
+ */
+/** False for a number masked to its last 4 digits (••••••3210) - nothing to dial. */
+export const dialable = (value?: string | null): value is string => !!value && !value.startsWith("•");
+
+export function sendAddress(identities: Identity[], customerId: string): string | null {
+  const phone = identities.find((i) => i.kind === "phone");
+  if (!phone) return null;
+  return phone.masked ? `customer:${customerId}` : phone.value;
+}
 
 export type ConversationItem = {
   customer_id: string;
@@ -992,7 +1006,22 @@ export type TeamSettings = {
   routing: "manual" | "round_robin";
   /** First-reply target in minutes; null = no reminders. */
   sla_minutes: number | null;
+  /** What agents may see and do (shared/team/settings.py). */
+  agent_money?: boolean;
+  agent_payments?: boolean;
+  agent_phones?: "shown" | "last4";
+  agent_templates?: boolean;
 };
+/** What this person may see and do - all true for the owner and admins. */
+export type Permissions = {
+  see_money: boolean;
+  take_payments: boolean;
+  see_phones: boolean;
+  send_templates: boolean;
+};
+/** Missing (an older backend) means everything is allowed - the API still refuses what is not. */
+export const can = (p: UserProfile | null | undefined, key: keyof Permissions) =>
+  p?.permissions?.[key] !== false;
 export type MyWork = {
   chats: number; drafts_waiting: number; escalations: number; cases: number;
   /** Calls I spoke on and have not written up. */
@@ -3179,6 +3208,8 @@ export type UserProfile = {
   // Sent from /auth/me, like capabilities, because every page already fetches
   // it. See QueueLabels below for how these resolve.
   queue_labels: QueueLabels;
+  /** Team page -> "What agents can see". Read it through can(). */
+  permissions?: Permissions;
 };
 
 export const account = {

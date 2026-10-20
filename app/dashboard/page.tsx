@@ -8,6 +8,7 @@ import { PendingWrapups } from "@/components/team/PendingWrapups";
 import { UnlockChannels } from "@/components/dashboard/UnlockChannels";
 import {
   account,
+  can,
   ledger,
   approvals,
   analytics,
@@ -62,6 +63,7 @@ export default function DashboardPage() {
   const [waReadiness, setWaReadiness] = useState<WhatsAppReadiness | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [moneyHidden, setMoneyHidden] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -73,8 +75,11 @@ export default function DashboardPage() {
       // for them as a team member would only put an error banner on their home screen.
       const me = await account.profile().catch(() => null);
       const supervisor = me?.role === "owner" || me?.role === "admin";
+      // The owner can keep business totals from team members (Team page) - then they are not asked for.
+      const seeMoney = can(me, "see_money");
+      if (mounted) setMoneyHidden(!seeMoney);
       const [sumRes, draftsRes, overdueRes, overRes, readinessRes] = await Promise.allSettled([
-        ledger.summary(),
+        seeMoney ? ledger.summary() : Promise.reject(new Error("skipped")),
         approvals.list("pending"),
         ledger.commitments({ overdue_only: true, direction: "they_owe", limit: 5 }),
         supervisor ? analytics.overview() : Promise.reject(new Error("skipped")),
@@ -88,7 +93,7 @@ export default function DashboardPage() {
       if (overRes.status === "fulfilled") setOverview(overRes.value);
       if (readinessRes.status === "fulfilled") setWaReadiness(readinessRes.value);
 
-      const failed = [sumRes, draftsRes, overdueRes, ...(supervisor ? [overRes] : [])].find(
+      const failed = [...(seeMoney ? [sumRes] : []), draftsRes, overdueRes, ...(supervisor ? [overRes] : [])].find(
         (r) => r.status === "rejected",
       );
       if (failed && failed.status === "rejected") {
@@ -123,6 +128,7 @@ export default function DashboardPage() {
       </div>
       <DashboardOverview
         owedToUs={owedToUs}
+        moneyHidden={moneyHidden}
         overduePaise={overduePaise}
         overdueCount={overdueCount}
         pendingCount={pendingCount}
