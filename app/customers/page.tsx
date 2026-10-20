@@ -111,6 +111,8 @@ export default function CustomersPage() {
   const [bulkTagResult, setBulkTagResult] = useState<string | null>(null);
 
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  // Deal value and marketing consent are the owner's and admins' to change.
+  const [isBoss, setIsBoss] = useState(false);
   const [isBookingToken, setIsBookingToken] = useState(false);
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
   const [bookingShift, setBookingShift] = useState<Shift | "">("");
@@ -167,7 +169,9 @@ export default function CustomersPage() {
   useEffect(() => {
     let mounted = true;
     account.profile().then((p) => {
-      if (mounted) setCapabilities(p.capabilities || []);
+      if (!mounted) return;
+      setCapabilities(p.capabilities || []);
+      setIsBoss(p.role === "owner" || p.role === "admin");
     }).catch(() => {});
     return () => {
       mounted = false;
@@ -1032,10 +1036,12 @@ export default function CustomersPage() {
                       onBlur={handleSetDealValue}
                       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
                       placeholder="What this relationship could be worth"
-                      className="w-full py-2 bg-transparent text-xs text-white placeholder:text-os-text-dim outline-none"
+                      disabled={!isBoss}
+                      className="w-full py-2 bg-transparent text-xs text-white placeholder:text-os-text-dim outline-none disabled:opacity-60"
                     />
                   </div>
                 </div>
+                {!isBoss && <p className="text-[11px] text-os-text-dim mt-1">Only the owner or an admin can change this.</p>}
               </div>
 
               {/* Marketing opt-in - WhatsApp policy + India's DPDPA require
@@ -1048,7 +1054,8 @@ export default function CustomersPage() {
                 <button
                   type="button"
                   onClick={handleToggleMarketingOptIn}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                  disabled={!isBoss}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all cursor-pointer disabled:cursor-default disabled:opacity-60 ${
                     selectedCustomer?.marketing_opt_in
                       ? "bg-seal/10 border-seal/30 text-seal-bright"
                       : "bg-white/[0.02] border-white/[0.12] text-os-text-dim hover:text-white"
@@ -1071,6 +1078,7 @@ export default function CustomersPage() {
                     />
                   </span>
                 </button>
+                {!isBoss && <p className="text-[11px] text-os-text-dim mt-1">Only the owner or an admin can change this - it is the customer&apos;s consent on record.</p>}
               </div>
 
               {/* Tags - confirmed, and suggested awaiting a yes or no */}

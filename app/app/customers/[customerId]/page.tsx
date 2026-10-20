@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, MessageSquare, Phone, Plus, Trash2, X } from "lucide-react";
 import {
-  crm, formatPaise, ledger,
+  account, crm, formatPaise, ledger,
   type CustomerDate, type CustomerNote, type CustomerSummary, type CustomerTag,
 } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
@@ -28,6 +28,8 @@ export default function AppCustomerPage() {
   const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [dates, setDates] = useState<CustomerDate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Marketing consent is the owner's and admins' to change.
+  const [isBoss, setIsBoss] = useState(false);
 
   const [newTag, setNewTag] = useState("");
   const [newNote, setNewNote] = useState("");
@@ -35,6 +37,7 @@ export default function AppCustomerPage() {
 
   useEffect(() => {
     if (!customerId) return;
+    account.profile().then((p) => setIsBoss(p.role === "owner" || p.role === "admin")).catch(() => {});
     ledger.customers({ customer_id: customerId, limit: 1 })
       .then((rows) => (rows[0] ? setC(rows[0]) : setLoadError("Customer not found.")))
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load this customer."));
@@ -113,16 +116,19 @@ export default function AppCustomerPage() {
         <label className="flex items-center justify-between gap-3 text-xs text-os-ink">
           <span>
             Marketing messages allowed
-            <span className="block text-[10px] text-os-text-dim">Only tick this if they agreed. Offers skip everyone else.</span>
+            <span className="block text-[10px] text-os-text-dim">
+              {isBoss ? "Only tick this if they agreed. Offers skip everyone else." : "The owner or an admin sets this - it is their consent on record."}
+            </span>
           </span>
           <input
             type="checkbox"
+            disabled={!isBoss}
             checked={!!c.marketing_opt_in}
             onChange={(e) => {
               const on = e.target.checked;
               run(async () => { const r = await crm.setMarketingOptIn(c.id, on); setC({ ...c, marketing_opt_in: r.marketing_opt_in }); });
             }}
-            className="w-5 h-5 accent-teal"
+            className="w-5 h-5 accent-teal disabled:opacity-50"
           />
         </label>
       </div>

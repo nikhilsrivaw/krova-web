@@ -175,6 +175,8 @@ export default function ConversationsPage() {
   );
 
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  // Only the owner and admins can mark a chat private - the rest of the team never sees one.
+  const [canMarkPrivate, setCanMarkPrivate] = useState(false);
   const [isBookingToken, setIsBookingToken] = useState(false);
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
   const [bookingShift, setBookingShift] = useState<Shift | "">("");
@@ -187,7 +189,10 @@ export default function ConversationsPage() {
       // A missing team list shouldn't block the inbox - assignment just
       // won't have anyone to offer.
     });
-    account.profile().then((p) => setCapabilities(p.capabilities || [])).catch(() => {});
+    account.profile().then((p) => {
+      setCapabilities(p.capabilities || []);
+      setCanMarkPrivate(p.role === "owner" || p.role === "admin");
+    }).catch(() => {});
     cannedResponses.list().then(setCannedList).catch(() => {
       // No canned replies configured yet - the picker just stays empty.
     });
@@ -832,6 +837,7 @@ export default function ConversationsPage() {
                 )}
 
                 {/* Mark Private Button */}
+                {canMarkPrivate && (
                 <button
                   type="button"
                   onClick={handleTogglePrivate}
@@ -853,6 +859,7 @@ export default function ConversationsPage() {
                     </>
                   )}
                 </button>
+                )}
 
                 {/* Reply: a human's own typed message. Shown whenever this
                     customer has a WhatsApp or Instagram identity at all -
