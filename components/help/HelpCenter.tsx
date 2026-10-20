@@ -7,8 +7,9 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import {
   account, help,
-  type HelpTurn, type SupportTicket, type TicketCategory, type TicketDraft, type TicketStatus,
+  type SupportTicket, type TicketCategory, type TicketDraft, type TicketStatus,
 } from "@/lib/api";
+import { takeTicketFromBubble, useBuddyChat } from "./useBuddyChat";
 
 const STARTERS = [
   "WhatsApp template kaise banaun?",
@@ -38,7 +39,8 @@ const when = (iso: string) =>
 /**
  * Help: KROVA Buddy answers questions about using KROVA from KROVA's own help articles, and when it can't (or
  * something is broken) offers a ticket to KROVA's team, prefilled from the chat. The team's reply shows here.
- * Owner and admins only - the API refuses everyone else.
+ * Owner and admins only - the API refuses everyone else. The chat is the same one the corner bubble
+ * (BuddyBubble) holds, so a question asked there carries on here.
  */
 // Inside the phone app the app's own shell is already around it - no desktop sidebar. Defined here, not inside
 // HelpCenter, so it keeps one identity across renders (a component made during render remounts everything below
@@ -57,12 +59,8 @@ export function HelpCenter({ embedded = false }: { embedded?: boolean }) {
   const [role, setRole] = useState<string | null | undefined>(undefined);
   const [from, setFrom] = useState<string | null>(null);
 
-  const [turns, setTurns] = useState<HelpTurn[]>([]);
+  const { turns, busy, error, offer, setOffer, left, ask: askBuddy, reset } = useBuddyChat(from);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [offer, setOffer] = useState<TicketDraft | null>(null);
-  const [left, setLeft] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -75,8 +73,18 @@ export function HelpCenter({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     account.profile().then((p) => setRole(p.role ?? null)).catch(() => setRole(null));
-    setFrom(new URLSearchParams(window.location.search).get("from"));
+    const params = new URLSearchParams(window.location.search);
+    const page = params.get("from");
+    setFrom(page);
     help.tickets().then(setTickets).catch(() => setTickets([]));
+    // Sent here by the corner bubble's "Raise a ticket": open the form with Buddy's draft.
+    if (params.get("ticket") === "1") {
+      const draft = takeTicketFromBubble();
+      setForm({
+        subject: draft?.subject ?? "", category: draft?.category ?? "other",
+        details: draft?.details ?? "", page: draft?.page ?? page ?? "",
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -90,26 +98,9 @@ export function HelpCenter({ embedded = false }: { embedded?: boolean }) {
   }, [formOpen]);
 
   const ask = async (text: string) => {
-    const said = text.trim();
-    if (!said || busy) return;
-    const next: HelpTurn[] = [...turns, { role: "owner", text: said.slice(0, 3000) }];
-    setTurns(next);
+    if (!text.trim() || busy) return;
     setInput("");
-    setOffer(null);
-    setError(null);
-    setBusy(true);
-    try {
-      const out = await help.ask(next.slice(-12), from);
-      setTurns([...next, { role: "ai", text: out.answer.slice(0, 3000) }]);
-      setOffer(out.offer_ticket ? out.ticket ?? { subject: "", category: "other", details: said } : null);
-      setLeft(`${Math.max(0, out.limit - out.used)} of ${out.limit} answers left this month`);
-    } catch (err) {
-      setTurns(turns);
-      setInput(said);
-      setError(err instanceof Error ? err.message : "KROVA Buddy could not answer - try again.");
-    } finally {
-      setBusy(false);
-    }
+    if (!(await askBuddy(text))) setInput(text.trim());
   };
 
   const startTicket = (draft?: TicketDraft | null) => {
@@ -172,7 +163,7 @@ export function HelpCenter({ embedded = false }: { embedded?: boolean }) {
             {turns.length > 0 && (
               <button
                 type="button"
-                onClick={() => { setTurns([]); setOffer(null); setError(null); }}
+                onClick={reset}
                 className="shrink-0 flex items-center gap-1 text-[11px] text-os-text-dim hover:text-white cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" /> New chat

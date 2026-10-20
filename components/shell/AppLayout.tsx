@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangle, Menu } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
 import { CommandPalette } from "./CommandPalette";
+import { BuddyBubble } from "@/components/help/BuddyBubble";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 import { WorkspaceDesign } from "../ui/WorkspaceDesign";
 import { WorkspaceContent } from "./WorkspaceContent";
@@ -186,6 +187,9 @@ export function AppLayout({
         onSetAutonomy={handleSetAutonomy}
         role={profile?.role ?? null}
       />
+
+      {/* KROVA Buddy in the corner - owner and admins */}
+      <BuddyBubble />
     </div>
     </WorkspaceDesign.Provider>
   );
