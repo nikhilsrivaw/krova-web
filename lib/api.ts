@@ -3885,6 +3885,13 @@ export type ShippingConnection = {
   active: boolean;
 };
 
+/**
+ * A payment link can be sent for an order taken on WhatsApp (a cart, or one taken in a chat) while it is unpaid.
+ * A Shopify or WooCommerce order is paid through its own store, so it never gets one.
+ */
+export const orderTakesLink = (o: Order) =>
+  o.status === "pending" && !!o.customer_id && !!o.total_paise && (o.source_platform === "whatsapp" || o.source_platform === "chat");
+
 export const orders = {
   listConnections: () => api.get<StoreConnection[]>("/orders/connections"),
 

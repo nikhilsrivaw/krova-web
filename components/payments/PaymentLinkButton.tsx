@@ -8,7 +8,8 @@ import { useRole } from "@/lib/useRole";
 type Target =
   | { kind: "commitment"; id: string }
   | { kind: "token"; id: string }
-  | { kind: "appointment"; id: string };
+  | { kind: "appointment"; id: string }
+  | { kind: "order"; id: string };
 
 const input = "px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none";
 
@@ -48,9 +49,11 @@ export function PaymentLinkButton({
     try {
       const out = target.kind === "commitment"
         ? await payments.sendForCommitment(target.id, t)
-        : target.kind === "token"
-          ? await payments.sendForToken(target.id, amount, t)
-          : await payments.sendForAppointment(target.id, amount, t);
+        : target.kind === "order"
+          ? await payments.sendForOrder(target.id, t)
+          : target.kind === "token"
+            ? await payments.sendForToken(target.id, amount, t)
+            : await payments.sendForAppointment(target.id, amount, t);
       setResult(out); setLink(out.link); setNeedsTemplate(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not send the link.";

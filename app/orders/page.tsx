@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Package, Plus, Truck, Trash2, Store } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
@@ -10,6 +11,7 @@ import {
   orders as ordersApi,
   ledger,
   formatPaise,
+  orderTakesLink,
   type Order,
   type OrderStatus,
   type StoreConnection,
@@ -351,6 +353,12 @@ export default function OrdersPage() {
                           </option>
                         ))}
                       </select>
+                      {orderTakesLink(o) && (
+                        <div className="mt-2">
+                          <PaymentLinkButton target={{ kind: "order", id: o.id }} compact
+                            onPaid={() => setAllOrders((prev) => prev.map((x) => (x.id === o.id ? { ...x, status: "paid" } : x)))} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

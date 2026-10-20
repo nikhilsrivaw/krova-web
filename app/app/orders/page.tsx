@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquare, Package, Search } from "lucide-react";
-import { formatPaise, orders, type Order, type OrderStatus } from "@/lib/api";
+import { formatPaise, orderTakesLink, orders, type Order, type OrderStatus } from "@/lib/api";
+import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { appPath } from "@/lib/app-nav";
 
 const STATUS: Record<OrderStatus, string> = {
@@ -102,6 +103,10 @@ export default function AppOrdersPage() {
                         {(Object.keys(STATUS) as OrderStatus[]).map((s) => <option key={s} value={s}>{STATUS[s]}</option>)}
                       </select>
                     </label>
+                    {orderTakesLink(o) && (
+                      <PaymentLinkButton target={{ kind: "order", id: o.id }} compact
+                        onPaid={() => setRows((prev) => prev?.map((x) => (x.id === o.id ? { ...x, status: "paid" } : x)) ?? prev)} />
+                    )}
                     {o.customer_id && (
                       <a href={appPath(`/inbox/${o.customer_id}`)} className="w-full py-2 rounded-xl bg-white/[0.06] text-xs font-semibold text-os-ink flex items-center justify-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5" /> Open chat
