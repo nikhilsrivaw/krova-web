@@ -993,7 +993,7 @@ export default function ConversationsPage() {
                 )}
 
                 {/* Take an order: products from the product list, then a payment link or COD */}
-                {capabilities.includes("order_sync") && (
+                {capabilities.includes("order_sync") && capabilities.includes("price_list_payments") && (
                   <button
                     type="button"
                     onClick={() => { setIsBookingToken(false); setIsTakingOrder(true); setIsCustomerDrawerOpen(true); }}
@@ -1403,7 +1403,7 @@ export default function ConversationsPage() {
                 )
               )}
 
-              {capabilities.includes("order_sync") && activeThread && (
+              {capabilities.includes("order_sync") && capabilities.includes("price_list_payments") && activeThread && (
                 !isTakingOrder ? (
                   <button
                     type="button"

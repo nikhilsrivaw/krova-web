@@ -19,6 +19,7 @@ import { GapAnswer } from "@/components/knowledge/GapAnswer";
 import { FileReader } from "@/components/knowledge/FileReader";
 import { Catalogue } from "@/components/knowledge/Catalogue";
 import { FeeList } from "@/components/knowledge/FeeList";
+import { useRole } from "@/lib/useRole";
 import { QuestionBank } from "@/components/knowledge/QuestionBank";
 import {
   knowledge,
@@ -46,6 +47,7 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 ];
 
 export default function KnowledgePage() {
+  const { capabilities } = useRole();
   const [activeTab, setActiveTab] = useState<"card" | "team" | "catalogue" | "fees" | "bank" | "gaps" | "items" | "upload">("card");
   const [editingItem, setEditingItem] = useState<KnowledgeItem | null>(null);
   const [fileSuggestionsWaiting, setFileSuggestionsWaiting] = useState(false);
@@ -229,7 +231,7 @@ export default function KnowledgePage() {
             { key: "card", label: "Business card" },
             { key: "team", label: "Team" },
             { key: "catalogue", label: "Catalogue" },
-            { key: "fees", label: "Fees / Price list" },
+            ...(capabilities.includes("price_list_payments") ? [{ key: "fees", label: "Fees / Price list" }] : []),
             { key: "bank", label: "Question bank" },
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
             { key: "items", label: `Other entries (${otherItems.length})` },
@@ -263,7 +265,7 @@ export default function KnowledgePage() {
         {activeTab === "card" && <BusinessCard onChanged={loadData} />}
         {activeTab === "team" && <TeamCard onChanged={loadData} />}
         {activeTab === "catalogue" && <Catalogue onChanged={loadData} />}
-        {activeTab === "fees" && <FeeList onChanged={loadData} />}
+        {activeTab === "fees" && capabilities.includes("price_list_payments") && <FeeList onChanged={loadData} />}
         {activeTab === "bank" && <QuestionBank onChanged={loadData} />}
 
         {/* TAB 1: GAPS QUEUE (THE DIFFERENTIATING QUEUE) */}

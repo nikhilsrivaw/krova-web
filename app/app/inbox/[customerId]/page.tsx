@@ -266,7 +266,7 @@ export default function AppConversationThreadPage() {
         </div>
       )}
 
-      {thread && capabilities.includes("order_sync") && (
+      {thread && capabilities.includes("order_sync") && capabilities.includes("price_list_payments") && (
         <div className="px-3 pt-3">
           <button
             type="button"

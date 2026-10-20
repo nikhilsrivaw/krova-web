@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Package, Plus, Truck, Trash2, Store } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { useRole } from "@/lib/useRole";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
@@ -42,6 +43,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export default function OrdersPage() {
+  const priceListOn = useRole().capabilities.includes("price_list_payments");
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [connections, setConnections] = useState<StoreConnection[]>([]);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -353,7 +355,7 @@ export default function OrdersPage() {
                           </option>
                         ))}
                       </select>
-                      {orderTakesLink(o) && (
+                      {priceListOn && orderTakesLink(o) && (
                         <div className="mt-2">
                           <PaymentLinkButton target={{ kind: "order", id: o.id }} compact
                             onPaid={() => setAllOrders((prev) => prev.map((x) => (x.id === o.id ? { ...x, status: "paid" } : x)))} />

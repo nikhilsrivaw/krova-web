@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Package, Search } from "lucide-react";
 import { formatPaise, orderTakesLink, orders, type Order, type OrderStatus } from "@/lib/api";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
+import { useRole } from "@/lib/useRole";
 import { appPath } from "@/lib/app-nav";
 
 const STATUS: Record<OrderStatus, string> = {
@@ -17,6 +18,7 @@ const FILTERS: (OrderStatus | "")[] = ["", "pending", "paid", "fulfilled", "deli
  * missed delivery), change the status, open the customer's chat.
  */
 export default function AppOrdersPage() {
+  const priceListOn = useRole().capabilities.includes("price_list_payments");
   const [rows, setRows] = useState<Order[] | null>(null);
   const [status, setStatus] = useState<OrderStatus | "">("");
   const [q, setQ] = useState("");
@@ -103,7 +105,7 @@ export default function AppOrdersPage() {
                         {(Object.keys(STATUS) as OrderStatus[]).map((s) => <option key={s} value={s}>{STATUS[s]}</option>)}
                       </select>
                     </label>
-                    {orderTakesLink(o) && (
+                    {priceListOn && orderTakesLink(o) && (
                       <PaymentLinkButton target={{ kind: "order", id: o.id }} compact
                         onPaid={() => setRows((prev) => prev?.map((x) => (x.id === o.id ? { ...x, status: "paid" } : x)) ?? prev)} />
                     )}

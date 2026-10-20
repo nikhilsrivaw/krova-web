@@ -3194,7 +3194,9 @@ export type Capability =
   // Type 1 (B2B): quotations sent, chased, and won or lost.
   | "quotations"
   // Leads page and Forms page - off by default for the healthcare types, switchable in Features.
-  | "lead_capture";
+  | "lead_capture"
+  // Fees / Price list, tests ticked on tokens and bookings, orders taken in a chat - off for every type until switched on.
+  | "price_list_payments";
 
 export type UserProfile = {
   user_id: string;
