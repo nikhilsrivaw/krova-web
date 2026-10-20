@@ -30,6 +30,7 @@ import {
   Check,
   X,
   ArrowLeft,
+  ShoppingBag,
 } from "lucide-react";
 import { AppLayout } from "@/components/shell/AppLayout";
 import { WorkspaceInboxActions } from "@/components/shell/WorkspaceInboxActions";
@@ -68,6 +69,7 @@ import {
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 import { CallCustomer } from "@/components/team/CallCustomer";
 import { FeeItemsLine, FeePicker, useFeeRows } from "@/components/fees/FeePicker";
+import { ChatOrder } from "@/components/orders/ChatOrder";
 
 /** SLA-style countdown for the WhatsApp 24h free-form reply window - same
  * "don't let a deadline pass silently" pattern as the dashboard's pending-
@@ -181,6 +183,7 @@ export default function ConversationsPage() {
   // Only the owner and admins can mark a chat private - the rest of the team never sees one.
   const [canMarkPrivate, setCanMarkPrivate] = useState(false);
   const [isBookingToken, setIsBookingToken] = useState(false);
+  const [isTakingOrder, setIsTakingOrder] = useState(false);
   const [openShiftSessions, setOpenShiftSessions] = useState<ShiftSession[]>([]);
   const [bookingShift, setBookingShift] = useState<Shift | "">("");
   const [isSubmittingToken, setIsSubmittingToken] = useState(false);
@@ -989,6 +992,19 @@ export default function ConversationsPage() {
                   </div>
                 )}
 
+                {/* Take an order: products from the product list, then a payment link or COD */}
+                {capabilities.includes("order_sync") && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsBookingToken(false); setIsTakingOrder(true); setIsCustomerDrawerOpen(true); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Pick products and quantities, then send a payment link or take it as COD"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>Take order</span>
+                  </button>
+                )}
+
                 {/* Quick Send: interactive buttons/list/product/catalog */}
                 {activeThread.window_open && phoneOf(activeThread.identities) && (
                   <button
@@ -1007,6 +1023,7 @@ export default function ConversationsPage() {
                   type="button"
                   onClick={() => {
                     setIsBookingToken(false);
+                    setIsTakingOrder(false);
                     setBookingShift("");
                     setTokenResult(null);
                     setTokenError(null);
@@ -1382,6 +1399,23 @@ export default function ConversationsPage() {
                         )}
                       </>
                     )}
+                  </div>
+                )
+              )}
+
+              {capabilities.includes("order_sync") && activeThread && (
+                !isTakingOrder ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsTakingOrder(true)}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    Take an order
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <ChatOrder key={activeThread.customer_id} customerId={activeThread.customer_id} onClose={() => setIsTakingOrder(false)} />
                   </div>
                 )
               )}

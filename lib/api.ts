@@ -2435,6 +2435,9 @@ export const payments = {
     api.post<PaymentLinkSend>(`/payments/queue/${entryId}/link`, { amount_paise, ...t }),
   sendForAppointment: (appointmentId: string, amount_paise?: number, t: TemplateChoice = {}) =>
     api.post<PaymentLinkSend>(`/payments/appointments/${appointmentId}/link`, { amount_paise, ...t }),
+  /** The total of an unpaid order - taken in a chat, or a WhatsApp cart. */
+  sendForOrder: (orderId: string, t: TemplateChoice = {}) =>
+    api.post<PaymentLinkSend>(`/payments/orders/${orderId}/link`, { ...t }),
 
   links: (commitmentId?: string) =>
     api.get<PaymentLink[]>(`/payments/links${commitmentId ? `?commitment_id=${commitmentId}` : ""}`),
@@ -3903,6 +3906,15 @@ export const orders = {
 
   update: (id: string, data: Partial<{ status: OrderStatus; tracking_number: string; carrier: string }>) =>
     api.patch<Order>(`/orders/${id}`, data),
+
+  /**
+   * An order taken in a chat: products ticked from the product list, priced by the server. "link" sends a payment
+   * link for the total (and the order is made only if the link can be); "cod" is cash on delivery.
+   */
+  takeInChat: (data: {
+    customer_id: string; lines: { variant_id: string; quantity: number }[]; payment: "link" | "cod"; note?: string;
+  } & TemplateChoice) =>
+    api.post<{ order: Order; link: PaymentLink | null; sent: boolean; reason: string | null }>("/orders/chat", data),
 
   listShippingConnections: () => api.get<ShippingConnection[]>("/orders/shipping-connections"),
 

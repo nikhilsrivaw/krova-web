@@ -18,6 +18,7 @@ import {
   BookmarkCheck,
   FileText,
   ChevronRight,
+  ShoppingBag,
 } from "lucide-react";
 import {
   assignedToOther,
@@ -39,6 +40,8 @@ import { CallCustomer } from "@/components/team/CallCustomer";
 import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { TemplateSheet } from "@/components/app-shell/TemplateSheet";
 import { SavedRepliesSheet } from "@/components/app-shell/SavedRepliesSheet";
+import { Sheet } from "@/components/app-shell/Sheet";
+import { ChatOrder } from "@/components/orders/ChatOrder";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -63,7 +66,7 @@ function igsidOf(identities: Identity[]): string | null {
  * conversation in the app must stay in the app.
  */
 export default function AppConversationThreadPage() {
-  const { allowed } = useRole();
+  const { allowed, capabilities } = useRole();
   const params = useParams<{ customerId: string }>();
   const router = useRouter();
   const customerId = params.customerId;
@@ -87,6 +90,7 @@ export default function AppConversationThreadPage() {
   const [showCommitments, setShowCommitments] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
 
   // A teammate owns this chat: the server refused, and we offer to take it over.
   const [conflict, setConflict] = useState<{ id: string; name: string } | null>(null);
@@ -259,6 +263,18 @@ export default function AppConversationThreadPage() {
       {thread && phoneOf(thread.identities) && (
         <div className="px-3 pt-3">
           <CallCustomer customerId={thread.customer_id} customerName={thread.name} tone="light" />
+        </div>
+      )}
+
+      {thread && capabilities.includes("order_sync") && (
+        <div className="px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setOrderOpen(true)}
+            className="w-full rounded-xl border border-os-border bg-os-card px-3 py-2 text-xs font-semibold text-os-ink flex items-center justify-center gap-2"
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-teal" /> Take an order
+          </button>
         </div>
       )}
 
@@ -507,6 +523,11 @@ export default function AppConversationThreadPage() {
           onClose={() => setTemplateOpen(false)}
           onSent={(text) => echoOutbound(text, "whatsapp")}
         />
+      )}
+      {thread && (
+        <Sheet open={orderOpen} title="Take an order" onClose={() => setOrderOpen(false)}>
+          <ChatOrder key={thread.customer_id} customerId={thread.customer_id} onClose={() => setOrderOpen(false)} />
+        </Sheet>
       )}
       <SavedRepliesSheet
         open={savedOpen}
