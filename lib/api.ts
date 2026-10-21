@@ -1476,6 +1476,9 @@ export const channels = {
   /** WhatsApp Payments (India) is Meta-native - a business sets this up
    * directly on their own Meta Business Suite and pastes back the id Meta
    * gives them. Krova only remembers it. */
+  /** This month's WhatsApp messages as Meta prices them, and any payment problem Meta reported (owner/admin). */
+  whatsappUsage: () => api.get<WhatsAppUsage>("/channels/whatsapp/usage"),
+
   getPaymentConfig: () =>
     api.get<{ payment_configuration_id: string | null; payment_gateway: "razorpay" | "payu" | null }>(
       "/channels/whatsapp/payment-config",
@@ -1485,6 +1488,16 @@ export const channels = {
       "/channels/whatsapp/payment-config",
       { payment_configuration_id: paymentConfigurationId, payment_gateway: gateway },
     ),
+};
+
+export type WhatsAppUsage = {
+  month: string;
+  by_category: Record<string, { charged: number; free: number }>;
+  charged_total: number;
+  service_sent: number;
+  free_service_per_month: number;
+  connected: boolean;
+  payment_issue: { code: number; title: string; at: string } | null;
 };
 
 export type SendResult = {

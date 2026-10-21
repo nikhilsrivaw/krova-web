@@ -50,6 +50,7 @@ import {
 import { isEmbeddedSignupMessage, loadFacebookSdk, loginForEmbeddedSignup } from "@/lib/facebookSdk";
 import { CarouselTemplateModal } from "@/components/whatsapp/CarouselTemplateModal";
 import { FlowsPanel } from "@/components/whatsapp/FlowsPanel";
+import { WhatsAppPaymentAlert, WhatsAppUsageCard } from "@/components/whatsapp/UsageCard";
 
 const TIER_LABELS: Record<string, string> = {
   TIER_250: "250/day",
@@ -656,6 +657,7 @@ function WhatsAppPageContent() {
             {actionError}
           </div>
         )}
+        <WhatsAppPaymentAlert />
         {/* Sub-Navigation Tabs */}
         <div className="workspace-tabs border-b border-white/[0.08]">
           {[
@@ -682,6 +684,7 @@ function WhatsAppPageContent() {
         {/* TAB 1: OVERVIEW & CONNECTION HEALTH */}
         {activeTab === "overview" && (
           <div className="space-y-6">
+            <WhatsAppUsageCard />
             {!connection ? (
               <EmptyState
                 icon={MessageSquare}

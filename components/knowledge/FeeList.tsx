@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Printer, Search, Trash2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Skeleton } from "@/components/ui/EmptyState";
-import { knowledge, type FeeRow } from "@/lib/api";
+import { account, knowledge, type FeeRow } from "@/lib/api";
 
 const input = "w-full px-2.5 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none";
 
@@ -14,6 +14,35 @@ type Draft = { id?: string; name: string; rupees: string; details: string };
 const toDraft = (r: FeeRow): Draft => ({ id: r.id, name: r.name, rupees: String(r.amount_paise / 100), details: r.details });
 const paise = (rupees: string) => Math.round(Number(rupees.replace(/[₹,\s]/g, "").replace(/^rs\.?/i, "")) * 100);
 const valid = (d: Draft) => d.name.trim() && paise(d.rupees) >= 100;
+
+const escape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);
+
+/**
+ * The saved fee list as an A4 rate board to print and put up at reception - clinics and labs are asked to show
+ * their charges for each service where patients can see them (Clinical Establishments Rules, rule 9, in the states
+ * that adopted the Act). Opens in a new window and asks the browser to print.
+ */
+async function printRateList(rows: FeeRow[]) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  let business = "";
+  try { business = (await account.profile()).business_name ?? ""; } catch { /* print without the name */ }
+  const body = rows.map((r) => `<tr><td>${escape(r.name)}${r.details ? `<div class="d">${escape(r.details)}</div>` : ""}</td>`
+    + `<td class="a">₹${(r.amount_paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td></tr>`).join("");
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Rate list</title><style>
+    body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:32px;color:#111}
+    h1{font-size:24px;margin:0}h2{font-size:15px;font-weight:600;color:#444;margin:4px 0 20px}
+    table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px solid #ccc;padding:8px 6px;text-align:left;vertical-align:top}
+    th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#555}.a{text-align:right;white-space:nowrap;font-weight:600}
+    .d{font-size:11px;color:#666;margin-top:2px}p{font-size:11px;color:#666;margin-top:16px}@page{size:A4;margin:16mm}
+  </style></head><body><h1>${escape(business || "Rate list")}</h1><h2>Rate list / शुल्क सूची</h2>
+  <table><thead><tr><th>Service</th><th class="a">Charge</th></tr></thead><tbody>${body}</tbody></table>
+  <p>Rates as on ${date}.</p></body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+}
 
 /** "Name - Amount - Details" per line (also tab- or comma-separated, as pasted from a sheet) into rows. */
 function parseLines(text: string): Draft[] {
@@ -126,6 +155,12 @@ export function FeeList({ onChanged }: { onChanged: () => void }) {
         <button type="button" disabled={busy || !dirty} onClick={save}
           className="px-5 py-2 rounded-lg bg-brass hover:bg-brass-dim text-white text-xs font-bold cursor-pointer disabled:opacity-40">
           {busy ? "Saving..." : "Save fees"}
+        </button>
+        <button type="button" disabled={dirty || filled.length === 0}
+          title={dirty ? "Save first - the printed list is the saved one" : "Print a rate list to put up at reception"}
+          onClick={() => printRateList(filled.map((r) => ({ id: r.id, name: r.name.trim(), amount_paise: paise(r.rupees), details: r.details.trim() })))}
+          className="px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-40">
+          <Printer className="w-3.5 h-3.5" /> Print rate list
         </button>
         {dirty && <span className="text-xs text-amber-300">Unsaved changes</span>}
         {note && <span className="text-xs text-emerald-300">{note}</span>}

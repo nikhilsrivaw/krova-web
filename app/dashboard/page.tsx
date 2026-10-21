@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/shell/AppLayout";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { PendingWrapups } from "@/components/team/PendingWrapups";
 import { UnlockChannels } from "@/components/dashboard/UnlockChannels";
+import { WhatsAppPaymentAlert } from "@/components/whatsapp/UsageCard";
 import {
   account,
   can,
@@ -122,6 +123,8 @@ export default function DashboardPage() {
 
   return (
     <AppLayout title="Command Center" subtitle="Your business overview" appearance="refined" showPageIntro={false}>
+      {/* replies silently stop if Meta can't bill the business's WhatsApp account - owner/admin only (the API refuses others) */}
+      <div className="mb-4 empty:hidden"><WhatsAppPaymentAlert /></div>
       <UnlockChannels />
       <div className="mb-4 empty:hidden">
         <PendingWrapups />

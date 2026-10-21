@@ -101,7 +101,9 @@ export function ChatOrder({ customerId, onDone, onClose }: {
         <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 space-y-1">
           <p className="text-sm font-semibold text-emerald-200">Order {order.order_number} · {rupees(order.total_paise ?? 0)}</p>
           <p className="text-emerald-100/80">
-            {order.is_cod ? "Cash on delivery - it is on the Orders page as confirmed." : sent ? "Payment link sent on WhatsApp. The order turns paid by itself once Razorpay confirms." : "Order made."}
+            {order.is_cod
+              ? `Cash on delivery - it is on the Orders page as confirmed.${sent ? " The order summary went to the customer on WhatsApp." : ""}`
+              : sent ? "Payment link sent on WhatsApp with the order summary. The order turns paid by itself once Razorpay confirms." : "Order made."}
           </p>
         </div>
         {link && (
@@ -113,6 +115,7 @@ export function ChatOrder({ customerId, onDone, onClose }: {
           </div>
         )}
         {link && !sent && reason && <p className="text-[11px] text-amber-300">Not sent on WhatsApp: {reason} Copy the link and share it.</p>}
+        {order.is_cod && !sent && reason && <p className="text-[11px] text-amber-300">Summary not sent: {reason}</p>}
         <div className="flex gap-2">
           <button type="button" onClick={() => { setDone(null); setLines([]); setNote(""); setNeedsTemplate(false); }}
             className="px-3 py-2 rounded-lg bg-white/[0.06] text-white font-semibold cursor-pointer">New order</button>
