@@ -2399,6 +2399,9 @@ export const knowledge = {
 
   delete: (id: string) => api.delete<void>(`/knowledge/${id}`),
 
+  /** Owner only: delete everything on the Knowledge page and empty the gaps queue. `confirm` must be "DELETE". */
+  reset: (confirm: string) => api.post<{ items: number; gaps: number }>("/knowledge/reset", { confirm }),
+
   update: (id: string, patch: Partial<{
     title: string; content: string; kind: KnowledgeKind; active: boolean; valid_until: string; clear_valid_until: boolean;
   }>) => api.patch<KnowledgeItem>(`/knowledge/${id}`, patch),

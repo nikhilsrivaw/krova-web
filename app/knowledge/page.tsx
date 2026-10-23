@@ -21,6 +21,7 @@ import { Catalogue } from "@/components/knowledge/Catalogue";
 import { FeeList } from "@/components/knowledge/FeeList";
 import { useRole } from "@/lib/useRole";
 import { QuestionBank } from "@/components/knowledge/QuestionBank";
+import { ResetKnowledge } from "@/components/knowledge/ResetKnowledge";
 import {
   knowledge,
   type KnowledgeItem,
@@ -47,7 +48,9 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 ];
 
 export default function KnowledgePage() {
-  const { capabilities } = useRole();
+  const { capabilities, role } = useRole();
+  // Bumped after a reset so every tab loads again from the (now empty) server.
+  const [version, setVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<"card" | "team" | "catalogue" | "fees" | "bank" | "gaps" | "items" | "upload">("card");
   const [editingItem, setEditingItem] = useState<KnowledgeItem | null>(null);
   const [fileSuggestionsWaiting, setFileSuggestionsWaiting] = useState(false);
@@ -262,11 +265,11 @@ export default function KnowledgePage() {
             Suggestions from your file are waiting. They are not on your card yet - open <strong>Fill from a file</strong>, tick them and press Save.
           </button>
         )}
-        {activeTab === "card" && <BusinessCard onChanged={loadData} />}
-        {activeTab === "team" && <TeamCard onChanged={loadData} />}
-        {activeTab === "catalogue" && <Catalogue onChanged={loadData} />}
-        {activeTab === "fees" && capabilities.includes("price_list_payments") && <FeeList onChanged={loadData} />}
-        {activeTab === "bank" && <QuestionBank onChanged={loadData} />}
+        {activeTab === "card" && <BusinessCard key={version} onChanged={loadData} />}
+        {activeTab === "team" && <TeamCard key={version} onChanged={loadData} />}
+        {activeTab === "catalogue" && <Catalogue key={version} onChanged={loadData} />}
+        {activeTab === "fees" && capabilities.includes("price_list_payments") && <FeeList key={version} onChanged={loadData} />}
+        {activeTab === "bank" && <QuestionBank key={version} onChanged={loadData} />}
 
         {/* TAB 1: GAPS QUEUE (THE DIFFERENTIATING QUEUE) */}
         {activeTab === "gaps" && (
@@ -415,8 +418,10 @@ export default function KnowledgePage() {
         {/* TAB 3: READ A FILE ONCE INTO THE CARD */}
         {/* Kept mounted on every tab: a read costs an AI call, so its suggestions must survive a look at another tab. */}
         <div className={activeTab === "upload" ? "" : "hidden"}>
-          <FileReader onSaved={loadData} onPending={setFileSuggestionsWaiting} />
+          <FileReader key={version} onSaved={loadData} onPending={setFileSuggestionsWaiting} />
         </div>
+
+        {role === "owner" && <ResetKnowledge onDone={() => { setVersion((v) => v + 1); setFileSuggestionsWaiting(false); loadData(); }} />}
 
         {/* Answer Gap / Create Modal */}
         <Modal
