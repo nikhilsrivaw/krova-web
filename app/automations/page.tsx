@@ -26,7 +26,9 @@ import {
   channels as channelsApi,
   templates as templatesApi,
   team as teamApi,
+  voice as voiceApi,
   CONDITION_FIELDS,
+  type VoiceNumberInfo,
   type TeamMember,
   type SavedInstagramCarousel,
   type Template,
@@ -278,6 +280,7 @@ const FIELD_LABEL: Record<string, string> = {
   escalated: "Call was escalated",
   topic: "Call topic",
   requested_service: "What the caller asked for",
+  number: "Phone number the call was on",
   campaign_objective: "Campaign objective",
   text: "Message text",
   flow_id: "Flow",
@@ -467,6 +470,16 @@ export default function AutomationsPage() {
     automationsTab === "scheduling" ? SCHEDULING_TRIGGERS.has(r.trigger_type) : !SCHEDULING_TRIGGERS.has(r.trigger_type)
   );
   const [publishedFlows, setPublishedFlows] = useState<WhatsAppFlow[]>([]);
+  // The business's voice numbers, for the "Phone number the call was on" condition (its value is the number's id).
+  const [voiceNumbers, setVoiceNumbers] = useState<VoiceNumberInfo[]>([]);
+  useEffect(() => {
+    voiceApi.myNumbers().then(setVoiceNumbers).catch(() => undefined);
+  }, []);
+  const conditionValueText = (field: string, value: unknown) => {
+    if (field !== "number") return String(value);
+    const n = voiceNumbers.find((v) => v.connection_id === value);
+    return n ? (n.label === n.number ? n.number : n.label) : "a number you no longer have";
+  };
   // This page fetches its own copy - AppLayout loads the same
   // account.profile() call for the sidebar, but doesn't share it via
   // context/props (confirmed by reading AppLayout.tsx directly). Starts
@@ -800,6 +813,7 @@ export default function AutomationsPage() {
   const availableFields = [...(CONDITION_FIELDS[trigger] ?? []), ...CLOCK_FIELDS];
   const fieldTypeOf = (field: string) => FIELD_TYPE[field] ?? "text";
   const operatorsFor = (field: string): AutomationOperator[] => {
+    if (field === "number") return ["equals", "not_equals"];
     const kind = fieldTypeOf(field);
     return kind === "number" ? NUMBER_OPERATORS : kind === "boolean" ? BOOLEAN_OPERATORS : TEXT_OPERATORS;
   };
@@ -1137,7 +1151,20 @@ export default function AutomationsPage() {
                           <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
                         ))}
                       </select>
-                      {kind === "boolean" ? (
+                      {row.field === "number" ? (
+                        <select
+                          value={row.value}
+                          onChange={(e) => updateConditionRow(index, { value: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
+                        >
+                          <option value="">{voiceNumbers.length ? "Choose a number..." : "No voice numbers yet"}</option>
+                          {voiceNumbers.map((n) => (
+                            <option key={n.connection_id} value={n.connection_id}>
+                              {n.label === n.number ? n.number : `${n.label} - ${n.number}`}
+                            </option>
+                          ))}
+                        </select>
+                      ) : kind === "boolean" ? (
                         <select
                           value={row.value}
                           onChange={(e) => updateConditionRow(index, { value: e.target.value })}
@@ -1743,7 +1770,7 @@ export default function AutomationsPage() {
               <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">
                 <Filter className="w-2.5 h-2.5" />
                 {i > 0 && <span className="text-cyan-400/60">and</span>}
-                {FIELD_LABEL[c.field] ?? c.field} {OPERATOR_LABEL[c.operator]} &quot;{String(c.value)}&quot;
+                {FIELD_LABEL[c.field] ?? c.field} {OPERATOR_LABEL[c.operator]} &quot;{conditionValueText(c.field, c.value)}&quot;
               </span>
             ))}
             {!!step.delay_seconds && (
@@ -1964,6 +1991,7 @@ export default function AutomationsPage() {
                 actionIcon={ACTION_ICON}
                 fieldLabel={FIELD_LABEL}
                 operatorLabel={OPERATOR_LABEL}
+                valueText={conditionValueText}
                 onOpenStep={handleOpenStep}
                 onInsertAt={handleInsertAt}
                 onRemoveStep={removeStep}

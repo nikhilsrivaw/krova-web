@@ -1,6 +1,7 @@
 "use client";
 
 import { NumbersPanel } from "@/components/voice/NumbersPanel";
+import { LineProfileCard } from "@/components/voice/LineProfileCard";
 import { NumberPicker } from "@/components/voice/NumberPicker";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
@@ -121,7 +122,6 @@ function VoicePageContent() {
   const [languageModeDraft, setLanguageModeDraft] = useState<"adaptive" | "fixed">("adaptive");
   const [languageDraft, setLanguageDraft] = useState("en-IN");
   const [speakerDraft, setSpeakerDraft] = useState("shubh");
-  const [staffNumberDraft, setStaffNumberDraft] = useState("");
   const [copilotModeDraft, setCopilotModeDraft] = useState(false);
   const [copilotLiveSuggestionsDraft, setCopilotLiveSuggestionsDraft] = useState(false);
   const [ownerNumberDraft, setOwnerNumberDraft] = useState("");
@@ -175,7 +175,6 @@ function VoicePageContent() {
       setLanguageModeDraft(agentRes.value.language_mode);
       setLanguageDraft(agentRes.value.language);
       setSpeakerDraft(agentRes.value.speaker);
-      setStaffNumberDraft(agentRes.value.staff_phone_number || "");
       setCopilotModeDraft(agentRes.value.copilot_mode);
       setCopilotLiveSuggestionsDraft(agentRes.value.copilot_live_suggestions);
       setOwnerNumberDraft(agentRes.value.owner_phone || "");
@@ -254,7 +253,6 @@ function VoicePageContent() {
         language_mode: languageModeDraft,
         language: languageDraft,
         speaker: speakerDraft,
-        staff_phone_number: staffNumberDraft,
         copilot_mode: copilotModeDraft,
         copilot_live_suggestions: copilotLiveSuggestionsDraft,
         owner_phone: ownerNumberDraft,
@@ -300,9 +298,9 @@ function VoicePageContent() {
       setVoiceConnections(list.filter((c) => c.channel === "voice"));
     });
 
-  const handleReleaseNumber = (number: string) =>
+  const handleReleaseNumber = (number: string, moveCampaignsTo?: string | null) =>
     run(`release-${number}`, async () => {
-      await voice.releaseNumber(number);
+      await voice.releaseNumber(number, moveCampaignsTo);
       setVoiceConnections((prev) => prev.filter((c) => c.external_account_id !== number));
       setOwnedNumbers((prev) => prev.filter((n) => n.number !== number));
     });
@@ -342,7 +340,7 @@ function VoicePageContent() {
             { key: "compliance", label: "Regulatory KYC & Compliance" },
             { key: "numbers", label: `Phone Numbers (${voiceConnections.length})` },
             { key: "logs", label: `Call Logs (${callLogs.length})` },
-            { key: "settings", label: "Agent Speech & Greeting" },
+            { key: "settings", label: "Number Settings" },
             { key: "scripts", label: "Scripts" },
             { key: "automations", label: "Automations" },
           ].map((tab) => (
@@ -578,7 +576,7 @@ function VoicePageContent() {
                       <NumbersPanel
                         numbers={myNumbers}
                         onChanged={() => void loadData()}
-                        onRelease={(n) => void handleReleaseNumber(n)}
+                        onRelease={(n, moveTo) => void handleReleaseNumber(n, moveTo)}
                         releasing={busy?.startsWith("release-") ? busy.slice("release-".length) : null}
                       />
                     ) : (
@@ -880,7 +878,6 @@ function VoicePageContent() {
                           setLanguageModeDraft(a.language_mode);
                           setLanguageDraft(a.language);
                           setSpeakerDraft(a.speaker);
-                          setStaffNumberDraft(a.staff_phone_number || "");
                           setCopilotModeDraft(a.copilot_mode);
                           setCopilotLiveSuggestionsDraft(a.copilot_live_suggestions);
                           setOwnerNumberDraft(a.owner_phone || "");
@@ -995,30 +992,6 @@ function VoicePageContent() {
                       )}
                     </div>
 
-                    {/* Staff phone number - shared by warm transfer and copilot mode */}
-                    <div className="pt-2 border-t border-white/[0.06]">
-                      <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
-                        Staff Phone Number
-                      </label>
-                      <p className="text-[11px] text-os-text-dim mb-2">
-                        A real person the agent can bring onto a call - used both when it escalates
-                        (a live warm transfer instead of an apology) and, if enabled below, as who
-                        answers every call directly in Live Copilot mode.
-                      </p>
-                      <input
-                        type="tel"
-                        value={staffNumberDraft}
-                        onChange={(e) => setStaffNumberDraft(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"
-                      />
-                      {agentSettings.staff_phone_number && (
-                        <p className="mt-2 text-[11px] text-os-text-dim">
-                          Callers can also press 0 anytime to reach this number directly.
-                        </p>
-                      )}
-                    </div>
-
                     {/* Owner phone number - your own voice interface into your ledger */}
                     <div className="pt-2 border-t border-white/[0.06]">
                       <label className="block text-xs font-mono uppercase text-os-text-dim mb-2">
@@ -1083,20 +1056,16 @@ function VoicePageContent() {
                           </p>
                         </div>
                         <div
-                          onClick={() => staffNumberDraft.trim() && setCopilotModeDraft(true)}
+                          onClick={() => setCopilotModeDraft(true)}
                           className={`p-3.5 rounded-xl border transition-all ${
-                            !staffNumberDraft.trim()
-                              ? "opacity-40 cursor-not-allowed border-white/[0.06] bg-white/[0.02] text-os-text-dim"
-                              : copilotModeDraft
+                            copilotModeDraft
                               ? "cursor-pointer border-cyan-500/50 bg-cyan-500/10 text-white font-bold"
                               : "cursor-pointer border-white/[0.06] bg-white/[0.02] text-os-text-dim hover:text-white"
                           }`}
                         >
                           <p className="text-xs text-white mb-0.5">Live Copilot Mode</p>
                           <p className="text-[10px] font-mono text-os-text-dim leading-relaxed">
-                            {staffNumberDraft.trim()
-                              ? "A greeting plays, then Staff Phone Number rings directly."
-                              : "Set a Staff Phone Number above first."}
+                            A greeting plays, then the &quot;Who answers&quot; list below rings directly.
                           </p>
                         </div>
                       </div>
@@ -1154,6 +1123,9 @@ function VoicePageContent() {
                       </button>
                     </div>
                   </GlassCard>
+                )}
+                {agentSettings && (
+                  <LineProfileCard connectionId={settingsNumberId ?? agentSettings.connection_id} />
                 )}
               </div>
             )}

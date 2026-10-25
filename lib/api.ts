@@ -1765,8 +1765,24 @@ export const voice = {
       { number },
     ),
 
-  releaseNumber: (number: string) =>
-    api.post<void>(`/voice-onboarding/numbers/${encodeURIComponent(number)}/release`),
+  /** Pass `moveCampaignsTo` to move campaigns that call from this number to another one; without it they are left without a number (a running one is paused). */
+  releaseNumber: (number: string, moveCampaignsTo?: string | null) =>
+    api.post<void>(
+      `/voice-onboarding/numbers/${encodeURIComponent(number)}/release`,
+      moveCampaignsTo ? { move_campaigns_to: moveCampaignsTo } : undefined,
+    ),
+
+  /** What still uses a number - shown before it is given back. */
+  releaseCheck: (number: string) =>
+    api.get<ReleaseCheck>(`/voice-onboarding/numbers/${encodeURIComponent(number)}/release-check`),
+
+  /** What one number is for, who answers it and what happens when nobody picks up. */
+  lineProfile: (connectionId: string) => api.get<LineProfile>(`/voice-onboarding/numbers/${connectionId}/profile`),
+  saveLineProfile: (connectionId: string, profile: LineProfileInput) =>
+    api.put<LineProfile>(`/voice-onboarding/numbers/${connectionId}/profile`, profile),
+  /** Ring a phone from this number with a short recorded line (5 a day). */
+  testCall: (connectionId: string, phone: string) =>
+    api.post<{ calling: string; left_today: number }>(`/voice-onboarding/numbers/${connectionId}/test-call`, { phone }),
 
   /** Every number Plivo says this subaccount owns, not just the ones Krova's own ChannelConnection rows know about - see the backend endpoint's own docstring. */
   ownedNumbers: () => api.get<OwnedNumber[]>("/voice-onboarding/numbers/owned"),
@@ -1834,6 +1850,30 @@ export type VoiceNumberInfo = {
   rent_paise: number;
   calls_30d: number;
   cost_paise_30d: number;
+};
+
+/** A team member (by id - their phone comes from the Team page at call time) or an outside number with a name. */
+export type PickupPerson = { user_id?: string | null; phone?: string | null; name?: string | null };
+export type PickupLevel = { mode: "one_by_one" | "together"; ring_seconds: number; people: PickupPerson[] };
+export type LineProfileInput = {
+  role: "sales" | "support" | "booking" | "branch" | "custom" | null;
+  role_note: string;
+  pickup: { levels: PickupLevel[]; max_wait: number };
+  no_answer: "callback" | "voicemail" | "apology";
+  callback_hours: number;
+};
+export type LineProfile = LineProfileInput & {
+  connection_id: string;
+  roles: { key: string; label: string; note: string }[];
+  /** The number's old single staff phone, until a "who answers" list is saved. */
+  legacy_staff_phone: string | null;
+};
+export type ReleaseCheck = {
+  campaigns: { id: string; name: string; status: string }[];
+  rules: { id: string; name: string }[];
+  is_default: boolean;
+  others: { connection_id: string; number: string; label: string; series: string | null }[];
+  rent_paise: number;
 };
 
 export type AgentSettings = {
@@ -1996,9 +2036,9 @@ export type AutomationOperator =
 // CONDITION_FIELDS - kept in sync with it by hand, same as
 // WEBHOOK_EVENT_TYPES below already is with WebhookEventType).
 export const CONDITION_FIELDS: Record<AutomationTrigger, string[]> = {
-  "call.completed": ["duration_seconds", "outcome", "sentiment", "escalated", "topic", "requested_service"],
-  "call.voicemail": ["campaign_objective"],
-  "call.no_answer": ["campaign_objective"],
+  "call.completed": ["duration_seconds", "outcome", "sentiment", "escalated", "topic", "requested_service", "number"],
+  "call.voicemail": ["campaign_objective", "number"],
+  "call.no_answer": ["campaign_objective", "number"],
   "message.received": ["text"],
   "comment.received": ["text"],
   // No fields - a story mention carries no text to filter on, so a rule

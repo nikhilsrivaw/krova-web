@@ -138,6 +138,7 @@ type StepNodeData = {
   actionIcon: Record<AutomationAction, LucideIcon>;
   fieldLabel: Record<string, string>;
   operatorLabel: Record<AutomationOperator, string>;
+  valueText: (field: string, value: unknown) => string;
   summary: string;
   onOpen: () => void;
   onRemove: () => void;
@@ -193,7 +194,7 @@ function StepNode({ data }: NodeProps) {
           <p className="mt-1.5 inline-flex max-w-full items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 text-[10px]">
             <Filter className="w-2.5 h-2.5 shrink-0" />
             <span className="truncate">
-              Only if {d.fieldLabel[conditions[0].field] ?? conditions[0].field} {d.operatorLabel[conditions[0].operator]} &quot;{String(conditions[0].value)}&quot;
+              Only if {d.fieldLabel[conditions[0].field] ?? conditions[0].field} {d.operatorLabel[conditions[0].operator]} &quot;{d.valueText(conditions[0].field, conditions[0].value)}&quot;
               {conditions.length > 1 && ` +${conditions.length - 1} more`}
             </span>
           </p>
@@ -311,6 +312,8 @@ export type FlowCanvasProps = {
   actionIcon: Record<AutomationAction, LucideIcon>;
   fieldLabel: Record<string, string>;
   operatorLabel: Record<AutomationOperator, string>;
+  /** How a condition's value reads on a step card - e.g. a voice number's name instead of its id. */
+  valueText?: (field: string, value: unknown) => string;
 
   onOpenStep: (i: number) => void;
   onInsertAt: (at: number) => void;
@@ -366,6 +369,7 @@ function CanvasInner(props: FlowCanvasProps & { triggerOpen: boolean; onOpenTrig
       locked: props.locked,
       actionLabel: props.actionLabel, actionIcon: props.actionIcon,
       fieldLabel: props.fieldLabel, operatorLabel: props.operatorLabel,
+      valueText: props.valueText ?? ((_f, v) => String(v)),
       summary: isNew ? "" : props.stepSummary(item.step),
       onOpen: () => !isNew && props.onOpenStep(index),
       onRemove: () => props.onRemoveStep(index),
