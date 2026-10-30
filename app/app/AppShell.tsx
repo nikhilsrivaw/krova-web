@@ -26,6 +26,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Public routes skip the session guard: the login page, and the Google
   // callback, which has to finish its code exchange before a session exists.
+  const inChat = /\/inbox\/[^/]+/.test(pathname);
   const isLoginRoute =
     pathname === appPath("/login") || pathname === "/app/login" || pathname === "/login" ||
     pathname.endsWith("/auth/google/complete");
@@ -108,7 +109,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-os-bg flex flex-col">
-      <AppTopBar businessName={profile.business_name || "KROVA"} />
+      {/* A chat has its own sticky header (back, name, window); two stacked headers would hide it. */}
+      {!inChat && <AppTopBar businessName={profile.business_name || "KROVA"} />}
       <main className="flex-1 overflow-y-auto pb-20">
         <PlanBanner phone />
         {children}

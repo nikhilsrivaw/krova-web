@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -65,6 +65,17 @@ function igsidOf(identities: Identity[]): string | null {
  * replaced linking out to the desktop /conversations page: tapping a
  * conversation in the app must stay in the app.
  */
+/** "Today", "Yesterday" or a date - the separator between days in a chat. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const key = (x: Date) => x.toDateString();
+  const today = new Date();
+  const yesterday = new Date(Date.now() - 86_400_000);
+  if (key(d) === key(today)) return "Today";
+  if (key(d) === key(yesterday)) return "Yesterday";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+}
+
 export default function AppConversationThreadPage() {
   const { allowed, capabilities } = useRole();
   const params = useParams<{ customerId: string }>();
@@ -126,6 +137,39 @@ export default function AppConversationThreadPage() {
       mounted = false;
     };
   }, [customerId]);
+
+  // New messages and AI drafts appear while the chat is open, like any chat app; paused in the background.
+  useEffect(() => {
+    if (!customerId) return;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      conversations.thread(customerId).then((fresh) => {
+        setThread((prev) => {
+          const last = (t: ConversationThread | null) => t?.messages[t.messages.length - 1]?.id;
+          return prev && last(prev) === last(fresh) && prev.messages.length === fresh.messages.length ? prev : fresh;
+        });
+      }).catch(() => {});
+      approvals.list("pending").then((drafts) => {
+        setPendingDrafts(drafts.filter((d) => d.customer_id === customerId));
+      }).catch(() => {});
+    };
+    const timer = setInterval(tick, 8000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, [customerId]);
+
+  // Open at the latest message, and follow new ones when the reader is already near the bottom.
+  const endRef = useRef<HTMLDivElement>(null);
+  const seenCount = useRef(0);
+  useEffect(() => {
+    const count = thread?.messages.length ?? 0;
+    if (!count) return;
+    const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 300;
+    if (seenCount.current === 0 || (count > seenCount.current && nearBottom)) {
+      endRef.current?.scrollIntoView({ behavior: seenCount.current === 0 ? "auto" : "smooth" });
+    }
+    seenCount.current = count;
+  }, [thread?.messages.length]);
 
   const handleApproveDraft = async (id: string) => {
     setActioningDraftId(id);
@@ -344,8 +388,62 @@ export default function AppConversationThreadPage() {
         </div>
       )}
 
+
+      <div className="px-3 py-4 space-y-3">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-14 w-3/4 rounded-2xl bg-os-card animate-pulse" />
+            ))}
+          </div>
+        ) : loadError ? (
+          <p className="text-center text-xs text-rose-400 py-8">{loadError}</p>
+        ) : !thread || thread.messages.length === 0 ? (
+          <p className="text-center text-xs text-os-text-dim py-12">No messages yet.</p>
+        ) : (
+          thread.messages.map((msg, i) => {
+            const isOutbound = msg.direction === "outbound";
+            const day = dayLabel(msg.occurred_at);
+            const newDay = i === 0 || dayLabel(thread.messages[i - 1].occurred_at) !== day;
+            const ChannelIcon = CHANNEL_ICONS[msg.channel] || MessageSquare;
+            return (
+              <div key={msg.id}>
+                {newDay && (
+                  <p className="text-center my-2"><span className="px-2.5 py-1 rounded-full bg-os-card border border-os-border text-[10px] text-os-text-dim">{day}</span></p>
+                )}
+              <div className={`flex flex-col ${isOutbound ? "items-end" : "items-start"}`}>
+                <div className="flex items-center gap-1 mb-1 px-1">
+                  <ChannelIcon className="w-2.5 h-2.5 text-os-text-dim" />
+                  <span className="text-[9px] font-mono text-os-text-dim">
+                    {new Date(msg.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div
+                  className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                    msg.channel === "voice"
+                      ? "bg-cyan-950/30 border border-cyan-500/30 text-os-ink rounded-tl-sm"
+                      : isOutbound
+                      ? "bg-teal text-os-bg rounded-tr-sm font-medium"
+                      : "bg-os-card border border-os-border text-os-ink/90 rounded-tl-sm"
+                  }`}
+                >
+                  {msg.channel === "voice" && (
+                    <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-cyan-500/20 text-cyan-300 font-mono text-[10px]">
+                      <Volume2 className="w-3 h-3" />
+                      Voice call
+                    </div>
+                  )}
+                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                </div>
+              </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {pendingDrafts.length > 0 && (
-        <div className="px-3 pt-3 space-y-2.5 border-b border-os-border pb-3">
+        <div className="px-3 pt-1 space-y-2.5 pb-3">
           {pendingDrafts.map((d) => (
             <div key={d.id} className="rounded-2xl bg-teal/[0.06] border border-teal/25 overflow-hidden">
               <div className="px-3.5 pt-2.5 pb-1.5 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide text-teal-bright">
@@ -418,52 +516,7 @@ export default function AppConversationThreadPage() {
           ))}
         </div>
       )}
-
-      <div className="px-3 py-4 space-y-3">
-        {isLoading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-14 w-3/4 rounded-2xl bg-os-card animate-pulse" />
-            ))}
-          </div>
-        ) : loadError ? (
-          <p className="text-center text-xs text-rose-400 py-8">{loadError}</p>
-        ) : !thread || thread.messages.length === 0 ? (
-          <p className="text-center text-xs text-os-text-dim py-12">No messages yet.</p>
-        ) : (
-          thread.messages.map((msg) => {
-            const isOutbound = msg.direction === "outbound";
-            const ChannelIcon = CHANNEL_ICONS[msg.channel] || MessageSquare;
-            return (
-              <div key={msg.id} className={`flex flex-col ${isOutbound ? "items-end" : "items-start"}`}>
-                <div className="flex items-center gap-1 mb-1 px-1">
-                  <ChannelIcon className="w-2.5 h-2.5 text-os-text-dim" />
-                  <span className="text-[9px] font-mono text-os-text-dim">
-                    {new Date(msg.occurred_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                <div
-                  className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
-                    msg.channel === "voice"
-                      ? "bg-cyan-950/30 border border-cyan-500/30 text-os-ink rounded-tl-sm"
-                      : isOutbound
-                      ? "bg-teal text-os-bg rounded-tr-sm font-medium"
-                      : "bg-os-card border border-os-border text-os-ink/90 rounded-tl-sm"
-                  }`}
-                >
-                  {msg.channel === "voice" && (
-                    <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-cyan-500/20 text-cyan-300 font-mono text-[10px]">
-                      <Volume2 className="w-3 h-3" />
-                      Voice call
-                    </div>
-                  )}
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <div ref={endRef} className="h-24" aria-hidden />
 
       {canReply && thread && phoneOf(thread.identities) && !thread.window_open && (
         <div className="sticky bottom-20 border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3 space-y-2">
