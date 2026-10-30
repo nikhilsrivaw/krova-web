@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Inbox, Wallet, CheckSquare, Menu } from "lucide-react";
+import { Home, Inbox, Wallet, CheckSquare, Menu, Sparkles } from "lucide-react";
 import type { Capability } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
+import { useRole } from "@/lib/useRole";
 
 /**
  * Five tabs, always the same five - Today, Inbox, Ledger, Approvals, More.
@@ -25,6 +26,16 @@ const TABS = [
   { path: "/more", label: "More", icon: Menu },
 ] as const;
 
+// Owner and admins: Ask KROVA takes the middle, as a raised button. Approvals moves into More (and Today's
+// "AI replies waiting" card); its count rides on the Today tab instead.
+const SUPERVISOR_TABS = [
+  { path: "/today", label: "Today", icon: Home },
+  { path: "/inbox", label: "Inbox", icon: Inbox },
+  { path: "/ask", label: "Ask", icon: Sparkles },
+  { path: "/ledger", label: "Ledger", icon: Wallet },
+  { path: "/more", label: "More", icon: Menu },
+] as const;
+
 export function BottomNav({
   pendingCount,
 }: {
@@ -32,6 +43,9 @@ export function BottomNav({
   pendingCount: number;
 }) {
   const pathname = usePathname();
+  const { supervisor } = useRole();
+  const tabs = supervisor ? SUPERVISOR_TABS : TABS;
+  const badgeOn = supervisor ? "/today" : "/approvals";
   // pathname is whatever the browser actually shows - "/inbox" on the app
   // subdomain (middleware.ts rewrites it server-side, invisibly), "/app/inbox"
   // under the /app/* fallback. Stripping any "/app" prefix before comparing
@@ -45,10 +59,20 @@ export function BottomNav({
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
     >
       <div className="grid grid-cols-5 max-w-md mx-auto">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = normalizedPathname.startsWith(tab.path);
           const Icon = tab.icon;
           const href = appPath(tab.path);
+          if (tab.path === "/ask") {
+            return (
+              <Link key={tab.path} href={href} aria-label="Ask KROVA" className="relative flex flex-col items-center gap-1 pb-2.5">
+                <span className={`-mt-5 w-12 h-12 rounded-full bg-teal flex items-center justify-center shadow-lg shadow-teal/30 ring-4 ring-os-bg ${isActive ? "scale-105" : ""}`}>
+                  <Icon className="w-5 h-5 text-os-bg" strokeWidth={2.4} />
+                </span>
+                <span className={`text-[10px] font-semibold ${isActive ? "text-teal" : "text-os-ink"}`}>Ask KROVA</span>
+              </Link>
+            );
+          }
           return (
             <Link
               key={tab.path}
@@ -62,7 +86,7 @@ export function BottomNav({
                   }`}
                   strokeWidth={isActive ? 2.4 : 1.8}
                 />
-                {tab.path === "/approvals" && pendingCount > 0 && (
+                {tab.path === badgeOn && pendingCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-teal text-os-bg text-[9px] font-bold font-mono flex items-center justify-center">
                     {pendingCount > 9 ? "9+" : pendingCount}
                   </span>

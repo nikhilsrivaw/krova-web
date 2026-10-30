@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send } from "lucide-react";
 import { owner, type OwnerTurn } from "@/lib/api";
 
@@ -25,6 +25,19 @@ export default function AskPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // A question tapped or typed on Today's Ask bar arrives as ?q= and is sent once, straight away.
+  const fromBar = useRef(false);
+  useEffect(() => {
+    if (fromBar.current) return;
+    fromBar.current = true;
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+      window.history.replaceState(null, "", window.location.pathname);
+      void send(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const send = async (text: string) => {
     const question = text.trim();

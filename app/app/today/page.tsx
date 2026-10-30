@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AskBar } from "@/components/app-shell/AskBar";
 import Link from "next/link";
 import { CheckSquare, Siren, Wallet, ArrowRight, Inbox as InboxIcon, CalendarDays, Ticket, UserPlus, LifeBuoy, Coins } from "lucide-react";
 import {
@@ -110,6 +111,8 @@ export default function TodayPage() {
           {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </div>
+
+      {supervisor && <AskBar />}
 
       {isLoading ? (
         <div className="space-y-3">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Users, BookOpen, BarChart3, Settings, Siren, LogOut, Sparkles, Terminal,
+  Users, BookOpen, BarChart3, Settings, Siren, LogOut, CheckSquare, Terminal,
   CalendarClock, Scale, Package, FileCheck2, Clock, Building2, FileText, LifeBuoy, Megaphone, Zap,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
@@ -38,7 +38,8 @@ const ITEMS: Item[] = [
   { label: "Quick broadcast", href: "/broadcast", icon: Megaphone, native: true },
   { label: "Automations", href: "/automations", icon: Zap, native: true },
   { label: "Command", href: "/command", icon: Terminal, native: true },
-  { label: "Ask KROVA", href: "/ask", icon: Sparkles, native: true },
+  // Owner and admins have Ask KROVA in the bottom bar instead, and Approvals here in its place.
+  { label: "Approvals", href: "/approvals", icon: CheckSquare, native: true },
   { label: "Escalations", href: "/escalations", icon: Siren, native: true },
   { label: "Customers", href: "/customers", icon: Users, native: true },
   { label: "Settings", href: "/settings", icon: Settings, native: true },
@@ -56,8 +57,8 @@ export default function MorePage() {
   const visible = ITEMS.filter(
     (item) =>
       (!item.requiresCapability || profile?.capabilities.includes(item.requiresCapability)) &&
-      // Command runs owner commands and Ask KROVA answers from the business's money ledger.
-      (supervisor || !["/command", "/ask", "/help", "/business", "/broadcast", "/automations"].includes(item.href)),
+      // Command runs owner commands; agents keep Approvals in their bottom bar.
+      (supervisor || !["/command", "/approvals", "/help", "/business", "/broadcast", "/automations"].includes(item.href)),
   );
 
   return (
