@@ -868,6 +868,14 @@ export type ConversationItem = {
   window_closes_at: string | null;
   is_private: boolean;
   assigned_to_user_id: string | null;
+  /** When the customer's unanswered messages began; null when nobody is waiting. */
+  waiting_since?: string | null;
+  /** The business's first-reply target in minutes (Team page), or null. */
+  wait_target_minutes?: number | null;
+  /** Marked done by the team, and the customer has not written since. */
+  resolved?: boolean;
+  /** Customer messages the signed-in person has not read (0 once anyone replied). */
+  unread?: number;
 };
 
 export type ThreadMessage = {
@@ -900,6 +908,10 @@ export type ConversationThread = {
   assigned_to_user_id: string | null;
   messages: ThreadMessage[];
   commitments: ThreadCommitment[];
+  waiting_since?: string | null;
+  wait_target_minutes?: number | null;
+  resolved?: boolean;
+  resolved_at?: string | null;
 };
 
 export const conversations = {
@@ -932,6 +944,18 @@ export const conversations = {
     api.post<{ customer_id: string; assigned_to_user_id: string | null }>(
       `/conversations/${customerId}/assign${userId ? `?user_id=${userId}` : ""}`,
     ),
+
+  /** Mark the chat done, or open it again. A new customer message reopens it by itself. */
+  resolve: (customerId: string, resolved = true) =>
+    api.post<{ customer_id: string; resolved: boolean; resolved_at: string | null }>(
+      `/conversations/${customerId}/resolve?resolved=${resolved}`,
+    ),
+
+  /** Everything in this chat so far counts as read, for the signed-in person. */
+  markRead: (customerId: string) => api.post<void>(`/conversations/${customerId}/read`),
+
+  /** Chats with customer messages the signed-in person has not read - the Inbox tab's number. */
+  unreadCount: () => api.get<{ unread_chats: number }>("/conversations/unread-count"),
 };
 
 // ── Team ─────────────────────────────────────────────────────────────────────

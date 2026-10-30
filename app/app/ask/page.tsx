@@ -104,7 +104,7 @@ export default function AskPage() {
           e.preventDefault();
           send(draft);
         }}
-        className="sticky bottom-20 flex items-end gap-2 bg-os-bg/95 backdrop-blur-xl py-2"
+        className="sticky bottom-[88px] flex items-end gap-2 bg-os-bg/95 backdrop-blur-xl py-2"
       >
         <textarea
           rows={1}

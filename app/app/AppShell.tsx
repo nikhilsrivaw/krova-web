@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { account, approvals, type UserProfile } from "@/lib/api";
+import { account, approvals, conversations, type UserProfile } from "@/lib/api";
 import { isSignedIn, clearSession } from "@/lib/auth";
 import { useSessionWatch } from "@/lib/useSessionWatch";
 import { appPath, isAppSubdomain } from "@/lib/app-nav";
@@ -33,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -76,11 +77,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (isLoginRoute || !profile) return;
     let mounted = true;
     const fetchCount = async () => {
+      if (document.visibilityState !== "visible") return;
       try {
         const res = await approvals.count();
         if (mounted && res) setPendingCount(res.pending);
       } catch {
         /* quiet */
+      }
+      try {
+        const res = await conversations.unreadCount();
+        if (mounted && res) setUnreadChats(res.unread_chats);
+      } catch {
+        /* quiet - an older server has no unread count */
       }
     };
     fetchCount();
@@ -115,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <PlanBanner phone />
         {children}
       </main>
-      <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} />
+      <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} unreadChats={unreadChats} />
     </div>
   );
 }

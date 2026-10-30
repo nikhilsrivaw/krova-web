@@ -38,9 +38,12 @@ const SUPERVISOR_TABS = [
 
 export function BottomNav({
   pendingCount,
+  unreadChats = 0,
 }: {
   capabilities: Capability[];
   pendingCount: number;
+  /** Chats with customer messages this person has not read. */
+  unreadChats?: number;
 }) {
   const pathname = usePathname();
   const { supervisor } = useRole();
@@ -86,6 +89,11 @@ export function BottomNav({
                   }`}
                   strokeWidth={isActive ? 2.4 : 1.8}
                 />
+                {tab.path === "/inbox" && unreadChats > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-teal text-os-bg text-[9px] font-bold font-mono flex items-center justify-center">
+                    {unreadChats > 9 ? "9+" : unreadChats}
+                  </span>
+                )}
                 {tab.path === badgeOn && pendingCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-teal text-os-bg text-[9px] font-bold font-mono flex items-center justify-center">
                     {pendingCount > 9 ? "9+" : pendingCount}

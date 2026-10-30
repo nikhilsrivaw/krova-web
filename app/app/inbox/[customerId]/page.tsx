@@ -19,14 +19,17 @@ import {
   FileText,
   ChevronRight,
   ShoppingBag,
+  StickyNote,
 } from "lucide-react";
 import {
   assignedToOther,
   conversations,
   channels,
   approvals,
+  crm,
   formatPaise,
   type ConversationThread,
+  type CustomerNote,
   type MessageDraft,
   type Identity,
   sendAddress,
@@ -41,6 +44,7 @@ import { PaymentLinkButton } from "@/components/payments/PaymentLinkButton";
 import { TemplateSheet } from "@/components/app-shell/TemplateSheet";
 import { SavedRepliesSheet } from "@/components/app-shell/SavedRepliesSheet";
 import { Sheet } from "@/components/app-shell/Sheet";
+import { ChatTeamBar } from "@/components/app-shell/ChatTeamBar";
 import { ChatOrder } from "@/components/orders/ChatOrder";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
@@ -83,6 +87,8 @@ export default function AppConversationThreadPage() {
   const customerId = params.customerId;
 
   const [thread, setThread] = useState<ConversationThread | null>(null);
+  // Team notes, shown in the chat between messages; the customer never sees them.
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showBriefing, setShowBriefing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -139,10 +145,15 @@ export default function AppConversationThreadPage() {
   }, [customerId]);
 
   // New messages and AI drafts appear while the chat is open, like any chat app; paused in the background.
+  // Having the chat open is what marks it read for this person (the Inbox's unread number).
   useEffect(() => {
     if (!customerId) return;
+    conversations.markRead(customerId).catch(() => {});
+    crm.notes(customerId).then(setNotes).catch(() => {});
     const tick = () => {
       if (document.visibilityState !== "visible") return;
+      conversations.markRead(customerId).catch(() => {});
+      crm.notes(customerId).then((fresh) => setNotes((prev) => (prev.length === fresh.length ? prev : fresh))).catch(() => {});
       conversations.thread(customerId).then((fresh) => {
         setThread((prev) => {
           const last = (t: ConversationThread | null) => t?.messages[t.messages.length - 1]?.id;
@@ -157,6 +168,11 @@ export default function AppConversationThreadPage() {
     document.addEventListener("visibilitychange", tick);
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
   }, [customerId]);
+
+  const timeline: ({ kind: "msg"; msg: ConversationThread["messages"][number] } | { kind: "note"; note: CustomerNote })[] = [
+    ...(thread?.messages ?? []).map((msg) => ({ kind: "msg" as const, msg })),
+    ...notes.map((note) => ({ kind: "note" as const, note })),
+  ].sort((a, b) => (a.kind === "note" ? a.note.created_at : a.msg.occurred_at).localeCompare(b.kind === "note" ? b.note.created_at : b.msg.occurred_at));
 
   // Open at the latest message, and follow new ones when the reader is already near the bottom.
   const endRef = useRef<HTMLDivElement>(null);
@@ -304,6 +320,19 @@ export default function AppConversationThreadPage() {
         )}
       </div>
 
+      {thread && (
+        <ChatTeamBar
+          customerId={thread.customer_id}
+          assignedTo={thread.assigned_to_user_id}
+          resolved={!!thread.resolved}
+          waitingSince={thread.waiting_since}
+          waitTarget={thread.wait_target_minutes}
+          onAssigned={(userId) => setThread((prev) => (prev ? { ...prev, assigned_to_user_id: userId } : prev))}
+          onResolved={(resolved) => setThread((prev) => (prev ? { ...prev, resolved, waiting_since: resolved ? null : prev.waiting_since } : prev))}
+          onNote={(note) => setNotes((prev) => [note, ...prev])}
+        />
+      )}
+
       {thread && phoneOf(thread.identities) && (
         <div className="px-3 pt-3">
           <CallCustomer customerId={thread.customer_id} customerName={thread.name} tone="light" />
@@ -398,19 +427,37 @@ export default function AppConversationThreadPage() {
           </div>
         ) : loadError ? (
           <p className="text-center text-xs text-rose-400 py-8">{loadError}</p>
-        ) : !thread || thread.messages.length === 0 ? (
+        ) : !thread || timeline.length === 0 ? (
           <p className="text-center text-xs text-os-text-dim py-12">No messages yet.</p>
         ) : (
-          thread.messages.map((msg, i) => {
+          timeline.map((item, i) => {
+            const at = item.kind === "note" ? item.note.created_at : item.msg.occurred_at;
+            const day = dayLabel(at);
+            const prev = timeline[i - 1];
+            const newDay = i === 0 || dayLabel(prev.kind === "note" ? prev.note.created_at : prev.msg.occurred_at) !== day;
+            const separator = newDay && (
+              <p className="text-center my-2"><span className="px-2.5 py-1 rounded-full bg-os-card border border-os-border text-[10px] text-os-text-dim">{day}</span></p>
+            );
+            if (item.kind === "note") {
+              return (
+                <div key={`note-${item.note.id}`}>
+                  {separator}
+                  <div className="mx-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-100">
+                    <p className="text-[10px] font-semibold text-amber-300 mb-1 flex items-center gap-1">
+                      <StickyNote className="w-3 h-3" /> Team note · {item.note.author_name || "Team"} ·{" "}
+                      {new Date(item.note.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <p className="whitespace-pre-wrap">{item.note.body}</p>
+                  </div>
+                </div>
+              );
+            }
+            const msg = item.msg;
             const isOutbound = msg.direction === "outbound";
-            const day = dayLabel(msg.occurred_at);
-            const newDay = i === 0 || dayLabel(thread.messages[i - 1].occurred_at) !== day;
             const ChannelIcon = CHANNEL_ICONS[msg.channel] || MessageSquare;
             return (
               <div key={msg.id}>
-                {newDay && (
-                  <p className="text-center my-2"><span className="px-2.5 py-1 rounded-full bg-os-card border border-os-border text-[10px] text-os-text-dim">{day}</span></p>
-                )}
+                {separator}
               <div className={`flex flex-col ${isOutbound ? "items-end" : "items-start"}`}>
                 <div className="flex items-center gap-1 mb-1 px-1">
                   <ChannelIcon className="w-2.5 h-2.5 text-os-text-dim" />
@@ -519,7 +566,7 @@ export default function AppConversationThreadPage() {
       <div ref={endRef} className="h-24" aria-hidden />
 
       {canReply && thread && phoneOf(thread.identities) && !thread.window_open && (
-        <div className="sticky bottom-20 border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3 space-y-2">
+        <div className="sticky bottom-[88px] border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3 space-y-2">
           <p className="text-[11px] text-os-text-dim">
             They haven&apos;t written in 24 hours - WhatsApp only allows an approved template until they reply.
           </p>
@@ -538,7 +585,7 @@ export default function AppConversationThreadPage() {
       )}
 
       {canReply && thread && (thread.window_open || !phoneOf(thread.identities)) && (
-        <div className="sticky bottom-20 border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3">
+        <div className="sticky bottom-[88px] border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3">
           {/* bottom-20 sits this right above the fixed BottomNav (app/app/layout.tsx's main has pb-20 reserved for it) */}
           {replyError && <p className="text-[11px] text-rose-400 mb-2">{replyError}</p>}
           <div className="flex items-end gap-2">

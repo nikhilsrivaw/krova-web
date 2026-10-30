@@ -66,11 +66,18 @@ self.addEventListener("notificationclick", (event) => {
   const target = (event.notification.data && event.notification.data.url) || "/app/today";
   const absolute = new URL(target, self.location.origin).href;
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (list) => {
+      // Reuse an open KROVA window and take it to the chat (or screen) the notification is about. navigate() only
+      // works on a window this worker controls - if it refuses, open the screen in a new window instead of doing
+      // nothing.
       for (const client of list) {
         if ("focus" in client) {
-          client.navigate(absolute);
-          return client.focus();
+          try {
+            const moved = "navigate" in client ? await client.navigate(absolute) : null;
+            return (moved || client).focus();
+          } catch (e) {
+            break;
+          }
         }
       }
       return self.clients.openWindow(absolute);

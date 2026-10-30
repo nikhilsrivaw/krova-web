@@ -5,6 +5,7 @@ import { MessageSquare, Instagram, Phone, Globe, Lock, Search, X } from "lucide-
 import { conversations, type ConversationItem } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 import { getUserId } from "@/lib/auth";
+import { waitLabel } from "@/lib/chatWait";
 
 const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   whatsapp: MessageSquare,
@@ -13,12 +14,13 @@ const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   web: Globe,
 };
 
-type Filter = "all" | "waiting" | "mine" | "unassigned";
+type Filter = "all" | "waiting" | "mine" | "unassigned" | "resolved";
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
+  { key: "all", label: "Open" },
   { key: "waiting", label: "Waiting" },
   { key: "mine", label: "Mine" },
   { key: "unassigned", label: "Unassigned" },
+  { key: "resolved", label: "Resolved" },
 ];
 
 // New messages show up without reopening the screen; paused while the app is in the background.
@@ -43,8 +45,9 @@ function initials(name: string | null): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-/** A customer is waiting when the last message in the chat is theirs. */
-const isWaiting = (c: ConversationItem) => c.last_direction === "inbound";
+/** A customer is waiting when they wrote after the last reply (and the chat is not marked resolved). */
+const isWaiting = (c: ConversationItem) => (c.waiting_since !== undefined ? !!c.waiting_since : c.last_direction === "inbound" && !c.resolved);
+
 
 /**
  * The app's inbox: search across every message, filter to what needs you (Waiting, Mine, Unassigned), and see at a
@@ -82,19 +85,23 @@ export default function InboxPage() {
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
   }, [load, searched]);
 
+  const open = useMemo(() => list.filter((c) => !c.resolved), [list]);
   const counts = useMemo(() => ({
-    all: list.length,
-    waiting: list.filter(isWaiting).length,
-    mine: list.filter((c) => c.assigned_to_user_id === me).length,
-    unassigned: list.filter((c) => !c.assigned_to_user_id).length,
-  }), [list, me]);
+    all: open.length,
+    waiting: open.filter(isWaiting).length,
+    mine: open.filter((c) => c.assigned_to_user_id === me).length,
+    unassigned: open.filter((c) => !c.assigned_to_user_id).length,
+    resolved: list.length - open.length,
+  }), [list, open, me]);
 
-  const shown = list.filter((c) =>
+  const shown = (filter === "resolved" ? list.filter((c) => c.resolved) : open).filter((c) =>
     filter === "waiting" ? isWaiting(c)
       : filter === "mine" ? c.assigned_to_user_id === me
       : filter === "unassigned" ? !c.assigned_to_user_id
       : true,
-  );
+  )
+    // Customers who have waited longest come first in Waiting, like a queue.
+    .sort((a, b) => (filter === "waiting" ? (a.waiting_since || "").localeCompare(b.waiting_since || "") : 0));
 
   return (
     <div className="px-4 pt-5 max-w-md mx-auto">
@@ -146,6 +153,7 @@ export default function InboxPage() {
             : filter === "waiting" ? "Nobody is waiting for a reply."
             : filter === "mine" ? "No chats are assigned to you."
             : filter === "unassigned" ? "Every chat has an owner."
+            : filter === "resolved" ? "No resolved chats."
             : "No conversations yet."}
         </p>
       ) : (
@@ -153,6 +161,8 @@ export default function InboxPage() {
           {shown.map((c) => {
             const Icon = CHANNEL_ICONS[c.channels[0] || "whatsapp"] || MessageSquare;
             const waiting = isWaiting(c);
+            const wait = waitLabel(c.waiting_since, c.wait_target_minutes);
+            const unread = c.unread ?? 0;
             return (
               <a
                 key={c.customer_id}
@@ -182,10 +192,19 @@ export default function InboxPage() {
                       {c.last_direction === "outbound" ? "You: " : ""}
                       {c.last_message || "No messages"}
                     </p>
-                    {waiting && <span className="w-2 h-2 rounded-full bg-teal shrink-0" aria-label="Waiting for a reply" />}
+                    {unread > 0 ? (
+                      <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-teal text-os-bg text-[10px] font-bold flex items-center justify-center shrink-0" aria-label={`${unread} unread`}>
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    ) : waiting ? <span className="w-2 h-2 rounded-full bg-teal shrink-0" aria-label="Waiting for a reply" /> : null}
                   </div>
-                  {(c.open_commitments > 0 || (!c.window_open && c.channels.includes("whatsapp"))) && (
-                    <div className="flex gap-1.5 mt-1">
+                  {(wait || c.open_commitments > 0 || (!c.window_open && c.channels.includes("whatsapp"))) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {wait && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${wait.late ? "bg-thread/15 text-thread-bright" : "bg-teal/10 text-teal"}`}>
+                          {wait.text}
+                        </span>
+                      )}
                       {c.open_commitments > 0 && (
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300">
                           {c.open_commitments} open promise{c.open_commitments === 1 ? "" : "s"}
