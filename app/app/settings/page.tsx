@@ -8,6 +8,7 @@ import { signOut } from "@/lib/auth";
 import { appPath, installUrl } from "@/lib/app-nav";
 import { disableNotifications, enableNotifications, notificationsEnabled, notificationsSupported } from "@/lib/push";
 import { SettingsControls } from "@/components/commands/SettingsControls";
+import { MyPhoneCard } from "@/components/team/MyPhoneCard";
 
 const LEVELS: { value: AutonomyLevel; label: string; detail: string }[] = [
   { value: "observe", label: "Observe", detail: "AI only reads and learns. It drafts nothing." },
@@ -160,6 +161,8 @@ export default function AppSettingsPage() {
       </section>
 
       <SettingsControls canEdit={canEdit} />
+
+      <MyPhoneCard />
 
       <section className="space-y-2.5">
         <p className="text-[11px] font-mono uppercase tracking-wide text-os-text-dim">Notifications</p>
