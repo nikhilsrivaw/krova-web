@@ -6,13 +6,16 @@ import { owner, type OwnerTurn } from "@/lib/api";
 
 const STARTERS = [
   "Aaj kya pending hai?",
-  "Kaun se customers ka paisa overdue hai?",
-  "Mere ledger ka total kya hai?",
+  "Pichhle mahine business mein kya hua?",
+  "Kaun se customers reply ka wait kar rahe hain?",
+  "Is hafte kitne leads aaye, kahan se?",
+  "Team ne is hafte kya kaam kiya?",
 ];
 
 /**
- * Ask KROVA - ask your own ledger a question in plain language. The answer
- * is built only from the commitment ledger the owner already sees. When the
+ * Ask KROVA - ask anything about your own business in plain language: money, a customer by name or number,
+ * bookings, orders, leads, calls, the team. The answer is built only from KROVA's own records
+ * (krova-platform/shared/ai/owner_ask.py). When the
  * AI provider is not approved or its quota is off, the server says so and
  * this screen shows that plainly instead of failing silently.
  */
@@ -48,7 +51,7 @@ export default function AskPage() {
         <Sparkles className="w-4 h-4 text-teal" />
         Ask KROVA
       </h1>
-      <p className="text-xs text-os-text-dim mb-4">Hindi, Hinglish ya English mein poochho. Jawab sirf tumhare ledger se.</p>
+      <p className="text-xs text-os-text-dim mb-4">Hindi, Hinglish ya English mein kuch bhi poochho: paisa, kisi customer ka naam, bookings, orders, leads, team. Jawab sirf KROVA ke records se.</p>
 
       <div className="flex-1 space-y-3 mb-4">
         {turns.length === 0 && (
