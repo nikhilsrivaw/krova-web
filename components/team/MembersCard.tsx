@@ -298,7 +298,7 @@ export function MembersCard() {
           <label className="flex items-center justify-between gap-3 text-xs text-white">
             <span>
               New chats
-              <span className="block text-[11px] text-os-text-dim">Round-robin gives each new chat to the available agent who got one longest ago. Away agents get none.</span>
+              <span className="block text-[11px] text-os-text-dim">Round-robin gives each new chat - and each new lead from a portal or form - to the available agent who got one longest ago. Away agents get none.</span>
             </span>
             <select
               value={prefs.routing}
