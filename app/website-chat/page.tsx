@@ -22,6 +22,18 @@ const COLOURS = ["#d4a24c", "#14b8a6", "#2563eb", "#7c3aed", "#e11d48", "#16a34a
 const DEFAULT_TITLE = "Chat with us";
 const DEFAULT_GREETING = { en: "Hi! How can I help you today?", hi: "नमस्ते! बताइए, मैं आपकी क्या मदद कर सकता हूँ?" };
 
+/** Dark or light text on the business's colour - the same choice the chat window itself makes. */
+function inkOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return "#ffffff";
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? "#111318" : "#ffffff";
+}
+
 const snippetFor = (site: WebChatSite) =>
   `<script src="${API_BASE}/widget.js" data-site-key="${site.site_key}" data-api-base="${API_BASE}" async></script>`;
 
@@ -286,9 +298,9 @@ function ChatModal({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-function Preview({ draft }: { draft: WebChatSiteInput }) {
+function Preview({ draft, logo }: { draft: WebChatSiteInput; logo: string | null }) {
   const accent = draft.accent ?? COLOURS[0];
-  const light = draft.theme === "light";
+  const light = draft.theme !== "dark";
   const bg = light ? "#ffffff" : "#0f1117";
   const fg = light ? "#14151f" : "#f4f4f5";
   const soft = light ? "rgba(0,0,0,.06)" : "rgba(255,255,255,.08)";
@@ -298,9 +310,15 @@ function Preview({ draft }: { draft: WebChatSiteInput }) {
       <p className={label}>Preview</p>
       <div className={`flex flex-col gap-2 ${draft.position === "left" ? "items-start" : "items-end"}`}>
         <div className="w-full max-w-[260px] rounded-xl overflow-hidden border border-white/[0.1]" style={{ background: bg, color: fg }}>
-          <div className="px-3 py-2 text-xs font-bold flex items-center justify-between" style={{ background: accent, color: "#14151F" }}>
-            <span className="truncate">{draft.title || DEFAULT_TITLE}</span>
-            {draft.whatsapp_button && <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/15">WhatsApp</span>}
+          <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, color: inkOn(accent) }}>
+            <span className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background: "rgba(255,255,255,.22)" }}>
+              {logo ? <img src={logo} alt="" className="w-full h-full object-cover bg-white" /> : (draft.title || DEFAULT_TITLE).charAt(0).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-bold truncate">{draft.title || DEFAULT_TITLE}</span>
+              <span className="block text-[9px] opacity-85 truncate">● {draft.status_text || "Replies in seconds"}</span>
+            </span>
+            {draft.whatsapp_button && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-black/15">WA</span>}
           </div>
           <div className="p-2.5 space-y-2">
             <div className="text-[11px] px-2.5 py-1.5 rounded-lg w-fit max-w-[90%]" style={{ background: soft }}>{greeting}</div>
@@ -315,8 +333,8 @@ function Preview({ draft }: { draft: WebChatSiteInput }) {
         </div>
         <div className={`flex items-center gap-2 ${draft.position === "left" ? "flex-row-reverse" : ""}`}>
           {draft.launcher_text && <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold" style={{ background: bg, color: fg }}>{draft.launcher_text}</span>}
-          <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: accent }}>
-            <MessageCircle className="w-4 h-4 text-[#14151F]" />
+          <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: accent, color: inkOn(accent) }}>
+            <MessageCircle className="w-4 h-4" />
           </span>
         </div>
       </div>
@@ -343,11 +361,16 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
       domain: site.domain, title: site.title, greeting: site.greeting, accent: site.accent, active: site.active,
       position: site.position, launcher_text: site.launcher_text, teaser: site.teaser, starters: site.starters,
       ask_contact: site.ask_contact, language: site.language, theme: site.theme, whatsapp_button: site.whatsapp_button,
+      status_text: site.status_text, offset_bottom: site.offset_bottom, mobile_mode: site.mobile_mode, hide_paths: site.hide_paths,
     }
     : {
       domain: "", title: null, greeting: null, accent: COLOURS[0], active: true, position: "right", launcher_text: null,
-      teaser: null, starters: [], ask_contact: "when_needed", language: "en", theme: "dark", whatsapp_button: false,
+      teaser: null, starters: [], ask_contact: "when_needed", language: "en", theme: "light", whatsapp_button: false,
+      status_text: null, offset_bottom: null, mobile_mode: "full", hide_paths: [],
     });
+  const [logo, setLogo] = useState<string | null>(site?.logo_url ?? null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [pathsText, setPathsText] = useState((site?.hide_paths ?? []).join("\n"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<WebChatSiteInput>) => setDraft({ ...draft, ...patch });
@@ -355,7 +378,10 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
 
   const save = async () => {
     setBusy(true); setError(null);
-    const body = { ...draft, starters: draft.starters.map((s) => s.trim()).filter(Boolean) };
+    const body = {
+      ...draft, starters: draft.starters.map((s) => s.trim()).filter(Boolean),
+      hide_paths: pathsText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
+    };
     try {
       if (site) await webChat.updateSite(site.id, body); else await webChat.addSite(body);
       onSaved();
@@ -365,6 +391,16 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
     if (!site) return;
     setBusy(true);
     try { await webChat.removeSite(site.id); onSaved(); } catch (e) { setError(e instanceof Error ? e.message : "Could not remove."); setBusy(false); }
+  };
+  const pickLogo = async (file: File | undefined) => {
+    if (!site || !file) return;
+    setLogoBusy(true); setError(null);
+    try { setLogo((await webChat.uploadLogo(site.id, file)).logo_url); } catch (e) { setError(e instanceof Error ? e.message : "Could not upload the logo."); } finally { setLogoBusy(false); }
+  };
+  const dropLogo = async () => {
+    if (!site) return;
+    setLogoBusy(true);
+    try { await webChat.removeLogo(site.id); setLogo(null); } catch (e) { setError(e instanceof Error ? e.message : "Could not remove the logo."); } finally { setLogoBusy(false); }
   };
 
   return (
@@ -396,17 +432,39 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
               </div>
             </div>
           </div>
-          <Preview draft={draft} />
+          <Preview draft={draft} logo={logo} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <span className={label}>Logo</span>
+            {site ? (
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-full overflow-hidden bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-xs text-os-text-dim shrink-0">
+                  {logo ? <img src={logo} alt="" className="w-full h-full object-cover bg-white" /> : (draft.title || DEFAULT_TITLE).charAt(0).toUpperCase()}
+                </span>
+                <label className="px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-white cursor-pointer">
+                  {logoBusy ? "Uploading..." : logo ? "Change" : "Upload"}
+                  <input type="file" accept="image/png,image/jpeg" className="hidden" disabled={logoBusy} onChange={(e) => pickLogo(e.target.files?.[0])} />
+                </label>
+                {logo && <button type="button" onClick={dropLogo} disabled={logoBusy} className="text-xs text-os-text-dim hover:text-white cursor-pointer">Remove</button>}
+              </div>
+            ) : (
+              <span className="block text-[11px] text-os-text-dim">Save the website first, then add your logo.</span>
+            )}
+            <span className="block text-[10px] text-os-text-dim mt-1">PNG or JPG, up to 2 MB. A square logo looks best.</span>
+          </div>
+          <label className="block">
+            <span className={label}>Line under the name (optional)</span>
+            <input value={draft.status_text ?? ""} maxLength={40} onChange={(e) => set({ status_text: e.target.value })} placeholder="Replies in seconds" className={input} />
+          </label>
           <div>
             <span className={label}>Button side</span>
             <Choice value={draft.position} onChange={(v) => set({ position: v })} options={[{ key: "right", label: "Right" }, { key: "left", label: "Left" }]} />
           </div>
           <div>
             <span className={label}>Theme</span>
-            <Choice value={draft.theme} onChange={(v) => set({ theme: v })} options={[{ key: "dark", label: "Dark" }, { key: "light", label: "Light" }]} />
+            <Choice value={draft.theme} onChange={(v) => set({ theme: v })} options={[{ key: "light", label: "Light" }, { key: "dark", label: "Dark" }]} />
           </div>
           <div>
             <span className={label}>Chat window language</span>
@@ -447,6 +505,30 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
               : "Visitors can ask freely. The AI asks for their number only when a person or a booking needs it."}
           </span>
         </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <span className={label}>Height from the bottom: {draft.offset_bottom ?? 22}px</span>
+            <input type="range" min={0} max={300} step={2} value={draft.offset_bottom ?? 22}
+              onChange={(e) => set({ offset_bottom: Number(e.target.value) })} className="w-full accent-teal" />
+            <span className="block text-[10px] text-os-text-dim mt-1">Raise it if your website already has a WhatsApp or call button in that corner.</span>
+          </div>
+          <div>
+            <span className={label}>On phones</span>
+            <Choice value={draft.mobile_mode} onChange={(v) => set({ mobile_mode: v })} options={[
+              { key: "full", label: "Everything" }, { key: "button", label: "Button only" }, { key: "hidden", label: "Don't show" },
+            ]} />
+            <span className="block text-[10px] text-os-text-dim mt-1">
+              {draft.mobile_mode === "button" ? "No label or pop-up on phones - just the round button." : draft.mobile_mode === "hidden" ? "The chat does not show on phones at all." : "The chat opens full screen on phones."}
+            </span>
+          </div>
+        </div>
+
+        <label className="block">
+          <span className={label}>Pages where the chat stays off (optional)</span>
+          <textarea value={pathsText} rows={2} onChange={(e) => setPathsText(e.target.value)} placeholder={"/checkout\n/cart"} className={input} />
+          <span className="block text-[10px] text-os-text-dim mt-1">One per line. Any page whose address starts with it is left alone - e.g. /checkout also covers /checkout/pay.</span>
+        </label>
 
         <label className="flex items-start gap-2 text-xs text-white cursor-pointer">
           <input type="checkbox" className="mt-0.5 accent-teal" checked={draft.whatsapp_button} onChange={(e) => set({ whatsapp_button: e.target.checked })} />

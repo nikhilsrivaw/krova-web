@@ -1027,11 +1027,21 @@ export type WebChatSite = {
   language: "en" | "hi";
   theme: "dark" | "light";
   whatsapp_button: boolean;
+  /** The business's logo in the chat header (upload with uploadLogo). */
+  logo_url: string | null;
+  /** The line under the name, e.g. "Usually replies in 5 min". Null = "Replies in seconds". */
+  status_text: string | null;
+  /** Pixels from the bottom of the screen - room for the site's own WhatsApp or call button. Null = 22. */
+  offset_bottom: number | null;
+  /** Phones: "full", "button" (no label or pop-up) or "hidden" (no chat on phones). */
+  mobile_mode: "full" | "button" | "hidden";
+  /** Pages the chat stays off, by the start of their address ("/checkout"). */
+  hide_paths: string[];
   /** When a page with the code last loaded the chat; working = in the last two days. */
   last_loaded_at: string | null;
   working: boolean;
 };
-export type WebChatSiteInput = Omit<WebChatSite, "id" | "site_key" | "last_loaded_at" | "working">;
+export type WebChatSiteInput = Omit<WebChatSite, "id" | "site_key" | "last_loaded_at" | "working" | "logo_url">;
 export type WebChatStats = { days: number; chats: number; with_number: number; needed_person: number };
 export type WebChatRow = {
   id: string; started_at: string; last_seen_at: string; site: string | null; page_url: string | null;
@@ -1048,6 +1058,12 @@ export const webChat = {
   addSite: (site: WebChatSiteInput) => api.post<WebChatSite>("/web-chat/sites", site),
   updateSite: (id: string, site: WebChatSiteInput) => api.put<WebChatSite>(`/web-chat/sites/${id}`, site),
   removeSite: (id: string) => api.delete<void>(`/web-chat/sites/${id}`),
+  uploadLogo: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<WebChatSite>(`/web-chat/sites/${id}/logo`, formData, true);
+  },
+  removeLogo: (id: string) => api.delete<WebChatSite>(`/web-chat/sites/${id}/logo`),
   stats: () => api.get<WebChatStats>("/web-chat/stats"),
   chats: () => api.get<WebChatRow[]>("/web-chat/chats"),
   chat: (id: string) => api.get<WebChatDetail>(`/web-chat/chats/${id}`),
