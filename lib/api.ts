@@ -1015,14 +1015,42 @@ export const routing = {
 export type WebChatSite = {
   id: string; domain: string; site_key: string; title: string | null; greeting: string | null; accent: string | null;
   active: boolean;
+  position: "right" | "left";
+  /** A label beside the chat button, e.g. "Chat with us". */
+  launcher_text: string | null;
+  /** A short message that pops up once a day a few seconds after a visitor arrives. */
+  teaser: string | null;
+  /** Up to four ready questions a visitor can tap. */
+  starters: string[];
+  /** "before_chat": name and number are asked first; otherwise only when a person or a booking needs them. */
+  ask_contact: "when_needed" | "before_chat";
+  language: "en" | "hi";
+  theme: "dark" | "light";
+  whatsapp_button: boolean;
+  /** When a page with the code last loaded the chat; working = in the last two days. */
+  last_loaded_at: string | null;
+  working: boolean;
 };
-export type WebChatSiteInput = Omit<WebChatSite, "id" | "site_key">;
+export type WebChatSiteInput = Omit<WebChatSite, "id" | "site_key" | "last_loaded_at" | "working">;
+export type WebChatStats = { days: number; chats: number; with_number: number; needed_person: number };
+export type WebChatRow = {
+  id: string; started_at: string; last_seen_at: string; site: string | null; page_url: string | null;
+  first_message: string | null; turns: number; customer_id: string | null; customer_name: string | null;
+  needed_person: boolean;
+};
+export type WebChatDetail = {
+  id: string; customer_id: string | null; page_url: string | null;
+  messages: { role: "user" | "bot" | "team"; text: string; at: string | null }[];
+};
 
 export const webChat = {
   sites: () => api.get<WebChatSite[]>("/web-chat/sites"),
   addSite: (site: WebChatSiteInput) => api.post<WebChatSite>("/web-chat/sites", site),
   updateSite: (id: string, site: WebChatSiteInput) => api.put<WebChatSite>(`/web-chat/sites/${id}`, site),
   removeSite: (id: string) => api.delete<void>(`/web-chat/sites/${id}`),
+  stats: () => api.get<WebChatStats>("/web-chat/stats"),
+  chats: () => api.get<WebChatRow[]>("/web-chat/chats"),
+  chat: (id: string) => api.get<WebChatDetail>(`/web-chat/chats/${id}`),
 };
 
 // ── Team ─────────────────────────────────────────────────────────────────────
