@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Instagram,
   PhoneCall,
+  Globe,
   Layers,
   Users,
   Send,
@@ -34,7 +35,7 @@ interface CommandPaletteProps {
 }
 
 const OWNER_ADMIN_ONLY = [
-  "/whatsapp", "/instagram", "/voice", "/automations", "/campaigns", "/analytics", "/billing", "/team",
+  "/whatsapp", "/instagram", "/voice", "/website-chat", "/automations", "/campaigns", "/analytics", "/billing", "/team",
   "/settings", "/products", "/forms", "/knowledge",
 ];
 
@@ -83,6 +84,12 @@ const COMMANDS = [
         href: "/voice",
         icon: PhoneCall,
         shortcut: "G V",
+      },
+      {
+        title: "Go to Website chat",
+        subtitle: "AI chat button for your own website",
+        href: "/website-chat",
+        icon: Globe,
       },
       {
         title: "Go to Commitment Ledger",

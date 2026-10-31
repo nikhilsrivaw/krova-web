@@ -65,6 +65,7 @@ import {
   type CannedResponse,
   type CustomerSummary,
   sendAddress,
+  onWebsiteChat,
 } from "@/lib/api";
 import { CustomerBriefing } from "@/components/team/CustomerBriefing";
 import { CallCustomer } from "@/components/team/CallCustomer";
@@ -297,7 +298,9 @@ export default function ConversationsPage() {
     setIsSendingReply(true);
     setReplyError(null);
     try {
-      if (phone) {
+      if (onWebsiteChat(activeThread.messages)) {
+        await channels.sendWebText(activeThread.customer_id, replyBody.trim());
+      } else if (phone) {
         await channels.sendText(phone, replyBody.trim());
       } else if (igsid) {
         await channels.sendInstagramText(igsid, replyBody.trim());
@@ -898,7 +901,7 @@ export default function ConversationsPage() {
                           rows={3}
                           value={replyBody}
                           onChange={(e) => setReplyBody(e.target.value)}
-                          placeholder="Type your reply..."
+                          placeholder={onWebsiteChat(activeThread.messages) ? "Reply in their website chat..." : "Type your reply..."}
                           className="w-full p-2.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none resize-none"
                         />
                         {replyError && (

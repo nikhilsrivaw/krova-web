@@ -852,6 +852,14 @@ export function sendAddress(identities: Identity[], customerId: string): string 
   return phone.masked ? `customer:${customerId}` : phone.value;
 }
 
+/** The customer last wrote on the website chat - a reply goes back to their chat window there. */
+export function onWebsiteChat(messages: { channel: string; direction: string }[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].direction === "inbound") return messages[i].channel === "web";
+  }
+  return false;
+}
+
 export type ConversationItem = {
   customer_id: string;
   name: string | null;
@@ -999,6 +1007,22 @@ export const routing = {
   /** Which rule a message like this would hit - nothing is sent or moved. */
   test: (body: { text: string; channel?: string; number?: string; lead_source?: string; tags?: string[] }) =>
     api.post<{ rule_id: string | null; rule: string | null; team: string | null; language?: string | null }>("/routing/test", body),
+};
+
+// ── Website chat ─────────────────────────────────────────────────────────────
+
+/** A website the chat widget runs on (it also runs on the www. form of the domain). */
+export type WebChatSite = {
+  id: string; domain: string; site_key: string; title: string | null; greeting: string | null; accent: string | null;
+  active: boolean;
+};
+export type WebChatSiteInput = Omit<WebChatSite, "id" | "site_key">;
+
+export const webChat = {
+  sites: () => api.get<WebChatSite[]>("/web-chat/sites"),
+  addSite: (site: WebChatSiteInput) => api.post<WebChatSite>("/web-chat/sites", site),
+  updateSite: (id: string, site: WebChatSiteInput) => api.put<WebChatSite>(`/web-chat/sites/${id}`, site),
+  removeSite: (id: string) => api.delete<void>(`/web-chat/sites/${id}`),
 };
 
 // ── Team ─────────────────────────────────────────────────────────────────────
@@ -1445,6 +1469,10 @@ export const channels = {
   /** `to` is the recipient's Instagram-scoped id (IGSID), not a username. */
   sendInstagramText: (to: string, body: string) =>
     api.post<SendResult>("/messages/instagram/text", { to, body }),
+
+  /** A reply to a website chat visitor - it shows in their chat window on the business's site. */
+  sendWebText: (customerId: string, body: string) =>
+    api.post<SendResult>("/messages/web/text", { customer_id: customerId, body }),
 
   /**
    * Read live from Meta, not from our own messages table: the IGSID a

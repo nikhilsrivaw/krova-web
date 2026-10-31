@@ -33,6 +33,7 @@ import {
   type MessageDraft,
   type Identity,
   sendAddress,
+  onWebsiteChat,
 } from "@/lib/api";
 import { useRole } from "@/lib/useRole";
 import { appPath } from "@/lib/app-nav";
@@ -221,10 +222,13 @@ export default function AppConversationThreadPage() {
     if (!thread || !replyBody.trim()) return;
     const phone = sendAddress(thread.identities, thread.customer_id);
     const igsid = igsidOf(thread.identities);
+    const web = onWebsiteChat(thread.messages);
     setIsSendingReply(true);
     setReplyError(null);
     try {
-      if (phone) {
+      if (web) {
+        await channels.sendWebText(thread.customer_id, replyBody.trim());
+      } else if (phone) {
         await channels.sendText(phone, replyBody.trim());
       } else if (igsid) {
         await channels.sendInstagramText(igsid, replyBody.trim());
@@ -232,7 +236,7 @@ export default function AppConversationThreadPage() {
         setReplyError("No WhatsApp or Instagram identity on this conversation.");
         return;
       }
-      echoOutbound(replyBody.trim(), phone ? "whatsapp" : "instagram");
+      echoOutbound(replyBody.trim(), web ? "web" : phone ? "whatsapp" : "instagram");
       setReplyBody("");
     } catch (err) {
       const other = assignedToOther(err);
@@ -244,7 +248,7 @@ export default function AppConversationThreadPage() {
   };
 
   // What was just sent, shown at once - the next load brings the real row.
-  const echoOutbound = (text: string, channel: "whatsapp" | "instagram") => {
+  const echoOutbound = (text: string, channel: "whatsapp" | "instagram" | "web") => {
     const sentAt = new Date().toISOString();
     setThread((prev) =>
       prev
@@ -566,7 +570,7 @@ export default function AppConversationThreadPage() {
       )}
       <div ref={endRef} className="h-24" aria-hidden />
 
-      {canReply && thread && phoneOf(thread.identities) && !thread.window_open && (
+      {canReply && thread && phoneOf(thread.identities) && !thread.window_open && !onWebsiteChat(thread.messages) && (
         <div className="sticky bottom-[88px] border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3 space-y-2">
           <p className="text-[11px] text-os-text-dim">
             They haven&apos;t written in 24 hours - WhatsApp only allows an approved template until they reply.
@@ -585,7 +589,7 @@ export default function AppConversationThreadPage() {
         </div>
       )}
 
-      {canReply && thread && (thread.window_open || !phoneOf(thread.identities)) && (
+      {canReply && thread && (thread.window_open || !phoneOf(thread.identities) || onWebsiteChat(thread.messages)) && (
         <div className="sticky bottom-[88px] border-t border-os-border bg-os-bg/95 backdrop-blur-xl p-3 mt-3">
           {/* bottom-20 sits this right above the fixed BottomNav (app/app/layout.tsx's main has pb-20 reserved for it) */}
           {replyError && <p className="text-[11px] text-rose-400 mb-2">{replyError}</p>}
@@ -602,7 +606,7 @@ export default function AppConversationThreadPage() {
               rows={1}
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
-              placeholder="Type a reply..."
+              placeholder={onWebsiteChat(thread.messages) ? "Reply in their website chat..." : "Type a reply..."}
               className="flex-1 px-3.5 py-2.5 rounded-2xl bg-os-card border border-os-border text-xs text-os-ink placeholder:text-os-text-dim focus:border-teal focus:outline-none resize-none max-h-24"
             />
             <button

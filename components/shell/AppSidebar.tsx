@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Instagram,
   PhoneCall,
+  Globe,
   Users,
   UserPlus,
   BookOpen,
@@ -194,6 +195,13 @@ export function AppSidebar({
       icon: PhoneCall,
       accent: "text-cyan-400",
       shortcut: "G V",
+    },
+    {
+      label: "Website chat",
+      requiresRole: ["owner", "admin"],
+      href: "/website-chat",
+      icon: Globe,
+      accent: "text-teal",
     },
     {
       label: "Automations",

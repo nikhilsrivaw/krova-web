@@ -86,6 +86,11 @@ export const LOCKED_CHANNELS: Record<string, { slug: string; title: string; blur
     title: "Voice Agent",
     blurb: "An AI that answers your phone and calls customers, with a keypad menu and live transfer to your team. Calls are paid from a prepaid wallet.",
   },
+  "/website-chat": {
+    slug: "website-chat",
+    title: "Website chat",
+    blurb: "An AI chat button on your own website that answers visitors, books appointments and hands them to your team.",
+  },
 };
 
 export const CHANNEL_BY_SLUG = Object.fromEntries(
