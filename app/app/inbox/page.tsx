@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MessageSquare, Instagram, Phone, Globe, Lock, Search, X } from "lucide-react";
-import { conversations, type ConversationItem } from "@/lib/api";
+import { conversations, routing, type ConversationItem } from "@/lib/api";
 import { appPath } from "@/lib/app-nav";
 import { getUserId } from "@/lib/auth";
 import { waitLabel } from "@/lib/chatWait";
@@ -14,11 +14,12 @@ const CHANNEL_ICONS: Record<string, typeof MessageSquare> = {
   web: Globe,
 };
 
-type Filter = "all" | "waiting" | "mine" | "unassigned" | "resolved";
+type Filter = "all" | "waiting" | "mine" | "team" | "unassigned" | "resolved";
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "Open" },
   { key: "waiting", label: "Waiting" },
   { key: "mine", label: "Mine" },
+  { key: "team", label: "My team" },
   { key: "unassigned", label: "Unassigned" },
   { key: "resolved", label: "Resolved" },
 ];
@@ -60,6 +61,12 @@ export default function InboxPage() {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState("");
   const me = getUserId();
+  // The teams this person is in (Team page -> Teams and routing); "My team" shows only when there are some.
+  const [myTeams, setMyTeams] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    routing.teams().then((teams) => setMyTeams(new Set(teams.filter((t) => me && t.member_ids.includes(me)).map((t) => t.id)))).catch(() => {});
+  }, [me]);
+  const inMyTeam = (c: ConversationItem) => !!c.team_id && myTeams.has(c.team_id);
 
   const load = useCallback(async (q: string) => {
     try {
@@ -90,13 +97,15 @@ export default function InboxPage() {
     all: open.length,
     waiting: open.filter(isWaiting).length,
     mine: open.filter((c) => c.assigned_to_user_id === me).length,
+    team: open.filter(inMyTeam).length,
     unassigned: open.filter((c) => !c.assigned_to_user_id).length,
     resolved: list.length - open.length,
-  }), [list, open, me]);
+  }), [list, open, me, myTeams]);
 
   const shown = (filter === "resolved" ? list.filter((c) => c.resolved) : open).filter((c) =>
     filter === "waiting" ? isWaiting(c)
       : filter === "mine" ? c.assigned_to_user_id === me
+      : filter === "team" ? inMyTeam(c)
       : filter === "unassigned" ? !c.assigned_to_user_id
       : true,
   )
@@ -125,7 +134,7 @@ export default function InboxPage() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
-        {FILTERS.map((f) => (
+        {FILTERS.filter((f) => f.key !== "team" || myTeams.size > 0).map((f) => (
           <button
             key={f.key}
             type="button"
@@ -152,6 +161,7 @@ export default function InboxPage() {
           {searched ? "Nothing matches that search."
             : filter === "waiting" ? "Nobody is waiting for a reply."
             : filter === "mine" ? "No chats are assigned to you."
+            : filter === "team" ? "Nothing open in your team."
             : filter === "unassigned" ? "Every chat has an owner."
             : filter === "resolved" ? "No resolved chats."
             : "No conversations yet."}

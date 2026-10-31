@@ -876,6 +876,8 @@ export type ConversationItem = {
   resolved?: boolean;
   /** Customer messages the signed-in person has not read (0 once anyone replied). */
   unread?: number;
+  /** The team a routing rule sent this chat to, or null. */
+  team_id?: string | null;
 };
 
 export type ThreadMessage = {
@@ -912,6 +914,7 @@ export type ConversationThread = {
   wait_target_minutes?: number | null;
   resolved?: boolean;
   resolved_at?: string | null;
+  team_id?: string | null;
 };
 
 export const conversations = {
@@ -956,6 +959,44 @@ export const conversations = {
 
   /** Chats with customer messages the signed-in person has not read - the Inbox tab's number. */
   unreadCount: () => api.get<{ unread_chats: number }>("/conversations/unread-count"),
+};
+
+// ── Teams and routing rules ─────────────────────────────────────────────────
+
+export type RoutingTeam = {
+  id: string;
+  name: string;
+  lead_user_id: string | null;
+  reply_target_minutes: number | null;
+  /** round_robin: straight to the next free member. queue: waits in the team for anyone to take. */
+  sharing: "round_robin" | "queue";
+  member_ids: string[];
+  open_chats: number;
+};
+export type RoutingConditions = {
+  words?: string[]; languages?: string[]; channels?: string[]; numbers?: string[]; lead_sources?: string[]; tags?: string[];
+};
+export type RoutingRule = {
+  id: string; name: string; team_id: string; conditions: RoutingConditions; also_if_owned: boolean; active: boolean;
+  position: number;
+};
+export type RoutingTeamInput = Omit<RoutingTeam, "id" | "open_chats">;
+export type RoutingRuleInput = Omit<RoutingRule, "id" | "position">;
+
+export const routing = {
+  teams: () => api.get<RoutingTeam[]>("/routing/teams"),
+  createTeam: (team: RoutingTeamInput) => api.post<RoutingTeam>("/routing/teams", team),
+  updateTeam: (id: string, team: RoutingTeamInput) => api.put<RoutingTeam>(`/routing/teams/${id}`, team),
+  deleteTeam: (id: string) => api.delete<void>(`/routing/teams/${id}`),
+  rules: () => api.get<RoutingRule[]>("/routing/rules"),
+  createRule: (rule: RoutingRuleInput) => api.post<RoutingRule>("/routing/rules", rule),
+  updateRule: (id: string, rule: RoutingRuleInput) => api.put<RoutingRule>(`/routing/rules/${id}`, rule),
+  deleteRule: (id: string) => api.delete<void>(`/routing/rules/${id}`),
+  /** The whole order, top first - the first rule that matches wins. */
+  order: (ruleIds: string[]) => api.put<RoutingRule[]>("/routing/rules-order", { rule_ids: ruleIds }),
+  /** Which rule a message like this would hit - nothing is sent or moved. */
+  test: (body: { text: string; channel?: string; number?: string; lead_source?: string; tags?: string[] }) =>
+    api.post<{ rule_id: string | null; rule: string | null; team: string | null; language?: string | null }>("/routing/test", body),
 };
 
 // ── Team ─────────────────────────────────────────────────────────────────────

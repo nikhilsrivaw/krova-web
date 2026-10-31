@@ -327,6 +327,7 @@ export default function AppConversationThreadPage() {
           resolved={!!thread.resolved}
           waitingSince={thread.waiting_since}
           waitTarget={thread.wait_target_minutes}
+          teamId={thread.team_id}
           onAssigned={(userId) => setThread((prev) => (prev ? { ...prev, assigned_to_user_id: userId } : prev))}
           onResolved={(resolved) => setThread((prev) => (prev ? { ...prev, resolved, waiting_since: resolved ? null : prev.waiting_since } : prev))}
           onNote={(note) => setNotes((prev) => [note, ...prev])}

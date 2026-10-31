@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, RotateCcw, StickyNote, UserRound } from "lucide-react";
-import { conversations, crm, team, type CustomerNote, type TeamMember } from "@/lib/api";
+import { conversations, crm, routing, team, type CustomerNote, type TeamMember } from "@/lib/api";
 import { getUserId } from "@/lib/auth";
 import { waitLabel } from "@/lib/chatWait";
 import { Sheet } from "@/components/app-shell/Sheet";
@@ -12,9 +12,11 @@ import { Sheet } from "@/components/app-shell/Sheet";
  * unassigned), how long the customer has waited, a team note that the customer never sees, and Resolve / Reopen.
  */
 export function ChatTeamBar({
-  customerId, assignedTo, resolved, waitingSince, waitTarget, onAssigned, onResolved, onNote,
+  customerId, assignedTo, resolved, waitingSince, waitTarget, teamId, onAssigned, onResolved, onNote,
 }: {
   customerId: string;
+  /** The team a routing rule sent this chat to. */
+  teamId?: string | null;
   assignedTo: string | null;
   resolved: boolean;
   waitingSince: string | null | undefined;
@@ -32,7 +34,12 @@ export function ChatTeamBar({
   const [error, setError] = useState<string | null>(null);
   const [, tick] = useState(0);
 
+  const [teamName, setTeamName] = useState<string | null>(null);
   useEffect(() => { team.list().then(setMembers).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!teamId) { setTeamName(null); return; }
+    routing.teams().then((all) => setTeamName(all.find((t) => t.id === teamId)?.name ?? null)).catch(() => {});
+  }, [teamId]);
   // The wait label counts up while the chat is open.
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 30_000); return () => clearInterval(t); }, []);
 
@@ -66,6 +73,9 @@ export function ChatTeamBar({
           <UserRound className="w-3.5 h-3.5 text-teal" />
           {nameOf(assignedTo) ?? "Unassigned"}
         </button>
+        {teamName && (
+          <span className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/[0.06] text-os-ink">{teamName} team</span>
+        )}
         {wait && (
           <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${wait.late ? "bg-thread/15 text-thread-bright" : "bg-teal/10 text-teal"}`}>
             {wait.text}

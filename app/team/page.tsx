@@ -7,6 +7,8 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, Skeleton } from "@/components/ui/EmptyState";
 import { MembersCard } from "@/components/team/MembersCard";
+import { TeamsRoutingCard } from "@/components/team/TeamsRoutingCard";
+import { useRole } from "@/lib/useRole";
 import {
   analytics,
   teamActivity,
@@ -79,6 +81,8 @@ function detailChips(detail: Record<string, string>): string[] {
 }
 
 export default function TeamPage() {
+  // Teams and routing rules are set by the owner and admins (the API refuses everyone else).
+  const { supervisor } = useRole();
   const [days, setDays] = useState<number>(7);
   const [members, setMembers] = useState<MemberActivity[]>([]);
   // 30-day average minutes to a first reply, per person (the analytics numbers, shown where the person is).
@@ -153,6 +157,7 @@ export default function TeamPage() {
     <AppLayout title="Team" subtitle="Add your people, and see who did what - every change, every refused attempt, every sign-in">
       <div className="space-y-6">
         <MembersCard />
+        {supervisor && <TeamsRoutingCard />}
 
         {error && (
           <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">{error}</div>
