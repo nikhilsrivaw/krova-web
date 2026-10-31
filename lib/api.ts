@@ -975,6 +975,8 @@ export type RoutingTeam = {
 };
 export type RoutingConditions = {
   words?: string[]; languages?: string[]; channels?: string[]; numbers?: string[]; lead_sources?: string[]; tags?: string[];
+  /** Not a condition: hand the chat to a person at once instead of letting the AI answer first. */
+  person_now?: boolean;
 };
 export type RoutingRule = {
   id: string; name: string; team_id: string; conditions: RoutingConditions; also_if_owned: boolean; active: boolean;

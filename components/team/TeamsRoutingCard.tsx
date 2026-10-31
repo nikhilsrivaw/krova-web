@@ -92,8 +92,10 @@ export function TeamsRoutingCard() {
           <h3 className="text-sm font-bold text-white">Teams and routing</h3>
           <p className="text-[11px] text-os-text-dim mt-0.5">
             Make teams - Complaints, Sales, Accounts, a branch - and say which conversations and leads go to which team.
-            Rules are checked top to bottom; the first one that matches wins. A chat that matches no rule is handled as
-            set above (round-robin or first reply).
+            Rules are checked top to bottom; the first one that matches wins. A chat that matches no rule goes to the
+            agents as set above (round-robin, or you assign it). When the AI replies on its own, it answers first and a
+            person is brought in only when needed - the AI asks for help, its reply waits for an OK, or the customer
+            waits past the reply target.
           </p>
         </div>
       </div>
@@ -160,6 +162,7 @@ export function TeamsRoutingCard() {
                   <p className="text-[11px] text-os-text-dim truncate">
                     When a conversation {describe(r.conditions)} → <span className="text-teal">{teamName(r.team_id)}</span>
                     {r.also_if_owned ? " (even if someone already has it)" : ""}
+                    {r.conditions.person_now ? " · straight to a person" : ""}
                   </p>
                 </div>
                 <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up" className="p-1 text-os-text-dim hover:text-white disabled:opacity-30 cursor-pointer"><ArrowUp className="w-3.5 h-3.5" /></button>
@@ -308,7 +311,7 @@ function RuleModal({ rule, starter, teams, numbers, onClose, onSaved }: {
   const [draft, setDraft] = useState<RoutingRuleInput>(rule
     ? { name: rule.name, team_id: rule.team_id, conditions: rule.conditions, also_if_owned: rule.also_if_owned, active: rule.active }
     : starter
-      ? { name: "Complaints", team_id: complaintsTeam.id, conditions: { words: words(COMPLAINT_WORDS) }, also_if_owned: true, active: true }
+      ? { name: "Complaints", team_id: complaintsTeam.id, conditions: { words: words(COMPLAINT_WORDS), person_now: true }, also_if_owned: true, active: true }
       : { name: "", team_id: teams[0].id, conditions: {}, also_if_owned: false, active: true });
   const [wordText, setWordText] = useState((draft.conditions.words ?? []).join(", "));
   const [tagText, setTagText] = useState((draft.conditions.tags ?? []).join(", "));
@@ -381,6 +384,13 @@ function RuleModal({ rule, starter, teams, numbers, onClose, onSaved }: {
           <span>
             Move it even if someone already has the chat
             <span className="block text-[11px] text-os-text-dim">Use for complaints: a complaint from a sales person&apos;s customer still reaches this team. The previous person is told.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-xs text-white cursor-pointer">
+          <input type="checkbox" className="mt-0.5 accent-teal" checked={draft.conditions.person_now === true} onChange={(e) => setCond({ person_now: e.target.checked || undefined })} />
+          <span>
+            Give it to a person straight away
+            <span className="block text-[11px] text-os-text-dim">Normally the AI answers first and a team member gets the chat only when needed. Turn on for chats a person must handle from the start, like complaints.</span>
           </span>
         </label>
         <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
