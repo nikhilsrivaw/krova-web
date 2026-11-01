@@ -135,6 +135,19 @@ function TopQuestions({ card, onSaved }: { card: KnowledgeCard; onSaved: () => v
           </button>
         </div>
       ))}
+      {!full && (card.suggested_questions?.length ?? 0) > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] text-os-text-dim">Businesses like yours often get asked - tap one, then write your answer:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {card.suggested_questions!.map((s) => (
+              <button key={s} type="button" onClick={() => { setQ(s); setError(null); }}
+                className={`px-2.5 py-1 rounded-full border text-[11px] cursor-pointer ${q === s ? "border-teal text-white bg-teal/10" : "border-white/[0.12] text-os-text-dim hover:text-white"}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {!full && (
         <form onSubmit={add} className="space-y-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={FAQ_QUESTION_LIMIT} required placeholder="Question, e.g. Do you have parking?" className={input} />

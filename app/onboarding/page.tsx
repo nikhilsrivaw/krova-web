@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
-import { approvals, channels, type AutonomyLevel } from "@/lib/api";
+import { approvals, channels, type AutonomyLevel, type ChannelConnection } from "@/lib/api";
 
 // The business name and type come from signup - onboarding never asks again, and never overwrites them.
 const STEPS = [
@@ -62,12 +62,16 @@ export default function OnboardingPage() {
   const plan = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
 
-  // WhatsApp
-  const [isConnectingWA, setIsConnectingWA] = useState(false);
-  const [isWAConnected, setIsWAConnected] = useState(true);
-
-  // Voice
-  const [isVoiceConnected, setIsVoiceConnected] = useState(false);
+  // The real connections - what Settings and the WhatsApp / Voice pages read. Connecting itself happens on those
+  // pages (Meta's signup lives on /whatsapp), so this step only shows the truth and links there.
+  const [connections, setConnections] = useState<ChannelConnection[] | null>(null);
+  useEffect(() => {
+    channels.list().then(setConnections).catch(() => setConnections([]));
+  }, []);
+  const whatsapp = connections?.find((c) => c.channel === "whatsapp" && c.status === "active") ?? null;
+  const voice = connections?.find((c) => c.channel === "voice" && c.status === "active") ?? null;
+  const isWAConnected = Boolean(whatsapp);
+  const isVoiceConnected = Boolean(voice);
 
   // Step 4: Autonomy (Default draft)
   const [autonomy, setAutonomy] = useState<AutonomyLevel>("draft");
@@ -144,25 +148,27 @@ export default function OnboardingPage() {
                     Meta WhatsApp Business API
                   </h4>
                   <p className="text-xs text-os-text-dim">
-                    {isWAConnected ? "● Phone number active & webhooks connected" : "Launch Meta login popup"}
+                    {connections === null ? "Checking..." : isWAConnected ? "● Connected" : "Not connected yet"}
                   </p>
                 </div>
               </div>
 
               {isWAConnected ? (
                 <div className="p-4 rounded-xl bg-seal/10 border border-seal/30 text-xs text-seal-bright flex items-center justify-between">
-                  <span>✓ WhatsApp Business Number (+91 80 3180 2883) verified with Meta</span>
+                  <span>✓ {whatsapp?.display_name || whatsapp?.handle || "Your WhatsApp number"} is connected</span>
                   <Badge variant="emerald">Connected</Badge>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsWAConnected(true)}
-                  className="w-full py-3 rounded-xl bg-seal hover:bg-seal-dim text-white text-xs font-bold transition-all shadow-md shadow-seal/20 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Connect with Meta Embedded Signup
-                </button>
+              ) : connections !== null && (
+                <div className="space-y-2">
+                  <Link
+                    href="/whatsapp"
+                    className="w-full py-3 rounded-xl bg-seal hover:bg-seal-dim text-white text-xs font-bold transition-all shadow-md shadow-seal/20 flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Connect WhatsApp with Meta
+                  </Link>
+                  <p className="text-[11px] text-os-text-dim text-center">Opens the WhatsApp page. You can also do this later - press Continue.</p>
+                </div>
               )}
             </GlassCard>
           </motion.div>
@@ -199,9 +205,11 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
-                <Badge variant={isVoiceConnected ? "cyan" : "outline"}>
-                  {isVoiceConnected ? "Configured" : "Available in Voice Tab"}
-                </Badge>
+                {isVoiceConnected ? (
+                  <Badge variant="cyan">Configured</Badge>
+                ) : (
+                  <Link href="/voice" className="text-[11px] text-teal hover:underline shrink-0">Set up on the Voice page</Link>
+                )}
               </GlassCard>
 
             </div>

@@ -2588,6 +2588,8 @@ export type KnowledgeCard = {
   };
   /** Roughly what the cards cost the AI to read on every message. */
   tokens: number;
+  /** Questions businesses of this type often get - tap one to answer it (never saved until the owner adds it). */
+  suggested_questions?: string[];
 };
 
 // Gaps have no id on the backend - they're identified by the gap text itself
