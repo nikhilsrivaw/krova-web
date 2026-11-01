@@ -39,6 +39,7 @@ import { WorkspaceSectionNav } from "@/components/shell/WorkspaceSectionNav";
 import { Badge } from "@/components/ui/Badge";
 import { CapabilityFold } from "@/components/settings/CapabilityFold";
 import { FeaturesCard } from "@/components/settings/FeaturesCard";
+import { AiActionsCard } from "@/components/settings/AiActionsCard";
 import { VerticalFeatures } from "@/components/settings/VerticalFeatures";
 import {
   account,
@@ -1230,6 +1231,9 @@ export default function SettingsPage() {
             </div>
           </GlassCard>
         </form>
+
+        {/* What the AI may change for customers by itself, per channel (shared/ai/actions.py) */}
+        {(profile?.role === "owner" || profile?.role === "admin") && <AiActionsCard canEdit />}
 
         {/* SECTION 1b: FEATURES - which optional modules this business uses */}
         <FeaturesCard canEdit={profile?.role === "owner" || profile?.role === "admin"} />

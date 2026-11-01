@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CheckSquare, Siren, ChevronRight, MessageCircle, CalendarDays, Ticket, UserPlus, LifeBuoy, Coins, Users,
-  CircleCheck, AlertTriangle, PhoneCall,
+  CircleCheck, AlertTriangle, PhoneCall, Headphones,
 } from "lucide-react";
 import {
-  account, approvals, billing, conversations, escalations, ledger, queue, scheduling, team, teamSettings,
+  account, approvals, billing, conversations, escalations, ledger, queue, scheduling, team, teamRequests, teamSettings,
   type LedgerSummary, type MyWork,
 } from "@/lib/api";
 import { AskBar } from "@/components/app-shell/AskBar";
@@ -45,16 +45,19 @@ export default function TodayPage() {
   const [wallet, setWallet] = useState<{ balance: string; low: boolean } | null>(null);
   const [bookings, setBookings] = useState<{ count: number; next: string | null } | null>(null);
   const [inQueue, setInQueue] = useState<number | null>(null);
+  const [teamWaiting, setTeamWaiting] = useState<number | null>(null);
 
   const load = useCallback(async (mounted: () => boolean) => {
-    const [a, e, s, w, c] = await Promise.allSettled([
+    const [a, e, s, w, c, t] = await Promise.allSettled([
       approvals.count(),
       escalations.count(),
       ledger.summary(),
       teamSettings.myWork(),
       conversations.list(),
+      teamRequests.count(),
     ]);
     if (!mounted()) return;
+    if (t.status === "fulfilled") setTeamWaiting(t.value.open);
     if (a.status === "fulfilled") setPending(a.value.pending);
     if (e.status === "fulfilled") setOpenEscalations(e.value.open);
     if (s.status === "fulfilled") setSummary(s.value);
@@ -110,7 +113,8 @@ export default function TodayPage() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const tasks: Task[] = [
-    { key: "esc", href: "/escalations", icon: Siren, count: openEscalations ?? 0, title: "Escalations", hint: "A customer needs a person", urgent: true },
+    { key: "talk", href: "/talk-to-team", icon: Headphones, count: teamWaiting ?? 0, title: "Talk to team", hint: "A customer asked for a person", urgent: true },
+    { key: "esc", href: "/escalations", icon: Siren, count: openEscalations ?? 0, title: "Escalations", hint: "The AI could not answer", urgent: true },
     { key: "wait", href: "/inbox", icon: MessageCircle, count: customersWaiting ?? 0, title: "Customers waiting", hint: "They wrote last - nobody has replied" },
     { key: "drafts", href: "/approvals", icon: CheckSquare, count: pending ?? 0, title: "AI replies to review", hint: "Drafted and ready to send" },
     { key: "wrap", href: "/inbox", icon: PhoneCall, count: mine?.calls_to_write_up ?? 0, title: "Calls to write up", hint: "Note what was promised" },

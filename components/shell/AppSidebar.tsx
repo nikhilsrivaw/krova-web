@@ -11,6 +11,7 @@ import {
   Instagram,
   PhoneCall,
   Globe,
+  Headphones,
   Users,
   UserPlus,
   BookOpen,
@@ -42,7 +43,7 @@ import {
   CalendarDays,
   Lock,
 } from "lucide-react";
-import { approvals, escalations, type AutonomyLevel, type Capability } from "@/lib/api";
+import { approvals, escalations, teamRequests, type AutonomyLevel, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { usePlan, LOCKED_CHANNELS } from "@/lib/usePlan";
 import { AutonomyPill } from "../ui/AutonomyPill";
@@ -67,6 +68,7 @@ interface SidebarProps {
 let savedNavScroll = 0;
 let lastPendingCount = 0;
 let lastEscalationCount = 0;
+let lastTeamRequestCount = 0;
 
 export function AppSidebar({
   appearance = "default",
@@ -82,6 +84,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState<number>(lastPendingCount);
   const [openEscalationCount, setOpenEscalationCount] = useState<number>(lastEscalationCount);
+  const [teamRequestCount, setTeamRequestCount] = useState<number>(lastTeamRequestCount);
   const [isGetAppOpen, setIsGetAppOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
 
@@ -119,6 +122,28 @@ export function AppSidebar({
         if (mounted && res && typeof res.open === "number") {
           lastEscalationCount = res.open;
           setOpenEscalationCount(res.open);
+        }
+      } catch {
+        // quiet fallback
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Customers waiting for a person that nobody has taken yet (Talk to team).
+  useEffect(() => {
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const res = await teamRequests.count();
+        if (mounted && res && typeof res.open === "number") {
+          lastTeamRequestCount = res.open;
+          setTeamRequestCount(res.open);
         }
       } catch {
         // quiet fallback
@@ -255,6 +280,14 @@ export function AppSidebar({
       badge: openEscalationCount > 0 ? openEscalationCount : undefined,
       badgeColor: "bg-rose-500 text-white font-mono font-bold",
       shortcut: "G E",
+    },
+    {
+      label: "Talk to team",
+      href: "/talk-to-team",
+      icon: Headphones,
+      accent: "text-teal",
+      badge: teamRequestCount > 0 ? teamRequestCount : undefined,
+      badgeColor: "bg-amber-500 text-[#14151F] font-mono font-bold",
     },
     {
       label: "Queue",

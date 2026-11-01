@@ -11,6 +11,7 @@ import {
   Instagram,
   PhoneCall,
   Globe,
+  Headphones,
   Layers,
   Users,
   Send,
@@ -84,6 +85,12 @@ const COMMANDS = [
         href: "/voice",
         icon: PhoneCall,
         shortcut: "G V",
+      },
+      {
+        title: "Go to Talk to team",
+        subtitle: "Customers who asked for a person",
+        href: "/talk-to-team",
+        icon: Headphones,
       },
       {
         title: "Go to Website chat",

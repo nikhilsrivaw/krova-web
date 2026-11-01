@@ -1009,6 +1009,47 @@ export const routing = {
     api.post<{ rule_id: string | null; rule: string | null; team: string | null; language?: string | null }>("/routing/test", body),
 };
 
+// ── Talk to team ─────────────────────────────────────────────────────────────
+
+/** A customer asked to talk to a person (or is owed a call back), waiting for whoever is free. */
+export type TeamRequestItem = {
+  id: string; customer_id: string; customer_name: string | null;
+  channel: "voice" | "whatsapp" | "instagram" | "web"; what: string;
+  source: "customer" | "missed_call" | "staff"; status: "open" | "taken" | "done" | "cancelled";
+  team: string | null; taken_by: { user_id: string; name: string | null } | null; taken_at: string | null;
+  created_at: string; done_at: string | null; outcome: string | null;
+};
+
+export const teamRequests = {
+  list: (state: "waiting" | "open" | "taken" | "done" | "all" = "waiting", mine = false) =>
+    api.get<TeamRequestItem[]>(`/team-requests?state=${state}${mine ? "&mine=true" : ""}`),
+  count: () => api.get<{ open: number; mine: number }>("/team-requests/count"),
+  add: (customerId: string, what: string) => api.post<TeamRequestItem>("/team-requests", { customer_id: customerId, what }),
+  take: (id: string, takeOver = false) => api.post<TeamRequestItem>(`/team-requests/${id}/take`, { take_over: takeOver }),
+  release: (id: string) => api.post<TeamRequestItem>(`/team-requests/${id}/release`, {}),
+  assign: (id: string, userId: string) => api.post<TeamRequestItem>(`/team-requests/${id}/assign`, { user_id: userId }),
+  done: (id: string, note: string | null, cancelled = false) =>
+    api.post<TeamRequestItem>(`/team-requests/${id}/done`, { note, cancelled }),
+};
+
+// ── What the AI can do for customers (Settings) ─────────────────────────────
+
+export type AiActionChannel = "voice" | "whatsapp" | "instagram";
+export type AiAction = {
+  key: string; label: string; channels: AiActionChannel[];
+  /** False when the business has not switched on what this needs (bookings, walk-in queue, orders). */
+  available: boolean;
+  /** Changes the customer already has - KROVA asks them to confirm before doing it. */
+  asks_to_confirm: boolean;
+};
+export type AiActionSettings = { actions: AiAction[]; cutoff_hours: number | null; channels: AiActionChannel[] };
+
+export const aiActions = {
+  get: () => api.get<AiActionSettings>("/ai-actions"),
+  save: (body: { actions: Record<string, AiActionChannel[]>; cutoff_hours: number | null }) =>
+    api.put<AiActionSettings>("/ai-actions", body),
+};
+
 // ── Website chat ─────────────────────────────────────────────────────────────
 
 /** A website the chat widget runs on (it also runs on the www. form of the domain). */

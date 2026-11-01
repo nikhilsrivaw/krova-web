@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Users, BarChart3, Settings, Siren, LogOut, CheckSquare, Terminal, ChevronRight,
-  CalendarClock, Package, Clock, FileText, LifeBuoy, Zap, UserPlus2,
+  CalendarClock, Package, Clock, FileText, LifeBuoy, Zap, UserPlus2, Headphones,
 } from "lucide-react";
 import { account, type UserProfile, type Capability } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -30,7 +30,8 @@ const SECTIONS: Section[] = [
     title: "Your day",
     items: [
       { label: "Approvals", hint: "AI replies waiting for you", href: "/approvals", icon: CheckSquare, supervisorOnly: true },
-      { label: "Escalations", hint: "Customers who need a person", href: "/escalations", icon: Siren },
+      { label: "Talk to team", hint: "Customers who asked for a person", href: "/talk-to-team", icon: Headphones },
+      { label: "Escalations", hint: "Questions the AI could not answer", href: "/escalations", icon: Siren },
       { label: "Customers", hint: "Find anyone by name or number", href: "/customers", icon: Users },
       { label: "Bookings", hint: "Today's appointments", href: "/bookings", icon: CalendarClock, requiresCapability: "scheduling" },
       { label: "Queue", hint: "Walk-in tokens", href: "/queue", icon: Clock, requiresCapability: "opd_queue" },
