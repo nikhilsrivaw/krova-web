@@ -155,6 +155,7 @@ export function AppLayout({
         vertical={profile?.vertical || "General"}
         capabilities={profile?.capabilities || []}
         role={profile?.role ?? null}
+        lockedFeatures={profile?.locked_features ?? []}
         autonomy={autonomy}
         onAutonomyClick={() => { navigation.close(); setIsCommandOpen(true); }}
       />

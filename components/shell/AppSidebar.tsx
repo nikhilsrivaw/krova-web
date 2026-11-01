@@ -51,6 +51,11 @@ import { AutonomyPill } from "../ui/AutonomyPill";
 import { GetAppModal } from "./GetAppModal";
 import { WorkspaceNav } from "./WorkspaceNav";
 
+// Pages a plan can leave out (Solo) - the key is shared/billing/features.py's.
+const PLAN_FEATURE_PAGES: Record<string, string> = {
+  "/website-chat": "website_chat", "/feedback": "feedback", "/analytics": "analytics",
+};
+
 interface SidebarProps {
   appearance?: "default" | "refined";
   navigationOpen?: boolean;
@@ -60,6 +65,8 @@ interface SidebarProps {
   capabilities?: Capability[];
   /** The signed-in person's role; owner-only areas are hidden from anyone else. */
   role?: "owner" | "admin" | "agent" | null;
+  /** What the plan leaves out (shared/billing/features.py) - shown with a lock, opening Billing. */
+  lockedFeatures?: string[];
   autonomy?: AutonomyLevel;
   onAutonomyClick?: () => void;
 }
@@ -79,6 +86,7 @@ export function AppSidebar({
   vertical = "General",
   capabilities = [],
   role = null,
+  lockedFeatures = [],
   autonomy = "draft",
   onAutonomyClick,
 }: SidebarProps) {
@@ -430,9 +438,9 @@ export function AppSidebar({
     return required.some((cap) => capabilities.includes(cap));
   }).map((item) => {
     const channel = LOCKED_CHANNELS[item.href];
-    return plan.channelsLocked && channel
-      ? { ...item, locked: true, unlockHref: `/billing?unlock=${channel.slug}` }
-      : item;
+    if (plan.channelsLocked && channel) return { ...item, locked: true, unlockHref: `/billing?unlock=${channel.slug}` };
+    const feature = PLAN_FEATURE_PAGES[item.href];
+    return feature && lockedFeatures.includes(feature) ? { ...item, locked: true, unlockHref: "/billing" } : item;
   });
 
   return (

@@ -1302,7 +1302,7 @@ export const teamSettings = {
 
 // ── Billing: the plan, the wallet, PayU ─────────────────────────────────────
 
-export type BillingPlan = { key: "starter" | "pro" | "scale"; label: string; base: string; gst: string; total: string };
+export type BillingPlan = { key: "solo" | "starter" | "pro" | "scale"; label: string; base: string; gst: string; total: string };
 
 /** Why the plan is off - null when it is not. */
 export type PlanStatus = {
@@ -3522,6 +3522,9 @@ export type UserProfile = {
   /** Said after 112 when a message is an emergency (healthcare types - emergency_enabled). */
   emergency_phone?: string | null;
   emergency_enabled?: boolean;
+  /** The plan's key, and what it leaves out (shared/billing/features.py): "website_chat", "feedback", "analytics", "ask_krova", "team_routing". */
+  plan?: string | null;
+  locked_features?: string[];
   // Whether shared/care/commitment_deadline_calls.py's proactive voice
   // calls are on for this business - opt-in, off by default.
   proactive_deadline_calls_enabled: boolean;

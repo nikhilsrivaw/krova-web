@@ -7,14 +7,15 @@ import { Check, Phone, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/spectrum/navbar";
 import { SiteFooter } from "@/components/spectrum/site-footer";
 import { FaqAccordion } from "@/components/spectrum/faq-accordion";
-import { LIST_PRICE, PLAN_GUIDE, discountText, SAME_ON_EVERY_PLAN, guideLines, planTable, type PlanKey } from "@/lib/planGuide";
+import { NOT_ON_SOLO, PLAN_GUIDE, SAME_ON_EVERY_PLAN, guideLines, planTable, type PlanKey } from "@/lib/planGuide";
 
 // Prices are per month, before 18% GST. The same numbers live in
 // krova-platform/shared/billing/plans.py - change them together.
 const PLANS: { key: PlanKey; name: string; base: number; highlight?: boolean; badge?: string }[] = [
-  { key: "starter", name: "Starter", base: 2999 },
-  { key: "pro", name: "Pro", base: 5999, highlight: true, badge: "Most popular" },
-  { key: "scale", name: "Scale", base: 9999 },
+  { key: "solo", name: "Solo", base: 1699 },
+  { key: "starter", name: "Starter", base: 2999, highlight: true, badge: "Most popular" },
+  { key: "pro", name: "Pro", base: 7999 },
+  { key: "scale", name: "Scale", base: 12499 },
 ];
 
 const INCLUDED = [
@@ -44,7 +45,7 @@ const FAQS = [
   },
   {
     q: "Are all three channels in every plan?",
-    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. Every feature is on every plan. The plans differ only in size: how many messages, phone lines and team logins, how much of your own information the AI reads, how big a campaign or import can be, and whether you can connect API keys and webhooks.",
+    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. Plans differ in size, and Solo - for one person - leaves out website chat, feedback, analytics reports, Ask KROVA and team routing. The size differences: how many messages, phone lines and team logins, how much of your own information the AI reads, how big a campaign or import can be, and whether you can connect API keys and webhooks.",
   },
   {
     q: "Is there a free trial?",
@@ -91,7 +92,7 @@ export default function PricingPage() {
       </section>
 
       <section className="max-w-6xl mx-auto px-6 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.key}
@@ -114,11 +115,9 @@ export default function PricingPage() {
               <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">{PLAN_GUIDE[plan.key].tagline}</p>
               <div className="mb-6 pb-6 border-b border-os-border">
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="font-serif text-2xl text-os-text-dim line-through mr-1">{inr(LIST_PRICE[plan.key])}</span>
                   <span className="font-serif text-4xl font-semibold tracking-tight text-os-ink">{inr(plan.base)}</span>
                   <span className="text-os-text-dim text-sm mb-1">/month</span>
                 </div>
-                <p className="mb-1 text-xs font-semibold text-seal-bright">Now at a discounted price · {discountText(plan.key, plan.base)}</p>
                 <p className="text-xs text-os-text-dim">+ 18% GST = {inr(Math.round(plan.base * 1.18))}</p>
               </div>
               <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-3">Built for</p>
@@ -130,6 +129,9 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
+              {plan.key === "solo" && (
+                <p className="mb-3 text-xs leading-relaxed text-os-text-dim">Not included: {NOT_ON_SOLO.join(", ")}.</p>
+              )}
               <p className="mb-6 text-xs leading-relaxed text-os-text-dim">{PLAN_GUIDE[plan.key].why}</p>
               <Link href={`/signup?plan=${plan.key}`} className="mt-auto">
                 <button
@@ -162,7 +164,7 @@ export default function PricingPage() {
       <section className="max-w-5xl mx-auto px-6 pb-12" aria-label="Compare plans">
         <div className="rounded-xl border border-os-border bg-os-card p-7">
           <h2 className="text-sm font-semibold text-os-ink mb-1">What each plan can handle</h2>
-          <p className="mb-5 text-xs text-os-text-dim">The only difference between plans is size. Every feature is on every plan.</p>
+          <p className="mb-5 text-xs text-os-text-dim">Plans differ in size. Solo, for one person, also leaves out the few features at the bottom of this table.</p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-left text-xs">
               <thead>
