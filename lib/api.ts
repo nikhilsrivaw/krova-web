@@ -1012,42 +1012,59 @@ export const routing = {
 // ── Feedback ─────────────────────────────────────────────────────────────────
 
 export type FeedbackChannel = "whatsapp" | "voice" | "both";
+/** One ask: WhatsApp or a call, `wait_hours` after the one before (0 for the first). */
+export type FeedbackRound = { channel: "whatsapp" | "voice"; wait_hours: number };
 export type FeedbackSettings = {
   enabled: boolean;
-  /** When to ask: "visit" | "token" | "order" | "chat". */
+  /** When to ask about what KROVA saw finish: "visit" | "token" | "order" | "chat". */
   triggers: string[];
   delay_minutes: number;
-  channel: FeedbackChannel;
-  /** "both": call when WhatsApp got no answer after this many hours. */
-  call_after_hours: number;
   /** Ask one customer at most once in this many days (0 = no limit). */
   cooldown_days: number;
   ask_review: boolean;
+  /** Up to 5 asks, until they answer. */
+  rounds: FeedbackRound[];
+  /** Only ask between these hours (business time), e.g. 9 and 20. */
+  ask_from: number;
+  ask_until: number;
+  /** Any review page (Google, redBus, Justdial...). Empty = the Google review link from Settings. */
+  review_link: string | null;
 };
 export type FeedbackSettingsOut = FeedbackSettings & {
+  channel: FeedbackChannel;
   trigger_labels: Record<string, string>;
   template_state: "approved" | "pending" | "rejected" | "missing" | string;
   template_reason: string | null;
+  review_template_state: string;
   review_link_set: boolean;
   review_allowed: boolean;
 };
 export type FeedbackStats = {
-  days: number; asked: number; answered: number; average: number | null; happy: number; unhappy: number;
+  days: number; asked: number; waiting: number; answered: number; average: number | null; happy: number; unhappy: number;
   spread: Record<string, number>;
 };
 export type FeedbackResponse = {
   id: string; customer_id: string; customer_name: string | null; trigger: string; about: string; channel: string;
   status: string; rating: number | null; comment: string | null; answered_via: string | null; answered_at: string | null;
-  created_at: string; note: string | null;
+  created_at: string; note: string | null; round: number; source: string; happened_at: string | null; next_at: string | null;
 };
+export type FeedbackAdded = { added: number; skipped: { row: number; reason: string }[]; waiting_for_switch: boolean };
+export type FeedbackPerson = { name?: string; phone: string; about?: string; date?: string; time?: string; ref?: string };
 
 export const feedback = {
   settings: () => api.get<FeedbackSettingsOut>("/feedback/settings"),
   save: (body: FeedbackSettings) => api.put<FeedbackSettingsOut>("/feedback/settings", body),
   submitTemplate: () => api.post<{ created: string[]; already_there: string[]; failed: { name: string; error: string }[] }>("/feedback/template", {}),
   stats: (days = 30) => api.get<FeedbackStats>(`/feedback/stats?days=${days}`),
-  responses: (show: "answered" | "unhappy" | "happy" | "comments" | "all" = "answered", days = 30) =>
+  responses: (show: "answered" | "unhappy" | "happy" | "comments" | "waiting" | "all" = "answered", days = 30) =>
     api.get<FeedbackResponse[]>(`/feedback/responses?show=${show}&days=${days}`),
+  upload: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<FeedbackAdded>("/feedback/upload", formData, true);
+  },
+  paste: (text: string) => api.post<FeedbackAdded>("/feedback/paste", { text }),
+  add: (person: FeedbackPerson) => api.post<FeedbackAdded>("/feedback/add", person),
 };
 
 // ── Talk to team ─────────────────────────────────────────────────────────────
