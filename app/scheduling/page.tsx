@@ -301,7 +301,7 @@ export default function SchedulingPage() {
     setActionError(null);
     try {
       const out = await scheduling.cancelBookingsForException(affected.exceptionId);
-      setCancelNote(`${out.cancelled} booking(s) cancelled. Your "appointment cancelled" automations tell the patients.`);
+      setCancelNote(`${out.cancelled} booking(s) cancelled. Your "appointment cancelled" automations tell them.`);
       setAffected(null);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not cancel these bookings.");
@@ -625,7 +625,7 @@ export default function SchedulingPage() {
               </label>
               <input
                 type="text" value={providerQualifications} onChange={(e) => setProviderQualifications(e.target.value)}
-                placeholder={hasPropertyListings ? "e.g. RERA Agent Reg. No. A5210001234" : vertical === "clinic" ? "e.g. MBBS, MD (Cardiology)" : undefined}
+                placeholder={hasPropertyListings ? "e.g. RERA Agent Reg. No. A5210001234" : (vertical === "clinic" || (vertical ?? "").startsWith("health_")) ? "e.g. MBBS, MD (Cardiology)" : undefined}
                 className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
               />
             </div>
@@ -739,12 +739,12 @@ export default function SchedulingPage() {
               {affected && (
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
                   <p className="text-xs text-amber-200 font-semibold">
-                    {affected.rows.length} {affected.rows.length === 1 ? "patient is" : "patients are"} already booked for this time:
+                    {affected.rows.length} {affected.rows.length === 1 ? labels.booking_noun : labels.booking_noun_plural} already booked for this time:
                   </p>
                   <ul className="text-[11px] text-amber-100 space-y-0.5">
                     {affected.rows.map((r) => (
                       <li key={r.id}>
-                        {new Date(r.starts_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} · {r.customer_name || "Patient"}
+                        {new Date(r.starts_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} · {r.customer_name || "Unnamed"}
                       </li>
                     ))}
                   </ul>
@@ -756,7 +756,7 @@ export default function SchedulingPage() {
                       Keep them
                     </button>
                   </div>
-                  <p className="text-[10px] text-amber-200/80">Cancelling frees the slots and runs your &quot;appointment cancelled&quot; automations - set one in Automations to message the patient.</p>
+                  <p className="text-[10px] text-amber-200/80">Cancelling frees the slots and runs your &quot;appointment cancelled&quot; automations - set one in Automations to message them.</p>
                 </div>
               )}
               {cancelNote && <p className="text-[11px] text-emerald-300">{cancelNote}</p>}

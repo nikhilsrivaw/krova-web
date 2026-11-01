@@ -3517,6 +3517,9 @@ export type UserProfile = {
   /** The Team ID, for people an owner or admin added. */
   team_id?: string | null;
   google_review_url: string | null;
+  /** Said after 112 when a message is an emergency (healthcare types - emergency_enabled). */
+  emergency_phone?: string | null;
+  emergency_enabled?: boolean;
   // Whether shared/care/commitment_deadline_calls.py's proactive voice
   // calls are on for this business - opt-in, off by default.
   proactive_deadline_calls_enabled: boolean;
@@ -3535,6 +3538,7 @@ export const account = {
     business_name?: string;
     vertical?: string;
     google_review_url?: string;
+    emergency_phone?: string;
     proactive_deadline_calls_enabled?: boolean;
   }) => api.post<UserProfile>("/auth/me", data),
 

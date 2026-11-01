@@ -46,7 +46,7 @@ function printPoster(business: string, p: Poster) {
  * patient's own phone. Each can be downloaded or printed as an A4 poster.
  */
 export function ReceptionQr({ kioskUrl, canEdit }: { kioskUrl: string | null; canEdit: boolean }) {
-  const [business, setBusiness] = useState("Our clinic");
+  const [business, setBusiness] = useState("Welcome");
   const [handle, setHandle] = useState<string | null>(null);
   const [phrase, setPhrase] = useState("");
   const [savedPhrase, setSavedPhrase] = useState("");
@@ -55,7 +55,7 @@ export function ReceptionQr({ kioskUrl, canEdit }: { kioskUrl: string | null; ca
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
-    account.profile().then((p) => setBusiness(p.business_name || "Our clinic")).catch(() => {});
+    account.profile().then((p) => setBusiness(p.business_name || "Welcome")).catch(() => {});
     channels.list().then((all) => setHandle(all.find((c) => c.channel === "whatsapp" && c.handle)?.handle ?? null)).catch(() => {});
     queueApi.getSettings().then((s) => { setPhrase(s.qr_phrase); setSavedPhrase(s.qr_phrase); }).catch(() => {});
   }, []);
@@ -145,7 +145,7 @@ export function ReceptionQr({ kioskUrl, canEdit }: { kioskUrl: string | null; ca
           stepsEn: ["Scan the QR with your phone camera", "Enter your name and phone number", "Your token shows on screen and on WhatsApp"],
         }), "checkin-qr.png", (
           kioskUrl
-            ? <p className="text-[11px] text-os-text-dim">Opens the same check-in page as the tablet, on the patient&apos;s own phone. For patients who prefer not to use WhatsApp.</p>
+            ? <p className="text-[11px] text-os-text-dim">Opens the same check-in page as the tablet, on the visitor&apos;s own phone. For people who prefer not to use WhatsApp.</p>
             : <p className="text-[11px] text-amber-300">Turn on the self-service kiosk above to get this QR.</p>
         ))}
       </div>

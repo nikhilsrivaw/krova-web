@@ -1512,7 +1512,7 @@ export default function AutomationsPage() {
               min="1"
               value={linkRupees}
               onChange={(e) => setLinkRupees(e.target.value)}
-              placeholder={BOOKING_TRIGGERS.has(trigger) ? "Blank = the doctor's fee, else the default fee in Settings" : "Blank = everything still owed"}
+              placeholder={BOOKING_TRIGGERS.has(trigger) ? "Blank = the fee of whoever they booked with, else the default fee in Settings" : "Blank = everything still owed"}
               className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-cyan-500 focus:outline-none"
             />
           </div>

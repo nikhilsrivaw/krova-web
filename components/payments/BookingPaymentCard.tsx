@@ -74,7 +74,7 @@ export function BookingPaymentCard({ canEdit, onSaved }: { canEdit: boolean; onS
         <p className="text-[11px] text-os-text-dim">How you take the fee when someone gets a token or books an appointment - on WhatsApp, at the kiosk or by your team.</p>
       </div>
       <div className="space-y-2">
-        {option("counter", "Only the token - fee at the counter", "Nothing is paid online. The token message tells the patient the fee to pay at the counter.")}
+        {option("counter", "Only the token - fee at the counter", "Nothing is paid online. The token message tells them the fee to pay at the counter.")}
         {option("advance", "Advance online, the rest at the counter", "A Razorpay link for the advance right after booking. The rest shows as the balance to collect at the counter.", !gatewayOn)}
         {mode === "advance" && (
           <div className="flex items-center gap-2 pl-8 text-[11px] text-os-text-dim">
@@ -85,9 +85,9 @@ export function BookingPaymentCard({ canEdit, onSaved }: { canEdit: boolean; onS
       </div>
       {!gatewayOn && <p className="text-[11px] text-amber-300">To take money online, connect Razorpay below first.</p>}
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-os-text-dim">
-        Fee, when the doctor has none set: ₹
+        Default fee, when whoever they book with has no fee set: ₹
         <input type="number" min="1" value={fee} onChange={(e) => setFee(e.target.value)} disabled={!canEdit} className={input} />
-        <span>(a token has no doctor yet, so this fee is used)</span>
+        <span>(a token has no one assigned yet, so it uses this fee)</span>
       </div>
       <p className="text-[11px] text-os-text-dim">
         Cancellation and refund rules belong in your Business card (Knowledge), so the AI answers them the same way every

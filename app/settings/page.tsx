@@ -130,6 +130,8 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("Apex Medical Clinic");
   const [fullName, setFullName] = useState("Dr. Rajesh Sharma");
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [emergencyEnabled, setEmergencyEnabled] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -763,6 +765,8 @@ export default function SettingsPage() {
         setBusinessName(profRes.value.business_name || "");
         setFullName(profRes.value.full_name || "");
         setGoogleReviewUrl(profRes.value.google_review_url || "");
+        setEmergencyPhone(profRes.value.emergency_phone || "");
+        setEmergencyEnabled(Boolean(profRes.value.emergency_enabled));
       } else {
         setLoadError(
           profRes.reason instanceof Error
@@ -920,6 +924,7 @@ export default function SettingsPage() {
         full_name: fullName,
         vertical,
         google_review_url: googleReviewUrl,
+        ...(emergencyEnabled ? { emergency_phone: emergencyPhone } : {}),
       });
       await approvals.setAutonomy(autonomy);
       setSaveSuccess(true);
@@ -1129,6 +1134,25 @@ export default function SettingsPage() {
                   Set this to automatically ask customers for a review after a completed visit. Leave blank to turn this off.
                 </p>
               </div>
+
+              {emergencyEnabled && (
+                <div>
+                  <label className="block text-xs font-mono uppercase text-os-text-dim mb-1">
+                    Emergency desk number (optional):
+                  </label>
+                  <input
+                    type="tel"
+                    value={emergencyPhone}
+                    onChange={(e) => setEmergencyPhone(e.target.value)}
+                    placeholder="98765 43210"
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/[0.12] text-xs text-white font-mono placeholder:text-os-text-dim/50 focus:border-brass focus:outline-none"
+                  />
+                  <p className="text-[10px] text-os-text-dim font-mono mt-1">
+                    When someone writes or says something like chest pain, can&apos;t breathe or an accident, KROVA answers at once:
+                    call 112 or go to the nearest emergency - and this number, if you add one - then alerts your team.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Vertical Selector */}

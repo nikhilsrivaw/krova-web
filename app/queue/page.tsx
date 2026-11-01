@@ -74,6 +74,8 @@ export default function QueuePage() {
   // Resolved server-side across code defaults, the vertical's template and
   // this business's own settings - never re-derived here.
   const [labels, setLabels] = useState<QueueLabels | null>(null);
+  // The business's word for who serves (Doctor, Staff member, Trainer) - from its scheduling labels.
+  const [provider, setProvider] = useState<string | null>(null);
 
   const statusLabel = useMemo<Record<QueueStatus, string>>(() => ({
     waiting: "Waiting",
@@ -123,6 +125,7 @@ export default function QueuePage() {
       if (doctorsRes.status === "fulfilled") setDoctors(doctorsRes.value);
       if (customersRes.status === "fulfilled") setCustomers(customersRes.value);
       if (settingsRes.status === "fulfilled") setLabels(settingsRes.value.labels);
+      scheduling.getLabels().then((l) => setProvider(l.provider)).catch(() => setProvider(null));
       const failed = results.find((r) => r.status === "rejected");
       if (failed && failed.status === "rejected") {
         setLoadError(failed.reason instanceof Error ? failed.reason.message : "Could not load the queue.");
@@ -399,7 +402,7 @@ export default function QueuePage() {
                   onChange={(e) => setCheckInDoctorId(e.target.value)}
                   className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white focus:border-brass focus:outline-none"
                 >
-                  <option value="">Any doctor</option>
+                  <option value="">{provider ? `Any ${provider.toLowerCase()}` : "Anyone free"}</option>
                   {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               )}

@@ -15,7 +15,7 @@ function describe(a: PaymentAuto): string {
   const fee = rupees(a.default_fee_paise);
   if (!a.tokens && !a.appointments) return `Only the token - fee at the counter${fee ? ` (${fee})` : ""}`;
   if (a.advance_paise) return `Advance ${rupees(a.advance_paise)} online, the rest at the counter`;
-  return `Full fee online${fee ? ` (${fee} when the doctor has none set)` : ""}`;
+  return `Full fee online${fee ? ` (${fee} when no fee is set for whoever they book with)` : ""}`;
 }
 
 /**
