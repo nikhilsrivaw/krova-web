@@ -315,7 +315,26 @@ function SettingsCard() {
   );
 }
 
-const SAMPLE = "Name,Phone,What,Date\nRavi Kumar,9876543210,Delhi to Jaipur bus,02/11/2026 06:00\nNeha Gupta,9123456780,AC repair,01/11/2026\n";
+/** Same clean-up as the server (shared/care/feedback.py clean_what): "how was the product?" -> "product". */
+function cleanWhat(text: string) {
+  let what = text.split(/\s+/).filter(Boolean).join(" ");
+  for (let i = 0; i < 2; i++) {
+    what = what
+      .replace(/^(?:(?:how|hows|how's)\s+(?:was|is|did|were)\s+(?:you\s+(?:find|like)\s+)?|feedback\s+(?:on|for|about)\s+|please\s+rate\s+)?(?:(?:the|your|my|our)\b)?\s*/i, "")
+      .replace(/\s*(?:kaisa|kaisi|kaise)\s*(?:tha|thi|the|laga|lagi|rha|rhi|raha|rahi)?\s*$|[\s?!.]+$/i, "")
+      .trim();
+  }
+  return what;
+}
+
+function preview(about: string, date: string) {
+  const what = cleanWhat(about) || "visit";
+  if (/\d/.test(what)) return what;
+  const day = date ? new Date(`${date}T00:00:00`) : new Date();
+  return `${what} on ${day.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+}
+
+const SAMPLE ="Name,Phone,What,Date\nRavi Kumar,9876543210,Delhi to Jaipur bus,02/11/2026 06:00\nNeha Gupta,9123456780,AC repair,01/11/2026\n";
 
 function AddCustomersCard({ onAdded }: { onAdded: () => void }) {
   const [tab, setTab] = useState<"file" | "paste" | "form">("file");
@@ -390,7 +409,13 @@ function AddCustomersCard({ onAdded }: { onAdded: () => void }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block"><span className={label}>Name</span><input value={person.name} onChange={(e) => setPerson({ ...person, name: e.target.value })} className={input} placeholder="Ravi Kumar" /></label>
             <label className="block"><span className={label}>Phone</span><input value={person.phone} onChange={(e) => setPerson({ ...person, phone: e.target.value })} className={input} placeholder="98765 43210" inputMode="tel" /></label>
-            <label className="block sm:col-span-2"><span className={label}>What to ask about</span><input value={person.about} onChange={(e) => setPerson({ ...person, about: e.target.value })} className={input} placeholder="Delhi to Jaipur bus" /></label>
+            <label className="block sm:col-span-2">
+              <span className={label}>What to ask about - the thing, not a question</span>
+              <input value={person.about} onChange={(e) => setPerson({ ...person, about: e.target.value })} className={input} placeholder="Delhi to Jaipur bus, order, AC repair" />
+              <span className="block text-[10px] text-os-text-dim mt-1">
+                They get: “Hi! How was your <span className="text-white">{preview(person.about, person.date)}</span> with your business? Tap a button below…”
+              </span>
+            </label>
             <label className="block"><span className={label}>When it happened</span><input type="date" value={person.date} onChange={(e) => setPerson({ ...person, date: e.target.value })} className={input} /></label>
             <label className="block"><span className={label}>Time (optional)</span><input type="time" value={person.time} onChange={(e) => setPerson({ ...person, time: e.target.value })} className={input} /></label>
           </div>
