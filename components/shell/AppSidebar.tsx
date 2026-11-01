@@ -12,6 +12,7 @@ import {
   PhoneCall,
   Globe,
   Headphones,
+  Smile,
   Users,
   UserPlus,
   BookOpen,
@@ -227,6 +228,13 @@ export function AppSidebar({
       href: "/website-chat",
       icon: Globe,
       accent: "text-teal",
+    },
+    {
+      label: "Feedback",
+      href: "/feedback",
+      requiresRole: ["owner", "admin"],
+      icon: Smile,
+      accent: "text-emerald-400",
     },
     {
       label: "Automations",

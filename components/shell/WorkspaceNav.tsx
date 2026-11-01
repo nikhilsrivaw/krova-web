@@ -18,7 +18,7 @@ const GROUPS = [
   { label: "Workspace", routes: ["/dashboard", "/conversations", "/approvals", "/escalations", "/talk-to-team"] },
   { label: "Channels", routes: ["/whatsapp", "/instagram", "/voice", "/website-chat"] },
   { label: "Business", routes: [] as string[] },
-  { label: "Intelligence & growth", routes: ["/signals", "/automations", "/campaigns", "/knowledge", "/analytics"] },
+  { label: "Intelligence & growth", routes: ["/signals", "/feedback", "/automations", "/campaigns", "/knowledge", "/analytics"] },
   { label: "Manage", routes: ["/team", "/settings", "/help"] },
 ];
 

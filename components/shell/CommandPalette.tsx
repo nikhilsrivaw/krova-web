@@ -12,6 +12,7 @@ import {
   PhoneCall,
   Globe,
   Headphones,
+  Smile,
   Layers,
   Users,
   Send,
@@ -36,7 +37,7 @@ interface CommandPaletteProps {
 }
 
 const OWNER_ADMIN_ONLY = [
-  "/whatsapp", "/instagram", "/voice", "/website-chat", "/automations", "/campaigns", "/analytics", "/billing", "/team",
+  "/whatsapp", "/instagram", "/voice", "/website-chat", "/feedback", "/automations", "/campaigns", "/analytics", "/billing", "/team",
   "/settings", "/products", "/forms", "/knowledge",
 ];
 
@@ -91,6 +92,12 @@ const COMMANDS = [
         subtitle: "Customers who asked for a person",
         href: "/talk-to-team",
         icon: Headphones,
+      },
+      {
+        title: "Go to Feedback",
+        subtitle: "Ratings and comments from customers",
+        href: "/feedback",
+        icon: Smile,
       },
       {
         title: "Go to Website chat",
