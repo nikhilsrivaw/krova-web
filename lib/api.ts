@@ -1124,6 +1124,8 @@ export type WebChatSite = {
   /** "before_chat": name and number are asked first; otherwise only when a person or a booking needs them. */
   ask_contact: "when_needed" | "before_chat";
   language: "en" | "hi";
+  /** What the replies are in: "auto" = the visitor's own language and script, or always English / always Hindi. */
+  reply_language: "auto" | "en" | "hi";
   theme: "dark" | "light";
   whatsapp_button: boolean;
   /** The business's logo in the chat header (upload with uploadLogo). */

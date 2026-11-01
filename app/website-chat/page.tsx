@@ -360,12 +360,12 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
     ? {
       domain: site.domain, title: site.title, greeting: site.greeting, accent: site.accent, active: site.active,
       position: site.position, launcher_text: site.launcher_text, teaser: site.teaser, starters: site.starters,
-      ask_contact: site.ask_contact, language: site.language, theme: site.theme, whatsapp_button: site.whatsapp_button,
+      ask_contact: site.ask_contact, language: site.language, reply_language: site.reply_language ?? "auto", theme: site.theme, whatsapp_button: site.whatsapp_button,
       status_text: site.status_text, offset_bottom: site.offset_bottom, mobile_mode: site.mobile_mode, hide_paths: site.hide_paths,
     }
     : {
       domain: "", title: null, greeting: null, accent: COLOURS[0], active: true, position: "right", launcher_text: null,
-      teaser: null, starters: [], ask_contact: "when_needed", language: "en", theme: "light", whatsapp_button: false,
+      teaser: null, starters: [], ask_contact: "when_needed", language: "en", reply_language: "auto", theme: "light", whatsapp_button: false,
       status_text: null, offset_bottom: null, mobile_mode: "full", hide_paths: [],
     });
   const [logo, setLogo] = useState<string | null>(site?.logo_url ?? null);
@@ -469,7 +469,17 @@ function SiteModal({ site, onClose, onSaved }: { site: WebChatSite | null; onClo
           <div>
             <span className={label}>Chat window language</span>
             <Choice value={draft.language} onChange={(v) => set({ language: v })} options={[{ key: "en", label: "English" }, { key: "hi", label: "हिंदी" }]} />
-            <span className="block text-[10px] text-os-text-dim mt-1">The buttons and notices. The AI replies in whatever language the visitor writes.</span>
+            <span className="block text-[10px] text-os-text-dim mt-1">The buttons and notices in the chat window.</span>
+          </div>
+          <div>
+            <span className={label}>Replies in</span>
+            <Choice value={draft.reply_language} onChange={(v) => set({ reply_language: v })}
+              options={[{ key: "auto", label: "Visitor's language" }, { key: "en", label: "Always English" }, { key: "hi", label: "Always हिंदी" }]} />
+            <span className="block text-[10px] text-os-text-dim mt-1">
+              {draft.reply_language === "en" ? "Every reply is in English, even if the visitor writes in Hindi."
+                : draft.reply_language === "hi" ? "Every reply is in Hindi (Devanagari), even if the visitor writes in English."
+                : "English gets English, Hinglish gets Hinglish in English letters, Hindi gets Hindi."}
+            </span>
           </div>
           <label className="block">
             <span className={label}>Label beside the button (optional)</span>
