@@ -24,9 +24,10 @@ export default function SecurityPage() {
       <Section heading="Access to your account">
         <Bullets
           items={[
-            "Authentication is handled by Supabase. Krova does not store account passwords.",
-            "Access within a business account follows roles the business sets — an owner or manager sees the whole workspace, while a team member sees only what has been assigned to them.",
-            "Access to third-party channels is granted by the business and can be revoked by the business at any time from Settings.",
+            "Passwords are never stored - only a one-way hash (argon2id). Repeated wrong passwords lock sign-in for a while, and one-time codes allow only a few attempts.",
+            "A sign-in lasts 30 minutes and is renewed with a refresh token; the owner can remove a team member at any time.",
+            "Inside a business, people see what their role and the owner allow - money, payments, phone numbers and templates can each be hidden from team members, and owner-only actions are refused for everyone else. Every action, including refused attempts, goes to the activity log.",
+            "Access to WhatsApp, Instagram and other channels is granted by the business through the official provider sign-in, and can be revoked by the business at any time from Settings.",
           ]}
         />
       </Section>
@@ -38,9 +39,9 @@ export default function SecurityPage() {
         </p>
         <Bullets
           items={[
-            "Every record that holds business or customer data carries a business identifier and is indexed on it.",
-            "Every query filters by that identifier in the database itself, rather than relying on application code to filter results after fetching them.",
-            "Requests are scoped to the business of the signed-in user, resolved at authentication time.",
+            "Every record that holds business or customer data carries the business it belongs to.",
+            "Every request is limited to the business of the signed-in person, decided when they sign in. A record asked for by its id is checked against that business before anything is returned.",
+            "An automated check runs over the code and fails if a new route loads a record by id without that check.",
           ]}
         />
       </Section>
@@ -48,24 +49,29 @@ export default function SecurityPage() {
       <Section heading="Encryption">
         <Bullets
           items={[
-            "All traffic between browsers, Krova and third-party services is served over TLS.",
-            "Access tokens for connected channels and any third-party provider keys are encrypted at rest using Fernet symmetric encryption before being stored.",
-            "The underlying database is hosted on managed infrastructure with encryption at rest provided by the platform.",
+            "All traffic between browsers, the Krova app, Krova's servers and third-party services is served over HTTPS (TLS).",
+            "Access tokens for connected channels, payment gateway keys and similar secrets are encrypted before they are stored (Fernet: AES-128 with an integrity check). The key is kept outside the database, so a copy of the database alone cannot open any connected account. The key can be rotated without downtime.",
+            "API keys a business creates for its own software are stored only as a hash.",
+          ]}
+        />
+      </Section>
+
+      <Section heading="What reaches Krova, and from whom">
+        <Bullets
+          items={[
+            "Messages from WhatsApp, Instagram, the phone provider, Shopify and payment gateways are checked against the sender's signature before they are accepted - a forged message is rejected.",
+            "Every response carries browser security headers (HTTPS-only, no embedding in other sites, no content sniffing), and requests above a fixed size are refused.",
+            "Logs never contain a full phone number or email address, and do not contain what customers said unless switched on briefly to fix a problem.",
           ]}
         />
       </Section>
 
       <Section heading="Infrastructure">
-        <p>
-          Krova runs on managed cloud infrastructure rather than
-          self-administered servers:
-        </p>
         <Bullets
           items={[
-            "Application and background processing on Railway",
-            "Web application on Vercel",
-            "Database and authentication on Supabase (PostgreSQL)",
-            "AI processing by Anthropic",
+            "Krova's application, background workers and database run on Amazon Web Services in Mumbai, India. The database is not reachable from the internet.",
+            "Replies and summaries are written by language models served from AWS in Mumbai. Some tasks may use Anthropic's API.",
+            "Phone calls use Plivo and Sarvam AI (speech); payments use the gateway the business connects.",
           ]}
         />
         <p>
@@ -78,9 +84,10 @@ export default function SecurityPage() {
       <Section heading="Handling of message content">
         <Bullets
           items={[
-            "Message content is processed to provide the features a business has enabled, such as organising conversations, drafting replies and producing insights.",
-            "Message content is sent to Krova's AI provider for processing. That provider does not use data submitted through its API to train its models.",
-            "Krova does not train any model on business or customer data.",
+            "Message content is processed to provide the features a business has enabled, such as answering customers, organising conversations and producing insights.",
+            "Only the business's own information and the one customer's conversation are given to a language model for a reply - never another customer's data.",
+            "The model providers Krova uses do not train their models on data sent through their APIs, and Krova does not train any model on business or customer data.",
+            "Customers a business marks as private are left out of processing, and marketing messages go only to customers who opted in.",
             "Krova does not sell business or customer data.",
           ]}
         />

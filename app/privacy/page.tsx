@@ -61,8 +61,8 @@ export default function PrivacyPage() {
       <Section heading="What we collect">
         <p>
           <strong>Account data.</strong> Name, email address, phone number,
-          business name, business category, and team member roles. Authentication
-          is handled by Supabase; we do not store passwords.
+          business name, business category, and team member roles. We never
+          store passwords - only a one-way hash of each one.
         </p>
         <p>
           <strong>Connected channel data.</strong> When a Customer connects a
@@ -139,15 +139,17 @@ export default function PrivacyPage() {
 
       <Section heading="AI processing">
         <p>
-          KROVA uses large language models supplied by{" "}
-          <strong>Anthropic</strong> to analyse conversations and generate
-          intelligence. Conversation content is transmitted to Anthropic&rsquo;s
-          API for processing and returned as structured output.
+          KROVA uses large language models to answer End Customers, analyse
+          conversations and generate intelligence. Most of this runs on models
+          served by <strong>Amazon Web Services (Amazon Bedrock)</strong> in its
+          Mumbai, India region; some tasks may use <strong>Anthropic</strong>&rsquo;s
+          API. Only what a task needs is sent - for a reply, the business&rsquo;s own
+          information and that one End Customer&rsquo;s conversation.
         </p>
         <p>
-          Anthropic acts as a subprocessor under contract and does not use data
-          submitted through its API to train its models. We do not train any
-          model on Customer or End Customer data.
+          These providers act as subprocessors and do not use data submitted
+          through their APIs to train their models. We do not train any model on
+          Customer or End Customer data.
         </p>
       </Section>
 
@@ -155,17 +157,25 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <strong>Anthropic</strong> — AI analysis of conversation content.
+              <strong>Amazon Web Services</strong> (Mumbai, India) — hosting of
+              KROVA&rsquo;s application, background workers and database, and the
+              language models used for most AI processing.
             </>,
             <>
-              <strong>Supabase</strong> — authentication and PostgreSQL database
-              hosting.
+              <strong>Anthropic</strong> — language models for some AI tasks.
             </>,
             <>
-              <strong>Railway</strong> — backend application and worker hosting.
+              <strong>Vercel</strong> — hosting of the KROVA website and web app.
             </>,
             <>
-              <strong>Vercel</strong> — web application hosting.
+              <strong>Plivo</strong> and <strong>Sarvam AI</strong> — phone calls
+              for the Voice Agent: call connection, speech-to-text and the
+              agent&rsquo;s voice.
+            </>,
+            <>
+              <strong>Payment gateways</strong> — PayU for KROVA plan payments and
+              wallet top-ups; the gateway a Customer connects itself (such as
+              Razorpay) for payment links it sends its own End Customers.
             </>,
             <>
               <strong>Meta Platforms</strong> — WhatsApp and Instagram message
