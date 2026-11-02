@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Sparkles } from "lucide-react";
 import { appPath } from "@/lib/app-nav";
+import { account } from "@/lib/api";
 
 const QUICK = ["Aaj kya pending hai?", "Pichhle mahine kya hua?", "Kaun reply ka wait kar raha hai?"];
 
@@ -14,11 +15,17 @@ const QUICK = ["Aaj kya pending hai?", "Pichhle mahine kya hua?", "Kaun reply ka
 export function AskBar() {
   const router = useRouter();
   const [text, setText] = useState("");
+  // Hidden on a plan without Ask KROVA (Solo - shared/billing/features.py).
+  const [locked, setLocked] = useState(false);
+  useEffect(() => {
+    account.profile().then((p) => setLocked((p.locked_features ?? []).includes("ask_krova"))).catch(() => {});
+  }, []);
   const go = (q: string) => {
     const question = q.trim();
     if (question) router.push(`${appPath("/ask")}?q=${encodeURIComponent(question)}`);
   };
 
+  if (locked) return null;
   return (
     <div className="rounded-2xl bg-os-card border border-teal/30 p-3 space-y-2.5">
       <form

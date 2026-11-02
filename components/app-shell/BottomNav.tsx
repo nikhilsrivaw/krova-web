@@ -39,16 +39,20 @@ const SUPERVISOR_TABS = [
 export function BottomNav({
   pendingCount,
   unreadChats = 0,
+  askLocked = false,
 }: {
   capabilities: Capability[];
   pendingCount: number;
+  /** The plan leaves out Ask KROVA (Solo) - owners get the ordinary tabs instead. */
+  askLocked?: boolean;
   /** Chats with customer messages this person has not read. */
   unreadChats?: number;
 }) {
   const pathname = usePathname();
   const { supervisor } = useRole();
-  const tabs = supervisor ? SUPERVISOR_TABS : TABS;
-  const badgeOn = supervisor ? "/today" : "/approvals";
+  const withAsk = supervisor && !askLocked;
+  const tabs = withAsk ? SUPERVISOR_TABS : TABS;
+  const badgeOn = withAsk ? "/today" : "/approvals";
   // pathname is whatever the browser actually shows - "/inbox" on the app
   // subdomain (middleware.ts rewrites it server-side, invisibly), "/app/inbox"
   // under the /app/* fallback. Stripping any "/app" prefix before comparing

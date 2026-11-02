@@ -45,7 +45,7 @@ const FAQS = [
   },
   {
     q: "Are all three channels in every plan?",
-    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. Plans differ in size, and Solo - for one person - leaves out website chat, feedback, analytics reports, Ask KROVA and team routing. The size differences: how many messages, phone lines and team logins, how much of your own information the AI reads, how big a campaign or import can be, and whether you can connect API keys and webhooks.",
+    a: "Yes. WhatsApp, Instagram and the Voice Agent unlock on every plan. Plans differ in size, and Solo - for one person - leaves out call campaigns, website chat, feedback, analytics reports, Ask KROVA and team routing, and pauses automatic replies once its 500 messages and 50 extra are used in a month. The size differences: how many messages, phone lines and team logins, how much of your own information the AI reads, how big a campaign or import can be, and whether you can connect API keys and webhooks.",
   },
   {
     q: "Is there a free trial?",

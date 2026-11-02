@@ -11,7 +11,9 @@
 export type PlanKey = "solo" | "starter" | "pro" | "scale";
 
 /** What Solo leaves out - every other plan has all of it. Same list as shared/billing/features.py. */
-export const NOT_ON_SOLO = ["Website chat", "Feedback", "Analytics reports", "Ask KROVA", "Teams and routing rules"];
+export const NOT_ON_SOLO = [
+  "Call campaigns", "Website chat", "Feedback", "Analytics reports", "Ask KROVA", "Teams and routing rules",
+];
 
 type Guide = {
   tagline: string;
@@ -50,7 +52,7 @@ export const PLAN_GUIDE: Record<PlanKey, Guide> = {
     apiKeys: 0,
     webhooks: 0,
     perMessage: "3.40",
-    why: "WhatsApp, Instagram and the Voice Agent answered for you, with automations and campaigns - for an owner who runs it alone.",
+    why: "WhatsApp, Instagram and the Voice Agent answered for you, with automations and WhatsApp campaigns - for an owner who runs it alone.",
   },
   starter: {
     tagline: "For one-person and small teams",
@@ -112,11 +114,12 @@ export function guideLines(key: PlanKey): string[] {
   const g = PLAN_GUIDE[key];
   const e = enquiries(g.messages);
   return [
-    `About ${n(g.messages)} customer messages a month - roughly ${e.month} new enquiries, ${e.day} a day`,
+    `About ${n(g.messages)} customer messages a month - roughly ${e.month} new enquiries, ${e.day} a day`
+      + (key === "solo" ? " (automatic replies pause past 550)" : ""),
     `${g.numbers} phone ${g.numbers === 1 ? "line" : "lines"} for the Voice Agent`,
     g.team === 1 ? "Your own login - no team logins" : `Up to ${g.team} team logins`,
     `The AI reads about ${g.pages} pages of your own business information before every reply`,
-    `Campaigns to up to ${n(g.campaign)} people at a time; imports of up to ${n(g.importRows)} contacts`,
+    `WhatsApp campaigns to up to ${n(g.campaign)} people at a time; imports of up to ${n(g.importRows)} contacts`,
     g.leadSources === null ? "Every lead source: Justdial, IndiaMART, MagicBricks, 99acres, Housing, email"
       : g.leadSources === 0 ? "Your own forms, file import and manual entry" : "1 connected lead source, plus file import and manual entry",
     g.apiKeys === 0 ? "No API keys or outbound webhooks" : `${g.apiKeys} API keys and ${g.webhooks} outbound webhooks`,
@@ -134,7 +137,7 @@ export function planTable(): { label: string; values: string[] }[] {
     row("Phone lines (Voice Agent)", (x) => String(x.numbers)),
     row("Team logins", (x) => String(x.team)),
     row("Business information the AI reads", (x) => `About ${x.pages} pages`),
-    row("People in one campaign", (x) => n(x.campaign)),
+    row("People in one WhatsApp campaign", (x) => n(x.campaign)),
     row("Contacts in one import", (x) => n(x.importRows)),
     row("Lead sources", (x) => (x.leadSources === null ? "All" : x.leadSources === 0 ? "Own forms, import, manual" : "1, plus file import and manual entry")),
     row("API keys", (x) => (x.apiKeys === 0 ? "Not included" : String(x.apiKeys))),
@@ -148,7 +151,7 @@ export const SAME_ON_EVERY_PLAN = [
   "WhatsApp, Instagram and the Voice Agent",
   "Every reply mode: draft, rule-based auto-send and fully automatic",
   "Automations and unlimited rules",
-  "WhatsApp, Instagram and voice call campaigns (calls are paid from the wallet)",
+  "WhatsApp campaigns",
   "Bookings, walk-in queue, orders and the rest of your business type's tools",
   "Talk to team, escalations, keypad menu and phone routing",
   "Photo to product match and live suggestions during a call",

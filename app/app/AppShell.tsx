@@ -123,7 +123,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <PlanBanner phone />
         {children}
       </main>
-      <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} unreadChats={unreadChats} />
+      <BottomNav capabilities={profile.capabilities} pendingCount={pendingCount} unreadChats={unreadChats}
+        askLocked={(profile.locked_features ?? []).includes("ask_krova")} />
     </div>
   );
 }

@@ -1316,6 +1316,9 @@ export type PlanUsage = {
   plan: string;
   messages_used: number;
   messages_limit: number;
+  /** Solo only: where automatic replies pause (size + 10%); null = never. */
+  messages_stop_at?: number | null;
+  ai_replies_stopped?: boolean;
   phone_lines_used: number;
   phone_lines_limit: number;
   team_used: number;

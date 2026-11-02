@@ -60,11 +60,17 @@ function UsageCard({ u }: { u: PlanUsage }) {
         used={u.messages_used}
         limit={u.messages_limit}
         note={
-          over
-            ? "You are past the size this plan is built for. Nothing is switched off; moving up keeps the cost per message low."
-            : u.messages_used >= u.messages_limit * 0.8
-              ? "You are close to the size this plan is built for."
-              : undefined
+          u.ai_replies_stopped
+            ? `Automatic replies are paused until the 1st: this plan's messages and the extra ${(u.messages_stop_at ?? 0) - u.messages_limit} are used. Messages still come into the inbox - reply there, or move to Starter below.`
+            : u.messages_stop_at && over
+              ? `Past this plan's size - automatic replies pause at ${u.messages_stop_at}. Move to Starter below to keep them going.`
+              : u.messages_stop_at
+                ? `Automatic replies pause at ${u.messages_stop_at} this month (the size plus 10%).`
+                : over
+                  ? "You are past the size this plan is built for. Nothing is switched off; moving up keeps the cost per message low."
+                  : u.messages_used >= u.messages_limit * 0.8
+                    ? "You are close to the size this plan is built for."
+                    : undefined
         }
       />
       <UsageBar label="Team logins" used={u.team_used} limit={u.team_limit} />
