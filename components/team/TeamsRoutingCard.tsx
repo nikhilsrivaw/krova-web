@@ -46,6 +46,9 @@ export function TeamsRoutingCard() {
   const [editTeam, setEditTeam] = useState<RoutingTeam | "new" | null>(null);
   const [editRule, setEditRule] = useState<RoutingRule | "new" | "complaints" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suggested, setSuggested] = useState<{ name: string; words: string[]; exists: boolean }[]>([]);
+  const [making, setMaking] = useState(false);
+  const [madeNote, setMadeNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -55,7 +58,22 @@ export function TeamsRoutingCard() {
       setError(e instanceof Error ? e.message : "Could not load teams.");
       setTeams([]);
     }
+    routing.suggested().then(setSuggested).catch(() => setSuggested([]));
   }, []);
+
+  const makeSuggested = async () => {
+    setMaking(true); setError(null);
+    try {
+      const made = await routing.createSuggested();
+      setMadeNote(`Made ${made.length} team${made.length === 1 ? "" : "s"}. Add people to each one, then switch its rule on.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not make the teams.");
+    } finally {
+      setMaking(false);
+    }
+  };
+  const missing = suggested.filter((s) => !s.exists);
 
   useEffect(() => {
     load();
@@ -100,6 +118,30 @@ export function TeamsRoutingCard() {
         </div>
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {/* The teams this kind of business usually has - only when its type suggests some and they are not all made */}
+      {missing.length > 0 && (
+        <div className="p-3 rounded-xl border border-teal/25 bg-teal/[0.06] space-y-2">
+          <p className="text-xs font-semibold text-white">Suggested for your type of business</p>
+          <ul className="space-y-1">
+            {missing.map((s) => (
+              <li key={s.name} className="text-[11px] text-os-text-dim">
+                <span className="text-white font-semibold">{s.name}</span>
+                {" "}- gets messages that say {s.words.slice(0, 5).map((w) => `"${w}"`).join(", ")}{s.words.length > 5 ? "..." : ""}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-os-text-dim">
+            Each team is made empty, with its rule switched off, so no chat goes to a team nobody is in. Add people to
+            each team, then switch its rule on. You can change the words any time.
+          </p>
+          <button type="button" disabled={making} onClick={makeSuggested}
+            className="px-3 py-1.5 rounded-lg bg-teal/20 border border-teal/40 text-xs text-white font-semibold cursor-pointer disabled:opacity-40">
+            {making ? "Making..." : `Make ${missing.length === 1 ? "this team" : `these ${missing.length} teams`}`}
+          </button>
+        </div>
+      )}
+      {madeNote && <p className="text-xs text-emerald-300">{madeNote}</p>}
 
       {/* Teams */}
       <div className="space-y-2">

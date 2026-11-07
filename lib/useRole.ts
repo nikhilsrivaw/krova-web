@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { account, can, type Capability, type Permissions, type UserProfile } from "@/lib/api";
+import { account, can, type CatalogueLabels, type Capability, type Permissions, type UserProfile } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
 /**
@@ -33,9 +33,11 @@ function loadProfile(): Promise<UserProfile | null> {
 }
 
 const NOTHING: Permissions = { see_money: false, take_payments: false, see_phones: false, send_templates: false };
+const CATALOGUE: CatalogueLabels = { title: "Catalogue", item: "item" };
 
 export function useRole(): {
   role: string | null; supervisor: boolean; ready: boolean; allowed: Permissions; capabilities: Capability[];
+  catalogueLabels: CatalogueLabels;
 } {
   const [state, setState] = useState<{ profile: UserProfile | null; ready: boolean }>({ profile: null, ready: false });
 
@@ -61,5 +63,6 @@ export function useRole(): {
     role, ready: state.ready, supervisor: role === "owner" || role === "admin", allowed,
     // the features this business has switched on - empty until the profile has loaded
     capabilities: p?.capabilities ?? [],
+    catalogueLabels: { ...CATALOGUE, ...(p?.catalogue_labels ?? {}) },
   };
 }

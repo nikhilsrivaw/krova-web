@@ -1007,6 +1007,10 @@ export const routing = {
   /** Which rule a message like this would hit - nothing is sent or moved. */
   test: (body: { text: string; channel?: string; number?: string; lead_source?: string; tags?: string[] }) =>
     api.post<{ rule_id: string | null; rule: string | null; team: string | null; language?: string | null }>("/routing/test", body),
+  /** The teams this business's type usually has (a college: Admissions, Fees & Accounts...), and which exist. */
+  suggested: () => api.get<{ name: string; words: string[]; exists: boolean }[]>("/routing/suggested"),
+  /** Makes the missing ones, empty, each with its rule switched off. */
+  createSuggested: () => api.post<RoutingTeam[]>("/routing/suggested", {}),
 };
 
 // ── Feedback ─────────────────────────────────────────────────────────────────
@@ -3534,6 +3538,8 @@ export type UserProfile = {
   // Sent from /auth/me, like capabilities, because every page already fetches
   // it. See QueueLabels below for how these resolve.
   queue_labels: QueueLabels;
+  /** What the Knowledge page calls its Catalogue - "Courses" for an institution. */
+  catalogue_labels?: CatalogueLabels;
   /** Team page -> "What agents can see". Read it through can(). */
   permissions?: Permissions;
 };
@@ -3933,6 +3939,9 @@ export type Shift = "morning" | "evening" | "emergency";
 // What this business calls the parts of its queue. Resolved server-side across
 // code defaults, the vertical's template, and the business's own settings -
 // never a second copy of that resolution here.
+/** shared/verticals/labels.py catalogue_labels: the tab's name and what one row is called. */
+export type CatalogueLabels = { title: string; item: string };
+
 export type QueueLabels = {
   person: string;
   ticket: string;

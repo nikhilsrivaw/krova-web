@@ -48,7 +48,7 @@ const KIND_OPTIONS: { value: KnowledgeKind; label: string }[] = [
 ];
 
 export default function KnowledgePage() {
-  const { capabilities, role } = useRole();
+  const { capabilities, role, catalogueLabels } = useRole();
   // Bumped after a reset so every tab loads again from the (now empty) server.
   const [version, setVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<"card" | "team" | "catalogue" | "fees" | "bank" | "gaps" | "items" | "upload">("card");
@@ -233,7 +233,7 @@ export default function KnowledgePage() {
           {[
             { key: "card", label: "Business card" },
             { key: "team", label: "Team" },
-            { key: "catalogue", label: "Catalogue" },
+            { key: "catalogue", label: catalogueLabels.title },
             ...(capabilities.includes("price_list_payments") ? [{ key: "fees", label: "Fees / Price list" }] : []),
             { key: "bank", label: "Question bank" },
             { key: "gaps", label: `Unanswered Gaps Queue (${gaps.length})` },
@@ -267,7 +267,7 @@ export default function KnowledgePage() {
         )}
         {activeTab === "card" && <BusinessCard key={version} onChanged={loadData} />}
         {activeTab === "team" && <TeamCard key={version} onChanged={loadData} />}
-        {activeTab === "catalogue" && <Catalogue key={version} onChanged={loadData} />}
+        {activeTab === "catalogue" && <Catalogue key={version} onChanged={loadData} labels={catalogueLabels} />}
         {activeTab === "fees" && capabilities.includes("price_list_payments") && <FeeList key={version} onChanged={loadData} />}
         {activeTab === "bank" && <QuestionBank key={version} onChanged={loadData} />}
 
