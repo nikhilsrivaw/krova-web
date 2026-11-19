@@ -406,8 +406,8 @@ function SignupForm() {
 
               <p className="text-[10px] text-os-text-dim text-center leading-relaxed">
                 By signing up you agree to our{" "}
-                <span className="text-white cursor-pointer hover:underline">Terms</span> and{" "}
-                <span className="text-white cursor-pointer hover:underline">Privacy Policy</span>
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white hover:underline">Terms</a> and{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-white hover:underline">Privacy Policy</a>
               </p>
             </div>
           )}

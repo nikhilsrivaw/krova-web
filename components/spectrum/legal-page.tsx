@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/spectrum/site-footer";
 const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
+  { href: "/refund-policy", label: "Refund & Cancellation" },
   { href: "/data-deletion", label: "Data Deletion" },
 ];
 

@@ -19,7 +19,7 @@ export default function TermsPage() {
     <LegalPage
       title="Terms of Service"
       summary="The agreement between KROVA and the businesses that use it. Plain language, no traps."
-      updated="8 August 2026"
+      updated="20 November 2026"
       active="/terms"
     >
       <Section heading="Agreement">
@@ -34,11 +34,16 @@ export default function TermsPage() {
 
       <Section heading="What KROVA does">
         <p>
-          KROVA connects to messaging and email channels you already own, reads
-          the conversations on them, and produces business intelligence —
-          customer profiles, follow-up priorities, commitments, and revenue
-          signals. It can draft messages for you to approve, and send them
-          through your own connected accounts.
+          KROVA connects to the channels your business already uses — WhatsApp,
+          Instagram, phone calls on numbers you hold through KROVA, and chat on
+          your website — and helps you answer customers, follow up, and keep
+          track of what was promised. It can reply to customers, answer and
+          make calls, draft messages for you to approve, and send them through
+          your own connected accounts.
+        </p>
+        <p>
+          You can give your team members their own logins. You decide what
+          each of them can see and do.
         </p>
         <p>
           KROVA is a decision-support tool. It does not replace your commercial
@@ -59,8 +64,8 @@ export default function TermsPage() {
 
       <Section heading="Connected channels">
         <p>
-          You connect your own WhatsApp Business Account, Instagram Business
-          account, Gmail, or Outlook. Those accounts remain yours. You confirm
+          You connect your own WhatsApp Business Account and Instagram Business
+          account. Those accounts remain yours. You confirm
           you are authorised to connect them and to allow KROVA to read and send
           on them.
         </p>
@@ -78,9 +83,27 @@ export default function TermsPage() {
               Meta&rsquo;s published rates.
             </strong>{" "}
             KROVA adds no markup to message costs. Your subscription to KROVA is
-            separate and covers the software only.
+            separate.
           </p>
         </Notice>
+      </Section>
+
+      <Section heading="Phone calls and the wallet">
+        <Bullets
+          items={[
+            "Phone calls run on a prepaid wallet in rupees. Each call is charged from the wallet as shown on the Pricing page, with a breakdown of what it cost.",
+            "Each phone number costs ₹220 a month, taken from the wallet.",
+            "When you recharge, the payment gateway fee is added on top, so the wallet receives the full amount you chose. A recharge gets a receipt, not a tax invoice.",
+            "Calls pause when the wallet is empty or a number's rent is unpaid.",
+            "We will tell you before changing how calls are charged. A change applies only to calls made after it takes effect.",
+          ]}
+        />
+        <p>
+          When KROVA answers or makes a call for you, an automated assistant
+          speaks to the caller. You are responsible for telling your customers
+          this where the law requires it, and for having consent before calling
+          them. Voicemail left by callers is recorded and shown to you.
+        </p>
       </Section>
 
       <Section heading="Automated sending">
@@ -130,8 +153,12 @@ export default function TermsPage() {
       <Section heading="Fees">
         <Bullets
           items={[
-            "Subscription fees are billed in advance on the cycle shown at checkout, and are stated exclusive of GST unless marked otherwise.",
-            "Fees are non-refundable except where required by law.",
+            "Plan fees are billed monthly in advance and are stated exclusive of 18% GST. Each plan payment gets a GST tax invoice from Aqirox Technology Private Limited.",
+            <>
+              Plan payments and wallet recharges are not refundable, except for
+              payments made by mistake, as set out in our{" "}
+              <a href="/refund-policy">Refund &amp; Cancellation Policy</a>.
+            </>,
             "We may change pricing with 30 days' notice. Changes take effect at your next renewal.",
             "Non-payment may result in suspension after written notice.",
           ]}
@@ -171,8 +198,8 @@ export default function TermsPage() {
 
       <Section heading="Termination">
         <p>
-          You may cancel at any time from Settings; access continues to the end
-          of the paid period. We may terminate for breach of these terms, or for
+          You may cancel at any time from the Billing page; access continues to
+          the end of the paid period. Any unused wallet balance is not returned. We may terminate for breach of these terms, or for
           convenience with 30 days&rsquo; notice.
         </p>
         <p>
