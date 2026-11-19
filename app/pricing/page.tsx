@@ -18,6 +18,17 @@ const PLANS: { key: PlanKey; name: string; base: number; highlight?: boolean; ba
   { key: "scale", name: "Scale", base: 12499 },
 ];
 
+// Enterprise has no fixed price: it is quoted on volume and paid by bank transfer against a GST invoice (UPI
+// AutoPay stops at Rs 15,000). Nothing on this card is sold online - it leads to the Contact page.
+const ENTERPRISE = [
+  "A monthly pool of customer messages sized to your volume - or a yearly pool paid upfront, at a lower price",
+  "Replies never stop: messages past the pool are billed at an agreed rate on your next invoice",
+  "Only the messages your customers send are counted - replies, reminders and campaigns are not",
+  "Staff logins, phone lines and campaign size set to what your team needs",
+  "Setup done together with your team, and priority support",
+  "Paid by bank transfer against a GST invoice. Calls stay on the prepaid wallet, at cost",
+];
+
 const INCLUDED = [
   "WhatsApp and Instagram, with the AI drafting or sending replies",
   "Shared inbox for your team, with their own logins and an activity log",
@@ -41,7 +52,11 @@ const FAQS = [
   },
   {
     q: "How do I know which plan I need?",
-    a: "Count the customer messages you get in a month on WhatsApp and Instagram. Up to about 1,000 is Starter, up to about 2,000 is Pro, up to about 3,500 is Scale. Roughly six messages make one enquiry, so Starter suits five or six new enquiries a day. If you are between sizes, start with the smaller one - moving up is one click.",
+    a: "Count the customer messages you get in a month on WhatsApp and Instagram. Up to about 1,000 is Starter, up to about 2,000 is Pro, up to about 3,500 is Scale. Roughly six messages make one enquiry, so Starter suits five or six new enquiries a day. If you are between sizes, start with the smaller one - moving up is one click. Well beyond Scale - a university in admission season, for example - Enterprise is quoted on your volume.",
+  },
+  {
+    q: "How does Enterprise billing work?",
+    a: "You choose a pool of customer messages: monthly, billed each month, or yearly, paid upfront at a lower price. Messages past the pool are never refused - they are billed at the agreed rate on your next invoice. Every invoice is a GST invoice and is paid by bank transfer. Calls use the same prepaid wallet as every plan.",
   },
   {
     q: "Are all three channels in every plan?",
@@ -148,7 +163,37 @@ export default function PricingPage() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-xl border border-os-border bg-os-card p-7">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-10 rounded-xl border border-os-border bg-os-card p-7 grid gap-6 md:grid-cols-[1fr_2fr] items-start"
+          aria-label="Enterprise"
+        >
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold text-os-ink mb-1">Enterprise</span>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim mb-6">
+              Universities, colleges and large teams
+            </p>
+            <p className="font-serif text-3xl font-semibold tracking-tight text-os-ink mb-1">Priced on your volume</p>
+            <p className="text-xs text-os-text-dim mb-6">Monthly, or yearly at a lower price. + 18% GST.</p>
+            <Link href="/contact" className="mt-auto">
+              <button className="w-full py-2.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors border border-os-border text-os-ink hover:bg-os-bg">
+                Talk to us
+              </button>
+            </Link>
+          </div>
+          <ul className="grid gap-2.5 sm:grid-cols-2">
+            {ENTERPRISE.map((line) => (
+              <li key={line} className="flex items-start gap-2.5">
+                <Check size={12} className="mt-1 shrink-0 text-seal-bright" />
+                <span className="text-xs leading-relaxed text-os-ink/90">{line}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+
+        <div className="mt-6 rounded-xl border border-os-border bg-os-card p-7">
           <h2 className="text-sm font-semibold text-os-ink mb-4">Every plan includes</h2>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {INCLUDED.map((line) => (
@@ -204,8 +249,8 @@ export default function PricingPage() {
           <h2 className="text-sm font-semibold text-os-ink mb-4">How we sized the plans</h2>
           <ul className="space-y-3 text-xs leading-relaxed text-os-ink/90">
             <li>
-              <strong>A customer message</strong> is one message a customer sends you on WhatsApp or Instagram that the AI reads and
-              answers. Voice is separate and runs on the wallet below.
+              <strong>A customer message</strong> is one message a customer sends you on WhatsApp, Instagram or your website chat.
+              Your replies, reminders and campaigns are not counted. Voice is separate and runs on the wallet below.
             </li>
             <li>
               <strong>About six messages make one enquiry</strong> - a question, a price, a booking, a follow-up. So 1,000 messages is
@@ -213,8 +258,8 @@ export default function PricingPage() {
             </li>
             <li>
               <strong>Why the sizes grow with the price.</strong> Every message the AI answers costs real money to read and reply to. Each
-              plan is sized so the rate per message stays about the same (₹3.00, then ₹2.86 at Scale), instead of
-              charging a small business for room it will never use.
+              plan is sized so a message costs about ₹3 to ₹4 (₹3.00 on Starter, ₹3.57 on Scale), instead of charging a
+              small business for room it will never use. Enterprise is quoted on volume.
             </li>
             <li>
               <strong>Why the AI reads more of your own information on bigger plans.</strong> Before every reply it reads all your prices,
