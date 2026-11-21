@@ -2597,6 +2597,8 @@ export type KnowledgeCard = {
   tokens: number;
   /** Questions businesses of this type often get - tap one to answer it (never saved until the owner adds it). */
   suggested_questions?: string[];
+  /** This type can read a long PDF (a prospectus) in parts - up to 25 MB. */
+  large_files?: boolean;
 };
 
 // Gaps have no id on the backend - they're identified by the gap text itself
@@ -2632,6 +2634,10 @@ export type KnowledgeFileReading = {
   catalogue: KnowledgeCatalogueRow[];
   catalogue_now: number;
   bank: { question: string; answer: string }[];
+  /** A long PDF read in parts (institution): pages read, pages with no text (scans), and more found than fits. */
+  pages_read?: number;
+  pages_without_text?: number;
+  more_than_fits?: boolean;
   bank_room: number;
 };
 

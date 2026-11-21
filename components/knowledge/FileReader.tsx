@@ -27,6 +27,9 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  // A type that reads a long PDF in parts (a college prospectus) - the card says so.
+  const [largeFiles, setLargeFiles] = useState(false);
+  useEffect(() => { knowledge.card().then((c) => setLargeFiles(!!c.large_files)).catch(() => {}); }, []);
 
   // Tell the page while suggestions sit unsaved, and bring them into view when they arrive.
   useEffect(() => {
@@ -110,14 +113,22 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="block w-full text-xs text-os-text-dim file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/[0.08] file:text-white hover:file:bg-white/[0.12] cursor-pointer"
             />
-            <p className="text-[10px] text-os-text-dim mt-2 font-mono">PDF, JPG, PNG, WebP, TXT, MD, CSV · up to 5 MB · 5 files a day</p>
+            <p className="text-[10px] text-os-text-dim mt-2 font-mono">
+              {largeFiles
+                ? "PDF up to 25 MB, any number of pages (a full prospectus) · photos and text files up to 5 MB · 5 files a day"
+                : "PDF, JPG, PNG, WebP, TXT, MD, CSV · up to 5 MB · 5 files a day"}
+            </p>
           </div>
           <button type="submit" disabled={!file || reading}
             className="w-full py-2.5 rounded-xl bg-brass hover:bg-brass-dim disabled:opacity-50 text-white text-xs font-bold cursor-pointer">
             {reading ? "Reading..." : "Read it"}
           </button>
           {reading && (
-            <p className="text-[11px] text-os-text-dim">Reading your file - this can take up to a minute. Your suggestions will appear below.</p>
+            <p className="text-[11px] text-os-text-dim">
+              {largeFiles
+                ? "Reading your file - a long prospectus can take 2-3 minutes. Keep this page open; your suggestions will appear below."
+                : "Reading your file - this can take up to a minute. Your suggestions will appear below."}
+            </p>
           )}
         </form>
         {done && <p className="text-xs text-emerald-300">{done}</p>}
@@ -136,8 +147,19 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
             </div>
             <span className="text-[10px] font-mono text-os-text-dim">{result.reads_left_today} reads left today</span>
           </div>
+          {!!result.pages_read && (
+            <p className="text-[11px] text-os-text-dim">
+              Read {result.pages_read} pages.
+              {!!result.pages_without_text && ` ${result.pages_without_text} pages had no text (scanned pages or photos) and were skipped - type anything important from them in yourself.`}
+            </p>
+          )}
           {result.truncated && (
-            <p className="text-[11px] text-amber-300">The file was long, so only its first part was read.</p>
+            <p className="text-[11px] text-amber-300">
+              {result.pages_read ? "Some pages could not be read this time. Check the list below, or read the file again." : "The file was long, so only its first part was read."}
+            </p>
+          )}
+          {result.more_than_fits && (
+            <p className="text-[11px] text-amber-300">The file holds more than your lists can keep. The first ones, in page order, are below.</p>
           )}
           {!anything && (
             <p className="text-xs text-os-text-dim">Nothing in this file answers the card&apos;s questions. Try another file, or type it in.</p>
