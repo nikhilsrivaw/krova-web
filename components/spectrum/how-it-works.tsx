@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ElementType } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";
-import { Sun, Sparkles, PhoneCall } from "lucide-react";
+import { Sun, Sparkles, PhoneCall, Brain, ShieldCheck, Radio } from "lucide-react";
 import { WhatsAppIcon, InstagramIcon } from "@/components/spectrum/brand-icons";
 
 const STEPS = [
@@ -25,32 +25,60 @@ const STEPS = [
 ];
 
 const CHANNELS = [
-  { icon: <WhatsAppIcon size={18} />, label: "WhatsApp" },
-  { icon: <InstagramIcon size={18} />, label: "Instagram" },
-  { icon: <PhoneCall size={18} />, label: "Voice" },
+  { icon: <WhatsAppIcon size={16} />, label: "WhatsApp", sub: "Business account" },
+  { icon: <InstagramIcon size={16} />, label: "Instagram", sub: "Direct messages" },
+  { icon: <PhoneCall size={16} className="text-teal-bright" />, label: "Voice", sub: "Call transcripts" },
 ];
 
 const LEDGER_ENTRIES = [
-  { name: "Priya D.", note: "Going cold — no reply in 4 days", tag: "ACT", tagColor: "text-thread-bright" },
-  { name: "Rahul M.", note: "Asked for pricing twice · draft ready", tag: "READY", tagColor: "text-seal-bright" },
-  { name: "Anjali K.", note: "Reply drafted, matches your tone", tag: "DRAFT", tagColor: "text-teal-bright" },
-  { name: "3 unpaid quotes", note: "₹47,000 stuck · 12+ days old", tag: "₹47,000", tagColor: "text-thread-bright" },
+  { name: "Priya D.", note: "Going cold — no reply in 4 days", tag: "Act now", tagClass: "border-thread/30 bg-thread/[0.08] text-thread-bright" },
+  { name: "Rahul M.", note: "Asked for pricing twice · draft ready", tag: "Ready", tagClass: "border-seal/30 bg-seal/[0.08] text-seal-bright" },
+  { name: "Anjali K.", note: "Reply drafted, matches your tone", tag: "Draft", tagClass: "border-teal/30 bg-teal/[0.08] text-teal-bright" },
+  { name: "3 unpaid quotes", note: "₹47,000 stuck · 12+ days old", tag: "₹47,000", tagClass: "border-thread/30 bg-thread/[0.08] text-thread-bright" },
 ];
+
+function PanelHeader({ icon: Icon, title, badge }: { icon: ElementType; title: string; badge: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-3.5">
+      <span className="flex items-center gap-2 text-[13px] font-medium text-os-ink">
+        <Icon size={14} className="text-teal-bright" />
+        {title}
+      </span>
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal/[0.07] px-2.5 py-1 text-[11px] text-teal-bright">
+        <span className="size-1.5 rounded-full bg-teal-bright animate-pulse" />
+        {badge}
+      </span>
+    </div>
+  );
+}
 
 function ChannelsVisual() {
   return (
-    <div className="w-full rounded-lg border border-os-border bg-os-card p-8">
-      <div className="grid grid-cols-2 gap-4">
-        {CHANNELS.map((c) => (
-          <div key={c.label} className="flex items-center gap-3 rounded-md border border-os-border bg-os-bg px-4 py-3.5">
-            <span className="shrink-0">{c.icon}</span>
-            <span className="text-sm font-medium text-os-ink">{c.label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-os-text-dim">
-        <span className="size-1.5 rounded-full bg-seal" />
-        All four feed one AI brain
+    <div className="workspace-panel relative w-full overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,163,135,0.1),transparent_65%)]" />
+      <div className="relative">
+        <PanelHeader icon={Radio} title="Connected channels" badge="Live" />
+        <div className="divide-y divide-white/[0.07]">
+          {CHANNELS.map((c) => (
+            <div key={c.label} className="flex items-center gap-3 px-5 py-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
+                {c.icon}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-os-ink">{c.label}</div>
+                <div className="text-[11px] text-os-text-dim">{c.sub}</div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] text-seal-bright">
+                <ShieldCheck size={12} />
+                Connected
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center gap-2 border-t border-white/[0.08] bg-white/[0.015] px-5 py-3">
+          <Brain size={13} className="text-teal-bright" />
+          <span className="text-[11px] text-os-text-dim">All four feed one AI brain</span>
+        </div>
       </div>
     </div>
   );
@@ -58,22 +86,21 @@ function ChannelsVisual() {
 
 function ScoringVisual() {
   return (
-    <div className="w-full rounded-lg border border-os-border bg-os-card overflow-hidden">
-      <div className="h-10 border-b border-os-border flex items-center justify-between px-4">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim">Tonight&rsquo;s scoring</span>
-        <div className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-seal animate-pulse" />
-          <span className="font-mono text-[9px] uppercase tracking-widest text-os-text-dim">Reading</span>
-        </div>
-      </div>
-      <div className="divide-y divide-os-border">
+    <div className="workspace-panel w-full overflow-hidden">
+      <PanelHeader icon={Sparkles} title="Tonight&rsquo;s scoring" badge="Reading" />
+      <div className="divide-y divide-white/[0.07]">
         {LEDGER_ENTRIES.map((entry) => (
-          <div key={entry.name} className="flex items-center gap-3 px-4 py-3.5">
+          <div key={entry.name} className="flex items-center gap-3 px-5 py-3.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-medium text-os-ink">
+              {entry.name.charAt(0)}
+            </span>
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-os-ink truncate">{entry.name}</div>
               <div className="text-[11px] text-os-text-dim truncate">{entry.note}</div>
             </div>
-            <span className={`font-mono text-[10px] font-bold tracking-wider shrink-0 ${entry.tagColor}`}>{entry.tag}</span>
+            <span className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium ${entry.tagClass}`}>
+              {entry.tag}
+            </span>
           </div>
         ))}
       </div>
@@ -83,20 +110,21 @@ function ScoringVisual() {
 
 function BriefingVisual() {
   return (
-    <div className="w-full rounded-lg border border-os-border bg-os-card p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Sun size={14} className="text-teal" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-os-text-dim">
-          8:00 AM · Delivered on WhatsApp
-        </span>
-      </div>
-      <div className="space-y-2.5">
-        <div className="rounded-lg rounded-bl-sm border border-teal/30 bg-teal/[0.06] px-3 py-2 text-[13px] text-os-ink">
-          3 hot leads need replies today. 2 going cold — act in 24h.
+    <div className="workspace-panel relative w-full overflow-hidden p-5 sm:p-6">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,163,135,0.1),transparent_65%)]" />
+      <div className="relative">
+        <div className="mb-4 flex items-center gap-2">
+          <Sun size={14} className="text-teal-bright" />
+          <span className="text-[11px] text-os-text-dim">8:00 AM · Delivered on WhatsApp</span>
         </div>
-        <div className="rounded-lg rounded-bl-sm border border-os-border bg-os-bg px-3 py-2 text-[13px] text-os-ink/90 flex items-center gap-2">
-          <Sparkles size={12} className="text-teal shrink-0" />
-          3 drafts ready — just approve.
+        <div className="space-y-2.5">
+          <div className="rounded-xl rounded-bl-sm border border-teal/20 bg-teal/[0.06] px-3.5 py-2.5 text-[13px] leading-5 text-os-ink">
+            3 hot leads need replies today. 2 going cold — act in 24h.
+          </div>
+          <div className="flex items-center gap-2 rounded-xl rounded-bl-sm border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-[13px] leading-5 text-os-ink/90">
+            <Sparkles size={12} className="shrink-0 text-teal-bright" />
+            3 drafts ready — just approve.
+          </div>
         </div>
       </div>
     </div>
