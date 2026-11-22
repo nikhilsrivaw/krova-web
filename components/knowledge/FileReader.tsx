@@ -8,7 +8,7 @@ import { knowledge, type KnowledgeFileReading } from "@/lib/api";
 const input = "w-full p-2.5 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white font-mono focus:border-brass focus:outline-none";
 
 type FieldPick = { key: string; title: string; limit: number; current: string | null; text: string; use: boolean };
-type FaqPick = { question: string; answer: string; use: boolean };
+type FaqPick = { question: string; answer: string; use: boolean; check?: "" | "ok" | "look" };
 
 /**
  * Read a price list, menu, brochure or FAQ sheet ONCE and fill the Business Card from it. The owner checks every
@@ -22,6 +22,8 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
   const [fields, setFields] = useState<FieldPick[]>([]);
   const [faqs, setFaqs] = useState<FaqPick[]>([]);
   const [useCatalogue, setUseCatalogue] = useState(true);
+  // Rows whose fee was not found beside their name in the file stay out unless the owner keeps them.
+  const [skipUnchecked, setSkipUnchecked] = useState(true);
   const [catalogueMode, setCatalogueMode] = useState<"add" | "replace">("add");
   const [bank, setBank] = useState<FaqPick[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +47,8 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
       const r = await knowledge.readFile(file);
       setResult(r);
       setFields(r.fields.map((f) => ({ ...f, text: f.suggested, use: !f.current })));
-      setFaqs(r.faqs.map((q) => ({ ...q, use: true })));
-      setBank((r.bank ?? []).map((q) => ({ ...q, use: true })));
+      setFaqs(r.faqs.map((q) => ({ ...q, use: q.check !== "look" })));
+      setBank((r.bank ?? []).map((q) => ({ ...q, use: q.check !== "look" })));
       setUseCatalogue((r.catalogue ?? []).length > 0);
       setCatalogueMode(r.catalogue_now ? "add" : "replace");
     } catch (err) {
@@ -72,7 +74,10 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
       try {
         const current = catalogueMode === "add" ? (await knowledge.catalogue()).rows : [];
         const seen = new Set(current.map((r) => r.name.trim().toLowerCase()));
-        const merged = [...current, ...result.catalogue.filter((r) => !seen.has(r.name.trim().toLowerCase()))];
+        const found = result.catalogue
+          .filter((r) => !(skipUnchecked && r.check === "look"))
+          .map(({ name, price, details }) => ({ name, price, details }));
+        const merged = [...current, ...found.filter((r) => !seen.has(r.name.trim().toLowerCase()))];
         const out = await knowledge.saveCatalogue(merged);
         saved += Math.max(0, out.rows.length - current.length);
       } catch (err) { problems.push(`Catalogue: ${err instanceof Error ? err.message : "not saved"}`); }
@@ -92,6 +97,8 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
   const setFaq = (i: number, patch: Partial<FaqPick>) => setFaqs((p) => p.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const setBankPick = (i: number, patch: Partial<FaqPick>) => setBank((p) => p.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const rowsFound = result?.catalogue?.length ?? 0;
+  const rowsToCheck = result?.catalogue?.filter((r) => r.check === "look").length ?? 0;
+  const rowsChecked = result?.catalogue?.some((r) => r.check) ?? false;
   const anything = fields.length > 0 || faqs.length > 0 || rowsFound > 0 || bank.length > 0;
 
   return (
@@ -182,7 +189,8 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               {faqs.map((q, i) => (
                 <label key={i} className="flex items-start gap-2 text-xs cursor-pointer">
                   <input type="checkbox" className="mt-0.5" checked={q.use} onChange={(e) => setFaq(i, { use: e.target.checked })} />
-                  <span><span className="text-white font-semibold">{q.question}</span><br /><span className="text-os-text-dim">{q.answer}</span></span>
+                  <span><span className="text-white font-semibold">{q.question}</span><br /><span className="text-os-text-dim">{q.answer}</span>
+                    {q.check === "look" && <><br /><span className="text-amber-300">⚠ A number here is not in the file - check it.</span></>}</span>
                 </label>
               ))}
             </div>
@@ -196,6 +204,19 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               <p className="text-[11px] text-os-text-dim">
                 The AI is shown only the items a customer names, so the whole list costs nothing extra.
               </p>
+              {rowsChecked && (
+                <p className={`text-[11px] ${rowsToCheck ? "text-amber-300" : "text-emerald-300"}`}>
+                  {rowsToCheck
+                    ? `Each fee was matched against the file's own tables: ${rowsFound - rowsToCheck} match, ${rowsToCheck} to check (marked below with the page to open).`
+                    : "Each fee was matched against the file's own tables - all match."}
+                </p>
+              )}
+              {rowsToCheck > 0 && (
+                <label className="flex items-center gap-2 text-[11px] text-os-text-dim cursor-pointer">
+                  <input type="checkbox" checked={skipUnchecked} onChange={(e) => setSkipUnchecked(e.target.checked)} />
+                  Leave out the {rowsToCheck} to check (add them yourself on the Courses tab once checked)
+                </label>
+              )}
               {result.catalogue_now > 0 && (
                 <div className="flex gap-3 text-[11px] text-os-text-dim">
                   <label className="flex items-center gap-1 cursor-pointer">
@@ -210,7 +231,11 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               )}
               <div className="max-h-48 overflow-y-auto rounded-lg bg-black/30 border border-white/[0.06] p-2 text-[11px] font-mono text-white/80 space-y-0.5">
                 {result.catalogue.map((r, i) => (
-                  <div key={i}>{r.name}{r.price ? ` - ${r.price}` : ""}{r.details ? ` (${r.details})` : ""}</div>
+                  <div key={i} className={r.check === "look" ? "text-amber-300" : ""}>
+                    {r.check === "ok" ? "✓ " : r.check === "look" ? "⚠ " : ""}
+                    {r.name}{r.price ? ` - ${r.price}` : ""}{r.details ? ` (${r.details})` : ""}
+                    {r.check === "look" && <span className="text-amber-300/80"> - check{r.page ? ` page ${r.page}` : " the file"}</span>}
+                  </div>
                 ))}
               </div>
             </div>
@@ -221,7 +246,8 @@ export function FileReader({ onSaved, onPending }: { onSaved: () => void; onPend
               {bank.map((q, i) => (
                 <label key={i} className="flex items-start gap-2 text-xs cursor-pointer">
                   <input type="checkbox" className="mt-0.5" checked={q.use} onChange={(e) => setBankPick(i, { use: e.target.checked })} />
-                  <span><span className="text-white font-semibold">{q.question}</span><br /><span className="text-os-text-dim">{q.answer}</span></span>
+                  <span><span className="text-white font-semibold">{q.question}</span><br /><span className="text-os-text-dim">{q.answer}</span>
+                    {q.check === "look" && <><br /><span className="text-amber-300">⚠ A number here is not in the file - check it.</span></>}</span>
                 </label>
               ))}
             </div>
