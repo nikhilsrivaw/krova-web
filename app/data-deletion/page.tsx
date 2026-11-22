@@ -9,7 +9,7 @@ import {
 } from "@/components/spectrum/legal-page";
 
 export const metadata: Metadata = {
-  title: "Data Deletion — KROVA",
+  title: "Data Deletion - KROVA",
   description:
     "How to delete your KROVA account and all associated data, and what happens when you do.",
 };
@@ -42,7 +42,7 @@ export default function DataDeletionPage() {
             "Your account, profile, and team member records.",
             "All customer records and contact details stored in your workspace.",
             "All message content synced from WhatsApp, Instagram, Gmail, and Outlook.",
-            "All derived intelligence — profiles, predictions, commitments, revenue signals, competitor mentions, briefs, and reports.",
+            "All derived intelligence: profiles, predictions, commitments, revenue signals, competitor mentions, briefs, and reports.",
             "All stored credentials, including OAuth tokens and any third-party API keys.",
             "Analytics and activity history tied to your business.",
           ]}
@@ -52,7 +52,7 @@ export default function DataDeletionPage() {
       <Section heading="What we may keep, and why">
         <p>
           We retain a minimal record of invoices and payments where tax and
-          accounting law requires it. These contain billing details only — no
+          accounting law requires it. These contain billing details only, no
           conversation content, no customer records, no derived intelligence.
         </p>
         <p>

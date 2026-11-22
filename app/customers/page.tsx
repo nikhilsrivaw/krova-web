@@ -998,7 +998,7 @@ export default function CustomersPage() {
                   <input
                     value={newDateNote}
                     onChange={(e) => setNewDateNote(e.target.value)}
-                    placeholder="Note (optional) — e.g. quarterly plan"
+                    placeholder="Note (optional), e.g. quarterly plan"
                     className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.12] text-xs text-white placeholder:text-os-text-dim focus:border-brass focus:outline-none"
                   />
                   <button
@@ -1016,7 +1016,7 @@ export default function CustomersPage() {
                 </label>
                 {dateError && <p className="text-[11px] text-red-400 mt-1">{dateError}</p>}
                 <p className="text-[11px] text-os-text-dim mt-1.5">
-                  Your automation rules can act on these — e.g. “5 days before Renewal → WhatsApp”.
+                  Your automation rules can act on these, e.g. “5 days before Renewal → WhatsApp”.
                 </p>
               </div>
 

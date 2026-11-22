@@ -9,7 +9,7 @@ import {
 } from "@/components/spectrum/legal-page";
 
 export const metadata: Metadata = {
-  title: "Refund & Cancellation Policy — KROVA",
+  title: "Refund & Cancellation Policy - KROVA",
   description:
     "How cancelling a KROVA plan works, and when money is or is not returned.",
 };

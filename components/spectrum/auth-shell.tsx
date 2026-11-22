@@ -60,7 +60,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <div className="relative hidden lg:block">
         <Image
           src="/images/auth-back-in-orbit.webp"
-          alt="KROVA mascot on a moon rock with a laptop — back in orbit"
+          alt="KROVA mascot on a moon rock with a laptop, back in orbit"
           fill
           quality={95}
           sizes="50vw"

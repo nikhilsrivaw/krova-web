@@ -30,11 +30,11 @@ import { installUrl as getInstallUrl } from "@/lib/app-nav";
 const EXAMPLES = [
   {
     user: "Aaj kya hua?",
-    ai: "Aaj 12 naye leads aaye — 3 hot, 5 warm, 4 abhi naye hain. Pending approvals: 8. Priya ji aur Rahul ji ne pricing pucha — drafts ready hain.",
+    ai: "Aaj 12 naye leads aaye: 3 hot, 5 warm, 4 abhi naye hain. Pending approvals: 8. Priya ji aur Rahul ji ne pricing pucha, drafts ready hain.",
   },
   {
     user: "Kaun se leads hot hain abhi?",
-    ai: "3 hot leads:\n• Priya D. — Elite plan ka rate pucha (WhatsApp · 2h ago)\n• Rahul M. — Sample dekha, ready to convert (IG · 4h ago)\n• Anjali S. — Demo schedule karna chahti hain (Voice call · 6h ago)",
+    ai: "3 hot leads:\n• Priya D.: Elite plan ka rate pucha (WhatsApp · 2h ago)\n• Rahul M.: Sample dekha, ready to convert (IG · 4h ago)\n• Anjali S.: Demo schedule karna chahti hain (Voice call · 6h ago)",
   },
   {
     user: "Priya ko kya message karoon?",
@@ -58,7 +58,7 @@ const ASKS = [
 const STEPS = [
   {
     title: "Ask",
-    body: "Type or speak in any language. KROVA reads your business context — customers, history, conversations — and answers about yours specifically.",
+    body: "Type or speak in any language. KROVA reads your business context (customers, history, conversations) and answers about yours specifically.",
   },
   {
     title: "See a draft",
@@ -89,7 +89,7 @@ const PWA_POINTS = [
   {
     icon: <Bell size={15} className="text-teal" />,
     title: "Push notifications",
-    body: "Hot lead at 11 PM and your phone buzzes — same as a native app, because underneath it is one.",
+    body: "Hot lead at 11 PM and your phone buzzes, same as a native app, because underneath it is one.",
   },
 ];
 
@@ -100,7 +100,7 @@ const PLATFORMS = [
     steps: [
       {
         line: "Open the link in Safari",
-        hint: "Chrome on iOS won't work — Apple only allows PWA installs from Safari.",
+        hint: "Chrome on iOS won't work: Apple only allows PWA installs from Safari.",
       },
       {
         line: (
@@ -207,7 +207,7 @@ export default function MobilePage() {
               transition={{ delay: 0.2, duration: 0.6 }}
               className="text-lg text-os-text-dim leading-relaxed mb-8"
             >
-              Pucho kuch bhi about your business — in Hindi, English, or Hinglish. KROVA
+              Pucho kuch bhi about your business, in Hindi, English, or Hinglish. KROVA
               knows your customers, your numbers and your day, and answers in plain
               language.
             </motion.p>
@@ -239,7 +239,7 @@ export default function MobilePage() {
               transition={{ delay: 0.4 }}
               className="mt-10 pt-6 border-t border-os-border text-sm text-os-text-dim leading-relaxed"
             >
-              KROVA Mobile is a <strong className="font-semibold text-os-ink">PWA</strong> — an
+              KROVA Mobile is a <strong className="font-semibold text-os-ink">PWA</strong>, an
               installable web app. No App Store, no Play Store, no 200MB download. You just
               open the link on your phone.
             </motion.p>
@@ -266,7 +266,7 @@ export default function MobilePage() {
             </h2>
             <p className="text-os-text-dim mt-4 leading-relaxed">
               A general chatbot knows nothing about your business. KROVA knows every
-              customer, every conversation, every commitment — so ask it like you&rsquo;d ask
+              customer, every conversation, every commitment, so ask it like you&rsquo;d ask
               a manager.
             </p>
           </div>
@@ -446,7 +446,7 @@ export default function MobilePage() {
             </Link>
           </div>
           <p className="text-[11px] text-os-text-dim mt-5">
-            You need a KROVA account —{" "}
+            You need a KROVA account:{" "}
             <Link href="/signup" className="text-os-ink hover:text-teal transition-colors">
               sign up
             </Link>

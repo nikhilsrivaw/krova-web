@@ -127,7 +127,7 @@ export default function IntelligencePage() {
         <div className="grid lg:grid-cols-12 gap-14 items-center">
           <div className="lg:col-span-5">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <Eyebrow>01 — Read</Eyebrow>
+              <Eyebrow>01 · Read</Eyebrow>
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 14 }}
@@ -243,7 +243,7 @@ export default function IntelligencePage() {
       <section className="border-t border-os-border bg-os-card/40">
         <div className="max-w-6xl mx-auto px-6 py-28">
           <div className="max-w-xl mb-14">
-            <Eyebrow>02 — Score</Eyebrow>
+            <Eyebrow>02 · Score</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
               Every conversation leaves the night with a temperature.
             </h2>
@@ -292,7 +292,7 @@ export default function IntelligencePage() {
       {/* 03 — SPEAK */}
       <section className="border-t border-os-border max-w-6xl mx-auto px-6 py-28">
         <div className="max-w-xl mb-14">
-          <Eyebrow>03 — Speak</Eyebrow>
+          <Eyebrow>03 · Speak</Eyebrow>
           <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
             Same question. Your voice, not a template&rsquo;s.
           </h2>
@@ -335,7 +335,7 @@ export default function IntelligencePage() {
       <section className="border-t border-os-border bg-os-card/40">
         <div className="max-w-6xl mx-auto px-6 py-28 grid lg:grid-cols-12 gap-14">
           <div className="lg:col-span-5">
-            <Eyebrow>04 — Restraint</Eyebrow>
+            <Eyebrow>04 · Restraint</Eyebrow>
             <h2 className="font-serif text-4xl font-semibold tracking-tight text-os-ink">
               The smartest thing it does is <span className="text-teal">stop.</span>
             </h2>

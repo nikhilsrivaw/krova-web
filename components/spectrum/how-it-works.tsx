@@ -15,7 +15,7 @@ const STEPS = [
   {
     n: "02",
     title: "KROVA reads, every night",
-    body: "Every conversation gets scored — who's hot, who's going cold, what was promised and never delivered.",
+    body: "Every conversation gets scored: who's hot, who's going cold, what was promised and never delivered.",
   },
   {
     n: "03",
@@ -31,7 +31,7 @@ const CHANNELS = [
 ];
 
 const LEDGER_ENTRIES = [
-  { name: "Priya D.", note: "Going cold — no reply in 4 days", tag: "Act now", tagClass: "border-thread/30 bg-thread/[0.08] text-thread-bright" },
+  { name: "Priya D.", note: "Going cold, no reply in 4 days", tag: "Act now", tagClass: "border-thread/30 bg-thread/[0.08] text-thread-bright" },
   { name: "Rahul M.", note: "Asked for pricing twice · draft ready", tag: "Ready", tagClass: "border-seal/30 bg-seal/[0.08] text-seal-bright" },
   { name: "Anjali K.", note: "Reply drafted, matches your tone", tag: "Draft", tagClass: "border-teal/30 bg-teal/[0.08] text-teal-bright" },
   { name: "3 unpaid quotes", note: "₹47,000 stuck · 12+ days old", tag: "₹47,000", tagClass: "border-thread/30 bg-thread/[0.08] text-thread-bright" },
@@ -119,11 +119,11 @@ function BriefingVisual() {
         </div>
         <div className="space-y-2.5">
           <div className="rounded-xl rounded-bl-sm border border-teal/20 bg-teal/[0.06] px-3.5 py-2.5 text-[13px] leading-5 text-os-ink">
-            3 hot leads need replies today. 2 going cold — act in 24h.
+            3 hot leads need replies today. 2 going cold, act in 24h.
           </div>
           <div className="flex items-center gap-2 rounded-xl rounded-bl-sm border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-[13px] leading-5 text-os-ink/90">
             <Sparkles size={12} className="shrink-0 text-teal-bright" />
-            3 drafts ready — just approve.
+            3 drafts ready, just approve.
           </div>
         </div>
       </div>

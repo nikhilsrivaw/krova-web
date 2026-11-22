@@ -76,7 +76,7 @@ const LINKS: NavLink[] = [
       {
         icon: <Sun size={18} className="text-teal" />,
         title: "Morning Briefing",
-        description: "8 AM WhatsApp report — what to do today.",
+        description: "8 AM WhatsApp report: what to do today.",
         href: "/intelligence",
       },
       {

@@ -513,7 +513,7 @@ export default function CampaignsPage() {
                 </label>
                 {templateList.filter((t) => t.sendable).length === 0 ? (
                   <p className="text-xs text-os-text-dim">
-                    No approved templates yet — create one from the WhatsApp tab first.
+                    No approved templates yet, create one from the WhatsApp tab first.
                   </p>
                 ) : (
                   <select

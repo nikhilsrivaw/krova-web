@@ -26,7 +26,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.krova.space"),
   title: {
-    default: "Krova — AI Business Intelligence for Businesses",
+    default: "Krova - AI Business Intelligence for Businesses",
     template: "%s | Krova",
   },
   description:
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   applicationName: "Krova",
   authors: [{ name: "Aqirox Technology Private Limited" }],
   openGraph: {
-    title: "Krova — AI Business Intelligence for Businesses",
+    title: "Krova - AI Business Intelligence for Businesses",
     description:
       "Understand and manage customer conversations, follow-ups and customer intelligence in one place.",
     url: "https://www.krova.space",

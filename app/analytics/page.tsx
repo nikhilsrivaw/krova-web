@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white">
-                  AI Agent Performance — Readiness for Act Mode
+                  AI Agent Performance: Readiness for Act Mode
                 </h3>
                 <p className="text-xs text-os-text-dim">
                   How accurately the AI writes replies before you flip the switch from Draft to Autonomous Act mode.
@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
               <div>
                 <h3 className="text-sm font-bold text-white">Response Speed</h3>
                 <p className="text-xs text-os-text-dim">
-                  How fast you reply — and how often each speed ends in an order.
+                  How fast you reply, and how often each speed ends in an order.
                 </p>
               </div>
             </div>

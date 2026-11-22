@@ -19,7 +19,7 @@ export default function SecurityPage() {
     <ContentPage
       eyebrow="Security"
       title="How Krova protects data"
-      summary="Krova handles customer conversations, so the measures below describe what is actually implemented today — not aspirations, and not certifications we do not hold."
+      summary="Krova handles customer conversations, so the measures below describe what is actually implemented today, not aspirations, and not certifications we do not hold."
     >
       <Section heading="Access to your account">
         <Bullets
@@ -108,7 +108,7 @@ export default function SecurityPage() {
           <p>
             Krova is an actively developed product operated by a small team. We
             hold <strong>no third-party security certifications</strong> at this
-            time — no SOC 2, no ISO 27001, no HIPAA attestation — and we do not
+            time (no SOC 2, no ISO 27001, no HIPAA attestation), and we do not
             describe the service as certified, audited or fully secure. If a
             certification becomes relevant to customers we serve, this page will
             say so once it is actually held.

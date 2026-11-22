@@ -116,7 +116,7 @@ export default function VoiceTrustPage() {
             <div className="flex items-center gap-2 mt-6 pt-6 border-t border-white/[0.06]">
               <ShieldCheck className="w-3.5 h-3.5 text-os-text-dim" />
               <p className="text-[10px] text-os-text-dim font-mono">
-                Powered by KROVA — computed live, not self-reported.
+                Powered by KROVA. Computed live, not self-reported.
               </p>
             </div>
           </div>

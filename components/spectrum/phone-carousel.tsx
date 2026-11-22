@@ -171,7 +171,7 @@ function BriefingScreen() {
         2 going cold: Vikram &amp; Sneha (4+ days silent)
       </div>
       <div className="ml-8 rounded-xl rounded-bl-sm border border-os-border bg-os-card px-3.5 py-2.5 text-[12px] leading-relaxed text-os-ink/90 shadow-sm">
-        ₹47,000 in unpaid quotes — reply YES to send reminders.
+        ₹47,000 in unpaid quotes, reply YES to send reminders.
       </div>
     </div>
   );

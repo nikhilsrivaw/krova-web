@@ -74,15 +74,15 @@ const GROUPS = ["Get started", "Daily use", "Channels", "Configure", "Help"];
 const FAQ_ITEMS = [
   {
     q: "Is KROVA a CRM?",
-    a: "No. CRMs are databases you have to feed. KROVA is your AI business analyst — it reads your conversations on its own, tells you what's at risk, and drafts the next move. You approve. It executes.",
+    a: "No. CRMs are databases you have to feed. KROVA is your AI business analyst: it reads your conversations on its own, tells you what's at risk, and drafts the next move. You approve. It executes.",
   },
   {
     q: "Will the AI sound like me?",
-    a: "Yes — usually within the first 20 approvals. It picks up your tone from sent messages, your language mix (English / Hindi / Hinglish), your greeting style, and every edit you make to a draft.",
+    a: "Yes, usually within the first 20 approvals. It picks up your tone from sent messages, your language mix (English / Hindi / Hinglish), your greeting style, and every edit you make to a draft.",
   },
   {
     q: "Does KROVA reply automatically?",
-    a: "By default, no — every draft waits for your approval. You can enable specific Autopilot rules to send certain low-risk replies on their own (for example, a greeting on a new lead), but the safe default is approval-first.",
+    a: "By default, no: every draft waits for your approval. You can enable specific Autopilot rules to send certain low-risk replies on their own (for example, a greeting on a new lead), but the safe default is approval-first.",
   },
   {
     q: "Is there a free trial?",
@@ -90,7 +90,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How is this different from Zoho or Freshdesk?",
-    a: "Those are CRMs: manual data-entry tools. KROVA is the analyst that uses the data. It reads, scores, decides, and drafts — they store.",
+    a: "Those are CRMs: manual data-entry tools. KROVA is the analyst that uses the data. It reads, scores, decides, and drafts; they store.",
   },
   {
     q: "What if I want to cancel?",
@@ -113,7 +113,7 @@ const TROUBLESHOOTING = [
   },
   {
     q: "AI drafts don't sound like me",
-    a: "Voice trains on your sent messages. If your account is new, paste five example replies into Settings → Voice → Examples. Every edit you make also teaches it — after roughly 20 edits the drafts get noticeably closer.",
+    a: "Voice trains on your sent messages. If your account is new, paste five example replies into Settings → Voice → Examples. Every edit you make also teaches it; after roughly 20 edits the drafts get noticeably closer.",
   },
   {
     q: "WhatsApp keeps disconnecting",
@@ -125,7 +125,7 @@ const TROUBLESHOOTING = [
   },
   {
     q: "An action was sent to the wrong customer",
-    a: "This shouldn't happen — every action shows its recipient before you approve. If it does, email us with the action ID from the URL. We'll roll it back and investigate.",
+    a: "This shouldn't happen: every action shows its recipient before you approve. If it does, email us with the action ID from the URL. We'll roll it back and investigate.",
   },
   {
     q: "I want to export all my data",
@@ -247,7 +247,7 @@ export default function DocsPage() {
             Everything KROVA does, <span className="text-teal">in the order you&rsquo;ll need it.</span>
           </h1>
           <p className="text-lg text-os-text-dim leading-relaxed">
-            Start at the top if you&rsquo;re new — account, setup, first briefing. Jump straight to a
+            Start at the top if you&rsquo;re new: account, setup, first briefing. Jump straight to a
             channel or a setting if you already know what you&rsquo;re looking for.
           </p>
         </div>
@@ -367,7 +367,7 @@ export default function DocsPage() {
               </div>
 
               <Callout title="Who this is for">
-                Owners of Indian SMBs — coaching institutes, clinics, salons, boutiques, agencies,
+                Owners of Indian SMBs: coaching institutes, clinics, salons, boutiques, agencies,
                 freelancers. If your customers find you on WhatsApp, this is for you.
               </Callout>
             </Section>
@@ -395,7 +395,7 @@ export default function DocsPage() {
                   },
                   {
                     title: "Confirm your email",
-                    body: "We send a verification link — click it to activate the account. Google sign-ins skip this step.",
+                    body: "We send a verification link, click it to activate the account. Google sign-ins skip this step.",
                   },
                   {
                     title: "Land in the setup wizard",
@@ -404,7 +404,7 @@ export default function DocsPage() {
                 ]}
               />
               <Callout type="tip" title="More than one owner?">
-                Sign up with whoever holds the master WhatsApp number — that&rsquo;s the account that
+                Sign up with whoever holds the master WhatsApp number: that&rsquo;s the account that
                 receives the 8 AM briefing. Team members can be invited later from Settings.
               </Callout>
             </Section>
@@ -443,7 +443,7 @@ export default function DocsPage() {
                 ))}
               </div>
               <Callout type="warning" title="Trouble signing in?">
-                If you signed up with Google you don&rsquo;t have a password — use the Google button
+                If you signed up with Google you don&rsquo;t have a password: use the Google button
                 rather than the email form. If you forgot your password, reset it from the sign-in
                 page. Still stuck, email us.
               </Callout>
@@ -463,7 +463,7 @@ export default function DocsPage() {
                   },
                   {
                     title: "Connect channels",
-                    body: "Pick at least one — WhatsApp, Instagram or Voice. You can add the rest later.",
+                    body: "Pick at least one: WhatsApp, Instagram or Voice. You can add the rest later.",
                   },
                   {
                     title: "AI setup",
@@ -476,7 +476,7 @@ export default function DocsPage() {
                 ]}
               />
               <Callout type="tip" title="You can skip steps">
-                Channel connections can wait — add them from Settings later. The only required step
+                Channel connections can wait, add them from Settings later. The only required step
                 is the business profile.
               </Callout>
             </Section>
@@ -496,8 +496,8 @@ export default function DocsPage() {
                 <div className="space-y-3 text-sm">
                   <p className="text-os-ink">Good morning, Aditya.</p>
                   {[
-                    { dot: "bg-thread-bright", lead: "3 hot leads", rest: "need replies today — Priya, Rahul, Anjali." },
-                    { dot: "bg-thread", lead: "2 going cold", rest: "— Vikram and Sneha, silent for 4+ days." },
+                    { dot: "bg-thread-bright", lead: "3 hot leads", rest: "need replies today: Priya, Rahul, Anjali." },
+                    { dot: "bg-thread", lead: "2 going cold", rest: "(Vikram and Sneha), silent for 4+ days." },
                     { dot: "bg-teal", lead: "₹47,000", rest: "in unpaid quotes. Reply YES and I'll send reminders." },
                     { dot: "bg-os-text-dim", lead: "32 messages", rest: "sent yesterday, reply rate 94%." },
                   ].map((r) => (
@@ -517,7 +517,7 @@ export default function DocsPage() {
                   "Reply YES to approve every suggested draft in one tap",
                   "Reply with a number to approve just that one action",
                   "Tap any name to open their conversation in the dashboard",
-                  "Reply STOP to pause briefings — you can turn them back on any time",
+                  "Reply STOP to pause briefings, you can turn them back on any time",
                 ]}
               />
               <Callout title="Want a different time?">
@@ -544,7 +544,7 @@ export default function DocsPage() {
                   },
                   {
                     title: "Snooze",
-                    body: "Push it to later — an hour, tomorrow morning, next Monday. It returns to the top of your queue on its own.",
+                    body: "Push it to later: an hour, tomorrow morning, next Monday. It returns to the top of your queue on its own.",
                   },
                   {
                     title: "Reject",
@@ -565,18 +565,18 @@ export default function DocsPage() {
             {/* RELATIONSHIPS */}
             <Section id="relationships" eyebrow="Daily use" title="People & relationships">
               <P>
-                Everyone who messages you becomes a <em>relationship</em> automatically — no contact
+                Everyone who messages you becomes a <em>relationship</em> automatically, no contact
                 forms to fill. KROVA builds the database out of inbound chats.
               </P>
               <H3>Each person gets</H3>
               <Bullets
                 items={[
-                  "A status — hot, warm, cold, converted or lost",
+                  "A status: hot, warm, cold, converted or lost",
                   "A health score from 0 to 100 showing relationship strength",
                   "Their primary channel (WhatsApp, Instagram, Voice)",
                   "A timeline of every conversation, across every channel",
                   "An assigned team member, if you have a team",
-                  "Notes and commitments — anything you promised them",
+                  "Notes and commitments: anything you promised them",
                 ]}
               />
               <Callout type="tip" title="Searching">
@@ -598,10 +598,10 @@ export default function DocsPage() {
                 {[
                   { label: "Predictions", body: "Who's likely to churn, who's likely to convert, and when." },
                   { label: "Revenue leaks", body: "Unpaid quotes, ghosted hot leads, abandoned conversations." },
-                  { label: "Voice of customer", body: "Clustered themes from real chats — what people keep asking for." },
+                  { label: "Voice of customer", body: "Clustered themes from real chats: what people keep asking for." },
                   { label: "Commitments", body: "Things you promised, and might otherwise forget to deliver." },
                   { label: "Competitor mentions", body: "When customers name a rival, with the surrounding context." },
-                  { label: "Growth blockers", body: "Patterns in lost deals — why you keep losing this customer type." },
+                  { label: "Growth blockers", body: "Patterns in lost deals: why you keep losing this customer type." },
                   { label: "Anti-spam alerts", body: "Suspected scams and low-quality leads, before you spend time on them." },
                   { label: "Coaching", body: "Suggestions for improving your replies, based on your own history." },
                 ].map((it) => (
@@ -618,8 +618,8 @@ export default function DocsPage() {
             {/* CHANNELS OVERVIEW */}
             <Section id="channels-overview" eyebrow="Channels" title="Connecting channels">
               <P>
-                A channel is any inbox — or phone line — KROVA reads from and writes to. Three are
-                supported today, and you can connect more than one of each — useful if you run two
+                A channel is any inbox (or phone line) KROVA reads from and writes to. Three are
+                supported today, and you can connect more than one of each, useful if you run two
                 WhatsApp numbers.
               </P>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -667,13 +667,13 @@ export default function DocsPage() {
                   },
                   {
                     title: "Set the briefing number",
-                    body: "Make sure the same number is entered in Settings → Briefing — that's where the 8 AM message goes.",
+                    body: "Make sure the same number is entered in Settings → Briefing, that's where the 8 AM message goes.",
                   },
                 ]}
               />
               <Callout type="warning" title="Personal WhatsApp won't work">
                 You need the free WhatsApp Business app. If you only have personal WhatsApp,
-                download Business first — it can take over the same number during transfer.
+                download Business first; it can take over the same number during transfer.
               </Callout>
             </Section>
 
@@ -711,7 +711,7 @@ export default function DocsPage() {
             <Section id="voice-calls" eyebrow="Channels" title="Connecting Voice">
               <P>
                 A real phone number your customers can call, answered by KROVA&rsquo;s AI in real time.
-                India regulatory KYC is required before a number can be purchased — budget about a day
+                India regulatory KYC is required before a number can be purchased, budget about a day
                 for approval, not the ~2 minutes other channels take.
               </P>
               <Steps
@@ -726,7 +726,7 @@ export default function DocsPage() {
                   },
                   {
                     title: "Upload KYC documents",
-                    body: "Registration Certificate and any other document types listed. Each type may ask for extra details (e.g. your registered business name) — the form will prompt for it.",
+                    body: "Registration Certificate and any other document types listed. Each type may ask for extra details (e.g. your registered business name); the form will prompt for it.",
                   },
                   {
                     title: "Submit and wait for carrier approval",
@@ -734,13 +734,13 @@ export default function DocsPage() {
                   },
                   {
                     title: "Search and buy a number",
-                    body: "Voice → Phone Numbers, once approved. Search by area code (e.g. 80 for Bengaluru — no leading zero) and connect.",
+                    body: "Voice → Phone Numbers, once approved. Search by area code (e.g. 80 for Bengaluru, no leading zero) and connect.",
                   },
                 ]}
               />
               <Callout type="tip" title="No leading zero">
                 Plivo&rsquo;s own numbers drop the STD code&rsquo;s leading zero (Bengaluru is
-                &ldquo;80&rdquo;, not &ldquo;080&rdquo;) — search either way and KROVA normalises it.
+                &ldquo;80&rdquo;, not &ldquo;080&rdquo;); search either way and KROVA normalises it.
               </Callout>
             </Section>
 
@@ -791,7 +791,7 @@ export default function DocsPage() {
             <Section id="guardrails" eyebrow="Configure" title="Setting guardrails">
               <P>
                 Guardrails are <strong className="font-semibold text-os-ink">hard rules</strong> the
-                AI cannot break — never quote below a floor price, never name a competitor, never
+                AI cannot break: never quote below a floor price, never name a competitor, never
                 make a medical claim.
               </P>
               <H3>Common guardrails owners set</H3>
@@ -806,7 +806,7 @@ export default function DocsPage() {
                 ]}
               />
               <Callout type="security" title="Enforced on every draft">
-                Guardrails are checked twice — once while reading the conversation, and again before
+                Guardrails are checked twice: once while reading the conversation, and again before
                 a draft reaches your queue. The brain holds them even if a customer asks directly.
               </Callout>
             </Section>
@@ -861,7 +861,7 @@ export default function DocsPage() {
               </P>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { role: "Owner", desc: "Full access — billing, settings, channels, everything." },
+                  { role: "Owner", desc: "Full access: billing, settings, channels, everything." },
                   { role: "Manager", desc: "Sees all data and edits guardrails, but can't change billing." },
                   { role: "Team member", desc: "Sees only the conversations assigned to them, and approves their own actions." },
                 ].map((r) => (

@@ -395,7 +395,7 @@ function VoicePageContent() {
                         <p className="text-xs font-bold text-white">1. Create Voice Subaccount</p>
                         <p className="text-[11px] text-os-text-dim mt-0.5">
                           {subaccount
-                            ? `Created — ${subaccount.subaccount_auth_id}`
+                            ? `Created: ${subaccount.subaccount_auth_id}`
                             : application
                             ? "Already created"
                             : "This business's own slice of the voice carrier."}

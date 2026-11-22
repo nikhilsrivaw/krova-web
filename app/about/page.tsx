@@ -41,7 +41,7 @@ export default function AboutPage() {
         </p>
         <p>
           Small businesses talk to their customers across WhatsApp, email and
-          other channels, and the important detail gets lost in the noise — who
+          other channels, and the important detail gets lost in the noise: who
           is waiting for a reply, what was promised and when, which enquiry went
           cold, what work was delivered but never invoiced. Krova reads the
           conversations a business already has and turns them into a clear view

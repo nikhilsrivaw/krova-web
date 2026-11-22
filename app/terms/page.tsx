@@ -9,7 +9,7 @@ import {
 } from "@/components/spectrum/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — KROVA",
+  title: "Terms of Service - KROVA",
   description:
     "The agreement between KROVA and the businesses that use it.",
 };
@@ -34,9 +34,9 @@ export default function TermsPage() {
 
       <Section heading="What KROVA does">
         <p>
-          KROVA connects to the channels your business already uses — WhatsApp,
+          KROVA connects to the channels your business already uses (WhatsApp,
           Instagram, phone calls on numbers you hold through KROVA, and chat on
-          your website — and helps you answer customers, follow up, and keep
+          your website) and helps you answer customers, follow up, and keep
           track of what was promised. It can reply to customers, answer and
           make calls, draft messages for you to approve, and send them through
           your own connected accounts.
@@ -140,7 +140,7 @@ export default function TermsPage() {
       <Section heading="Your data">
         <p>
           You own your data. You grant us the limited licence needed to host,
-          process, and analyse it in order to provide the service — including
+          process, and analyse it in order to provide the service, including
           transmitting conversation content to our AI subprocessor as described
           in the <a href="/privacy">Privacy Policy</a>.
         </p>

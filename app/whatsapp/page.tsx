@@ -897,7 +897,7 @@ function WhatsAppPageContent() {
                     Meta Embedded Signup & Number Management
                   </h3>
                   <p className="text-xs text-os-text-dim max-w-xl">
-                    Connect official Meta WhatsApp Business numbers with auto-configured webhooks, token refresh, and identity mapping. This opens Meta's own signup dialog — the account stays theirs throughout.
+                    Connect official Meta WhatsApp Business numbers with auto-configured webhooks, token refresh, and identity mapping. This opens Meta's own signup dialog; the account stays theirs throughout.
                   </p>
                   {connectStatus && (
                     <p className="text-xs text-brass-bright font-mono">{connectStatus}</p>
@@ -942,7 +942,7 @@ function WhatsAppPageContent() {
                     <CheckCircle2 className="w-4 h-4 text-seal-bright shrink-0" />
                     <span className="text-xs font-bold text-white">
                       Connected {lastSignupResult.display_phone_number || lastSignupResult.phone_number_id}
-                      {lastSignupResult.verified_name && ` — ${lastSignupResult.verified_name}`}
+                      {lastSignupResult.verified_name && ` (${lastSignupResult.verified_name})`}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">

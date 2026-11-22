@@ -14,8 +14,8 @@ import { AuthShell } from "@/components/spectrum/auth-shell";
 // Mirrors services/api/routers/auth.py's google_callback redirect codes.
 const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   google_denied: "Google sign-in was cancelled.",
-  google_expired: "That sign-in attempt expired — please try again.",
-  google_failed: "Google sign-in failed — please try again.",
+  google_expired: "That sign-in attempt expired, please try again.",
+  google_failed: "Google sign-in failed, please try again.",
   google_unverified_email: "That Google account's email isn't verified.",
   account_disabled: "This account has been disabled.",
 };

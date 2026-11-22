@@ -8,13 +8,13 @@ const MESSAGES = [
     accent: true,
   },
   {
-    body: "3 hot leads need replies today:\nPriya D. — asked pricing twice\nRahul M. — ready to book\nAnjali — wants a demo",
+    body: "3 hot leads need replies today:\nPriya D.: asked pricing twice\nRahul M.: ready to book\nAnjali: wants a demo",
   },
   {
     body: "2 going cold: Vikram & Sneha (4+ days silent)",
   },
   {
-    body: "₹47,000 in unpaid quotes — reply YES to send reminders.",
+    body: "₹47,000 in unpaid quotes, reply YES to send reminders.",
   },
 ];
 

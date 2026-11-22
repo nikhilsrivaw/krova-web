@@ -335,7 +335,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <footer className="text-center text-[11px] font-mono text-os-text-dim py-4 border-t border-white/[0.04]">
-        KROVA — Autonomous Business Intelligence OS • Built for Indian SMBs
+        KROVA · Autonomous Business Intelligence OS • Built for Indian SMBs
       </footer>
     </div>
   );

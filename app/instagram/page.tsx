@@ -213,7 +213,7 @@ function InstagramPageContent() {
     try {
       const res = await channels.sendInstagramCarousel(carouselTo.trim(), buildCarouselElements());
       if (res?.sent) {
-        setCarouselResult(`Sent — message id ${res.message_id}`);
+        setCarouselResult(`Sent: message id ${res.message_id}`);
         setCarouselCards([{ ...EMPTY_CAROUSEL_CARD }, { ...EMPTY_CAROUSEL_CARD }]);
       } else {
         setCarouselResult("Send did not confirm");
@@ -286,7 +286,7 @@ function InstagramPageContent() {
     setCarouselError(null);
     try {
       const res = await channels.sendSavedInstagramCarousel(carousel.id, carouselTo.trim());
-      setCarouselResult(res?.sent ? `Sent "${carousel.name}" — message id ${res.message_id}` : "Send did not confirm");
+      setCarouselResult(res?.sent ? `Sent "${carousel.name}": message id ${res.message_id}` : "Send did not confirm");
     } catch (err) {
       setCarouselError(err instanceof Error ? err.message : "Could not send this carousel.");
     } finally {
@@ -325,7 +325,7 @@ function InstagramPageContent() {
     try {
       const res = await channels.sendInstagramText(igSendTo.trim(), igSendBody.trim());
       if (res?.sent) {
-        setIgSendResult(`Sent — message id ${res.message_id}`);
+        setIgSendResult(`Sent: message id ${res.message_id}`);
         setIgSendBody("");
       } else {
         setIgSendResult("Send did not confirm");
@@ -351,7 +351,7 @@ function InstagramPageContent() {
     setPublishResult(null);
     try {
       const res = await channels.publishInstagramPhoto(publishFile, publishCaption.trim());
-      setPublishResult(`Published — media id ${res.media_id}`);
+      setPublishResult(`Published: media id ${res.media_id}`);
       setPublishFile(null);
       setPublishCaption("");
     } catch (err) {

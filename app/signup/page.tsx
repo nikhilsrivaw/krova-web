@@ -37,11 +37,11 @@ import { AuthShell } from "@/components/spectrum/auth-shell";
 // Mirrors services/api/routers/auth.py's google_callback redirect codes.
 const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   google_denied: "Google sign-up was cancelled.",
-  google_expired: "That sign-up attempt expired — please try again.",
-  google_failed: "Google sign-up failed — please try again.",
+  google_expired: "That sign-up attempt expired, please try again.",
+  google_failed: "Google sign-up failed, please try again.",
   google_unverified_email: "That Google account's email isn't verified.",
   google_no_account:
-    "No Krova account uses that Google email yet — fill in your business details below and continue with Google again.",
+    "No Krova account uses that Google email yet. Fill in your business details below and continue with Google again.",
 };
 
 const FIELD_CLASS =
@@ -268,7 +268,7 @@ function SignupForm() {
                 />
                 <p className="text-[11px] text-os-text-dim">
                   {channel === "email"
-                    ? "Check your inbox — the code expires in 10 minutes."
+                    ? "Check your inbox, the code expires in 10 minutes."
                     : "We're calling you now and will read the code out twice."}
                 </p>
               </div>
@@ -363,7 +363,7 @@ function SignupForm() {
                     <p className="text-[11px] text-os-text-dim">
                       {channel === "email"
                         ? "We'll email a 6-digit code to confirm this address."
-                        : "We'll call and read out a 6-digit code — no SMS."}
+                        : "We'll call and read out a 6-digit code (no SMS)."}
                     </p>
                   </div>
 

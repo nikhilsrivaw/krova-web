@@ -143,7 +143,7 @@ const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   "customer.stage_changed": "A customer is moved to another pipeline stage",
   "reply.overdue": "A customer has waited too long for a reply (target set under Team)",
   "keypad.pressed": "A caller presses a key on your phone menu",
-  "customer.date_approaching": "Every day around a date set on a customer — renewal, AMC expiry… (set the day with a condition)",
+  "customer.date_approaching": "Every day around a date set on a customer, e.g. renewal, AMC expiry (set the day with a condition)",
   "appointment.visited": "A booking is marked as came (visited)",
   "appointment.no_show": "A booking is marked as did not come (no-show)",
   "queue_token.done": "A queue token is marked done",

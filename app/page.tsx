@@ -85,21 +85,21 @@ const INTELLIGENCE_CARDS = [
     stat: "8 AM",
     statLabel: "every day, on WhatsApp",
     name: "Morning briefing",
-    description: "By 8 AM, KROVA delivers a WhatsApp briefing — who's hot, who's slipping, what to say first.",
+    description: "By 8 AM, KROVA delivers a WhatsApp briefing: who's hot, who's slipping, what to say first.",
   },
   {
     icon: <DollarSign size={16} className="text-teal" />,
     stat: "₹47,000",
     statLabel: "flagged in tonight's scoring",
     name: "Revenue leak detector",
-    description: "Unpaid quotes, unanswered hot leads — KROVA catches the money slipping through cracks.",
+    description: "Unpaid quotes, unanswered hot leads: KROVA catches the money slipping through cracks.",
   },
   {
     icon: <Sparkles size={16} className="text-teal" />,
     stat: "50 msgs",
     statLabel: "until it sounds like you",
     name: "Ghost writer",
-    description: "Drafts replies that sound like you — Hinglish, your tone, your style. You only approve.",
+    description: "Drafts replies that sound like you: Hinglish, your tone, your style. You only approve.",
   },
   {
     icon: <TrendingUp size={16} className="text-teal" />,
@@ -113,15 +113,15 @@ const INTELLIGENCE_CARDS = [
 const FAQ_ITEMS = [
   {
     q: "Is KROVA a CRM?",
-    a: "No. CRMs are databases you have to feed. KROVA is your AI business analyst — it reads your conversations on its own, tells you what's at risk, and drafts the next move. You approve. It executes.",
+    a: "No. CRMs are databases you have to feed. KROVA is your AI business analyst: it reads your conversations on its own, tells you what's at risk, and drafts the next move. You approve. It executes.",
   },
   {
     q: "Will the AI sound like me?",
-    a: "Yes. KROVA learns your tone, your typical phrases, your Hinglish mix — from the first 50 messages you send. Every draft you approve makes it better.",
+    a: "Yes. KROVA learns your tone, your typical phrases, your Hinglish mix, from the first 50 messages you send. Every draft you approve makes it better.",
   },
   {
     q: "What channels work today?",
-    a: "WhatsApp Business, Instagram DMs, and voice calls. All three feed into one AI brain — no jumping between inboxes.",
+    a: "WhatsApp Business, Instagram DMs, and voice calls. All three feed into one AI brain, no jumping between inboxes.",
   },
   {
     q: "How secure is my customer data?",
@@ -133,7 +133,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does pricing work?",
-    a: "A monthly plan from ₹2,999 plus 18% GST, paid by card or UPI AutoPay. There is no free trial, because WhatsApp needs a payment method and phone numbers cost real money. Voice runs on a prepaid wallet. Cancel anytime — you keep your data export.",
+    a: "A monthly plan from ₹2,999 plus 18% GST, paid by card or UPI AutoPay. There is no free trial, because WhatsApp needs a payment method and phone numbers cost real money. Voice runs on a prepaid wallet. Cancel anytime, you keep your data export.",
   },
 ];
 
@@ -349,7 +349,7 @@ export default function Hero() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Eyebrow>AI business analyst — for Indian SMBs</Eyebrow>
+              <Eyebrow>AI business analyst for Indian SMBs</Eyebrow>
             </motion.div>
 
             <motion.h1
@@ -373,7 +373,7 @@ export default function Hero() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-lg text-os-text-dim max-w-lg mb-10 leading-relaxed"
             >
-              Connect the channels you already use — your own WhatsApp Business account,
+              Connect the channels you already use: your own WhatsApp Business account,
               Instagram and email. KROVA reads your business&rsquo;s own customer
               conversations and tells you who&rsquo;s waiting, what you promised, and
               what to say next.
@@ -471,7 +471,7 @@ export default function Hero() {
             <ul className="space-y-3">
               {[
                 "Hot leads ranked by readiness",
-                "Customers going cold — act in 24h",
+                "Customers going cold, act in 24h",
                 "Revenue leaks (unpaid quotes, lost replies)",
                 "Drafts ready for your approval",
               ].map((it) => (
@@ -570,7 +570,7 @@ export default function Hero() {
           <p className="text-os-text-dim max-w-2xl leading-relaxed">
             Businesses connect the WhatsApp Business account they already own and
             authorise KROVA to provide the services they choose. The account stays
-            theirs — KROVA does not claim ownership of it, and it can be
+            theirs. KROVA does not claim ownership of it, and it can be
             disconnected at any time from Settings.
           </p>
           <ul className="grid gap-3 sm:grid-cols-2 max-w-3xl">
@@ -610,7 +610,7 @@ export default function Hero() {
             A voice that answers when you can&apos;t.
           </h2>
           <p className="text-os-text-dim mt-4">
-            An AI voice agent that picks up the call, understands your customer, and speaks back — in
+            An AI voice agent that picks up the call, understands your customer, and speaks back in
             your business&apos;s voice, around the clock.
           </p>
         </div>

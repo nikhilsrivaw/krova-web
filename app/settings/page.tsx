@@ -1513,7 +1513,7 @@ export default function SettingsPage() {
                   )}
                   {waReadiness.blockers.map((b, i) => (
                     <p key={i} className="text-[11px] text-amber-200/80 mt-1">
-                      {b.entity}: {b.message}{b.fix ? ` — ${b.fix}` : ""}
+                      {b.entity}: {b.message}{b.fix ? ` (${b.fix})` : ""}
                     </p>
                   ))}
                 </div>

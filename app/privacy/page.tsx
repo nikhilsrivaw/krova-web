@@ -9,7 +9,7 @@ import {
 } from "@/components/spectrum/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — KROVA",
+  title: "Privacy Policy - KROVA",
   description:
     "How KROVA collects, processes, stores, and deletes business and customer data.",
 };
@@ -43,12 +43,12 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <strong>Customers</strong> — the business owners and team members
+              <strong>Customers</strong>: the business owners and team members
               who hold a KROVA account. We are the data controller for their
               account data.
             </>,
             <>
-              <strong>End Customers</strong> — the people who message our
+              <strong>End Customers</strong>: the people who message our
               Customers on WhatsApp, Instagram, or email. We process their data
               only as a <strong>data processor</strong> acting on our
               Customer&rsquo;s instructions. We never contact End Customers on
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <strong>WhatsApp Business Platform</strong> — message content,
+              <strong>WhatsApp Business Platform</strong>: message content,
               sender and recipient phone numbers, timestamps, message status, and
               WhatsApp Business Account metadata including phone number
               registration status, quality rating, messaging limits, and message
@@ -87,12 +87,12 @@ export default function PrivacyPage() {
               WhatsApp Business account.
             </>,
             <>
-              <strong>Instagram</strong> — direct messages, comments, and
+              <strong>Instagram</strong>: direct messages, comments, and
               mentions on the Customer&rsquo;s connected Instagram Business
               account.
             </>,
             <>
-              <strong>Gmail and Outlook</strong> — the content, sender,
+              <strong>Gmail and Outlook</strong>: the content, sender,
               recipient, subject, and timestamp of business email in the
               connected mailbox. Messages our classifier identifies as
               newsletters, notifications, or other non-business mail are
@@ -116,7 +116,7 @@ export default function PrivacyPage() {
       <Section heading="What we do with it">
         <Bullets
           items={[
-            "Provide the service — surfacing which customers need attention, what was promised, and what revenue is at risk.",
+            "Provide the service: surfacing which customers need attention, what was promised, and what revenue is at risk.",
             "Generate analysis on a scheduled nightly cycle and on demand.",
             "Draft suggested replies for the Customer to review. Messages are sent only when the Customer approves them, or under automation rules the Customer has explicitly configured.",
             "Send the Customer operational notifications, such as their morning briefing.",
@@ -157,33 +157,33 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <strong>Amazon Web Services</strong> (Mumbai, India) — hosting of
+              <strong>Amazon Web Services</strong> (Mumbai, India): hosting of
               KROVA&rsquo;s application, background workers and database, and the
               language models used for most AI processing.
             </>,
             <>
-              <strong>Anthropic</strong> — language models for some AI tasks.
+              <strong>Anthropic</strong>: language models for some AI tasks.
             </>,
             <>
-              <strong>Vercel</strong> — hosting of the KROVA website and web app.
+              <strong>Vercel</strong>: hosting of the KROVA website and web app.
             </>,
             <>
-              <strong>Plivo</strong> and <strong>Sarvam AI</strong> — phone calls
+              <strong>Plivo</strong> and <strong>Sarvam AI</strong>: phone calls
               for the Voice Agent: call connection, speech-to-text and the
               agent&rsquo;s voice.
             </>,
             <>
-              <strong>Payment gateways</strong> — PayU for KROVA plan payments and
+              <strong>Payment gateways</strong>: PayU for KROVA plan payments and
               wallet top-ups; the gateway a Customer connects itself (such as
               Razorpay) for payment links it sends its own End Customers.
             </>,
             <>
-              <strong>Meta Platforms</strong> — WhatsApp and Instagram message
+              <strong>Meta Platforms</strong>: WhatsApp and Instagram message
               delivery. Meta bills Customers directly for messaging usage; we
               take no margin on it.
             </>,
             <>
-              <strong>Google and Microsoft</strong> — Gmail and Outlook mailbox
+              <strong>Google and Microsoft</strong>: Gmail and Outlook mailbox
               access, where connected.
             </>,
           ]}
@@ -195,7 +195,7 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section heading="Google user data — limited use">
+      <Section heading="Google user data: limited use">
         <p>
           KROVA&rsquo;s use of information received from Google APIs adheres to
           the{" "}
@@ -224,7 +224,7 @@ export default function PrivacyPage() {
             "OAuth tokens and third-party API keys are encrypted at rest using Fernet symmetric encryption.",
             "Every database record is scoped to a business identifier, and every query is filtered by it at the database layer, so one Customer's data cannot be returned to another.",
             "All traffic is served over TLS.",
-            "Access within a Customer's account follows their configured roles — team members see only what their role permits.",
+            "Access within a Customer's account follows their configured roles: team members see only what their role permits.",
           ]}
         />
       </Section>
@@ -258,7 +258,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           If you are an End Customer and want your data removed, contact the
-          business you were messaging — they control that data, and we act on
+          business you were messaging; they control that data, and we act on
           their instruction. You may also write to us and we will route your
           request to them.
         </p>
