@@ -2627,19 +2627,26 @@ export type KnowledgeStatus = {
 /** What a one-time file read suggests for the card. Nothing is saved until the owner saves it. */
 export type KnowledgeFileReading = {
   fields: { key: string; title: string; limit: number; current: string | null; suggested: string }[];
-  faqs: { question: string; answer: string }[];
+  faqs: KnowledgeReadAnswer[];
   truncated: boolean;
   reads_left_today: number;
   /** The longer, opened-when-needed knowledge the same file holds. */
-  catalogue: KnowledgeCatalogueRow[];
+  catalogue: KnowledgeReadRow[];
   catalogue_now: number;
-  bank: { question: string; answer: string }[];
+  bank: KnowledgeReadAnswer[];
   /** A long PDF read in parts (institution): pages read, pages with no text (scans), and more found than fits. */
   pages_read?: number;
   pages_without_text?: number;
   more_than_fits?: boolean;
   bank_room: number;
 };
+
+/**
+ * A long PDF's suggestions are checked against the document itself: "ok", or "look" when a course's fee was not found in
+ * the same table row as its name (or an answer gives a number the file does not contain), with the page to check.
+ */
+export type KnowledgeReadRow = KnowledgeCatalogueRow & { check?: "" | "ok" | "look"; page?: number | null };
+export type KnowledgeReadAnswer = { question: string; answer: string; check?: "" | "ok" | "look" };
 
 /** One Catalogue row. The AI is shown only the rows a customer's message names, never the whole list. */
 export type KnowledgeCatalogueRow = { name: string; price: string; details: string };
